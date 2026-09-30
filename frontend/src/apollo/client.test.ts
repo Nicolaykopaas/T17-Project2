@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GENRES_QUERY } from '../graphql/operations';
 import { createClient } from './client';
-import { getUserId } from './userId';
+import { getUserId, uuidV4 } from './userId';
 
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
@@ -26,6 +26,19 @@ describe('anonym bruker-id', () => {
     const id = getUserId();
     expect(id).toMatch(UUID_V4);
     expect(getUserId()).toBe(id);
+    spy.mockRestore();
+  });
+
+  // Regresjon: VM-en serverer over http, der crypto.randomUUID ikke finnes (bare i sikre kontekster).
+  it('virker uten crypto.randomUUID (http, ikke sikker kontekst)', () => {
+    const spy = vi.spyOn(crypto, 'randomUUID').mockImplementation(() => {
+      throw new TypeError('crypto.randomUUID is not a function');
+    });
+    const ids = new Set(Array.from({ length: 50 }, () => uuidV4()));
+    expect(ids.size).toBe(50);
+    for (const id of ids) expect(id).toMatch(UUID_V4);
+    expect(getUserId()).toMatch(UUID_V4);
+    expect(spy).not.toHaveBeenCalled();
     spy.mockRestore();
   });
 });
