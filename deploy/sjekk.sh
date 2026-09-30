@@ -39,3 +39,11 @@ sudo tail -n 20 /var/log/apache2/error.log
 
 line "6. Backend-logg (siste 20)"
 sudo journalctl -u project2-backend -n 20 --no-pager -o cat
+
+line "8. TMDB (plakater)"
+# Nøkkelen skrives aldri ut, bare om den finnes og hvor lang den er.
+KEYLEN=$(sudo sed -n 's/^TMDB_API_KEY=//p' /opt/project2/.env 2>/dev/null | tr -d '\r\n' | wc -c)
+if [ "$KEYLEN" -gt 0 ]; then echo "Nøkkel: lagret ($KEYLEN tegn)"; else echo "Nøkkel: MANGLER – kjør bash deploy/setup-vm.sh på nytt"; fi
+sudo -u postgres psql -d project2 -tAc "SELECT status || ': ' || count(*) FROM title_artwork GROUP BY status" 2>/dev/null \
+  || echo "(tabellen title_artwork finnes ikke ennå – kjør bash deploy/setup-vm.sh)"
+
