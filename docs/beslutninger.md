@@ -72,3 +72,8 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
   snitt og antall). «Min liste» bruker `cache-and-network` og fjerner rader lokalt i cachen ved «Fjern».
 - **Frontend: ingen nye biblioteker.** Bundle ca. 166 kB gzip initielt (React + Apollo + React Router);
   detalj- og listesiden er lazy (ca. 4 kB gzip til sammen).
+- **Bruker-ID uten `crypto.randomUUID`.** VM-en serverer appen over http, som ikke er en sikker
+  kontekst, og der finnes ikke `crypto.randomUUID`. Alle GraphQL-requests feilet derfor i
+  produksjon, selv om alle tester (som kjører på `localhost`, som regnes som sikker) var grønne.
+  UUID v4 lages nå med `crypto.getRandomValues`, som finnes overalt. Verifisert i Chromium mot en
+  ikke-localhost http-adresse.
