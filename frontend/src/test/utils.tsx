@@ -8,19 +8,21 @@ import { createCache } from '../apollo/cache';
 import {
   ADD_REVIEW_MUTATION,
   FACETS_QUERY,
+  FEATURED_QUERY,
   GENRES_QUERY,
   MY_LIST_QUERY,
   SEARCH_QUERY,
   TITLE_QUERY,
   TOGGLE_LIST_MUTATION,
 } from '../graphql/operations';
-import type { Review, TitleDetails, TitleSummary } from '../graphql/types';
+import type { FeaturedTitle, Review, TitleDetails, TitleSummary } from '../graphql/types';
 
 export type Vars = Record<string, unknown>;
 type Handler = (vars: Vars) => unknown;
 
 const OPERATIONS = {
   Search: SEARCH_QUERY,
+  Featured: FEATURED_QUERY,
   Facets: FACETS_QUERY,
   Genres: GENRES_QUERY,
   TitleDetails: TITLE_QUERY,
@@ -36,6 +38,7 @@ export type CallLog = Record<OperationName, Vars[]>;
 export function emptyLog(): CallLog {
   return {
     Search: [],
+    Featured: [],
     Facets: [],
     Genres: [],
     TitleDetails: [],
@@ -103,11 +106,29 @@ export function makeTitle(n: number, overrides: Partial<TitleSummary> = {}): Tit
     genres: ['Drama'],
     averageRating: 7.5,
     numVotes: 1234 * n,
+    poster185: null,
+    poster342: null,
     ...overrides,
   };
 }
 
-export function makeConnection(nodes: TitleSummary[], total = nodes.length, hasNext = false) {
+/** Tittel med heltebanner-feltene (Featured-spørringen). */
+export function makeFeatured(n: number, overrides: Partial<FeaturedTitle> = {}): FeaturedTitle {
+  return {
+    ...makeTitle(n),
+    overview: null,
+    backdrop780: null,
+    backdrop1280: null,
+    inMyList: false,
+    ...overrides,
+  };
+}
+
+export function makeConnection<T extends TitleSummary>(
+  nodes: T[],
+  total = nodes.length,
+  hasNext = false,
+) {
   return {
     __typename: 'TitleConnection',
     totalCount: total,
@@ -156,6 +177,10 @@ export function makeDetails(overrides: Partial<TitleDetails> = {}) {
     userRating: null,
     reviewCount: 0,
     inMyList: false,
+    overview: null,
+    poster500: null,
+    backdrop780: null,
+    backdrop1280: null,
     reviews: makeReviewConnection([]),
     ...overrides,
   };

@@ -1,3 +1,4 @@
+import { createArtworkLoader, type ArtworkLoader, type ArtworkService } from './artwork.js';
 import type { Pool } from './db.js';
 import { batchLoader } from './loaders.js';
 import { parseUserId } from './validation.js';
@@ -11,19 +12,23 @@ export interface Context {
   pool: Pool;
   /** Gyldig, normalisert UUID fra x-user-id, ellers null. */
   userId: string | null;
+  artwork: ArtworkService;
   loaders: {
+    artwork: ArtworkLoader;
     reviewStats: { load: (titleId: string) => Promise<ReviewStats> };
     inMyList: { load: (titleId: string) => Promise<boolean> };
   };
 }
 
 /** Bygges per request, slik at loader-cachene aldri lekker data mellom brukere. */
-export function createContext(pool: Pool, request: Request): Context {
+export function createContext(pool: Pool, request: Request, artwork: ArtworkService): Context {
   const userId = parseUserId(request.headers.get('x-user-id'));
   return {
     pool,
     userId,
+    artwork,
     loaders: {
+      artwork: createArtworkLoader(artwork),
       // Én spørring for hele resultatsiden i stedet for én per tittel (N+1).
       reviewStats: batchLoader<ReviewStats>(
         async (ids) => {

@@ -77,3 +77,42 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
   produksjon, selv om alle tester (som kjører på `localhost`, som regnes som sikker) var grønne.
   UUID v4 lages nå med `crypto.getRandomValues`, som finnes overalt. Verifisert i Chromium mot en
   ikke-localhost http-adresse.
+- **Bilder fra TMDB, lagret i egen tabell, ikke proxyet.** IMDb-dataene har ingen bilder; TMDB har et
+  gratis API med IMDb-id-oppslag (`/find`) og et bilde-CDN. Svaret lagres i `title_artwork` (også
+  «finnes ikke»), fordi TMDB har rate-grenser og oppslag ellers ville skje ved hvert søk; egen tabell
+  fordi `titles` er en ren, reimporterbar IMDb-kopi. Klienten får CDN-URL-er og laster bildene
+  direkte: en proxy ville gitt oss båndbredde, cache og sikkerhetsansvar for ingen gevinst.
+  Oppslag skjer per request med samtidighetsgrense og ca. 2,5 s tidsfrist; det som ikke rekker
+  det blir `null` nå og lagres i bakgrunnen. Forbigående feil lagres aldri som «finnes ikke»
+  (5 min negativ cache i minnet), og 401/403 slår av oppslag i 10 min. Ugyldig `width` (≤ 0) gir
+  `BAD_USER_INPUT`; gyldige verdier snappes til nærmeste tillatte størrelse. Stier fra TMDB
+  valideres mot et strengt mønster før de brukes i en URL. Testes mot en lokal falsk TMDB
+  (`scripts/tmdb-mock.ts`), siden internett ikke er tilgjengelig i CI.
+- **Frontend: kinoaktig redesign uten nye biblioteker.** Ren CSS med custom properties i `global.css`.
+  Mørkt er standard, lyst følger `prefers-color-scheme: light` med samme layout. Header, heltebilder og
+  plakat-overlegg er alltid mørke (egne `--on-media`-tokens), fordi de ligger over bilder; det gjør at
+  kontrasten ikke avhenger av bildet og at én stil fungerer i begge temaer. Aksentfargen er gull
+  (`#f5c518`, mørk tekst på knapper); i lyst tema brukes en mørkere gull (`#7a5200`) til tekst.
+- **Forsiden har to moduser, styrt av URL-en.** Uten `q`, filtre og sortering (`isBrowseState`) vises
+  «bla-modus»: hero + horisontale rader (`lib/browseRows.ts`). Ellers vises trefflisten som før, som
+  rutenett av plakatkort. Hver rads variabler og «Se alle»-lenke utledes fra samme `SearchState`, så de
+  ikke kan bli ulike, og «Se alle» treffer Apollo-cachen. All sortering/filtrering er GraphQL-variabler.
+- **Hero og toppraden deler én request.** `Featured`-spørringen er `search` med samme cache-nøkkel som
+  raden «Mest populære», bare med `overview` og bakgrunnsbilder på alle 20 titler (ca. 6 kB ekstra).
+  Det er billigere enn en egen `first: 1`-request som ville kollidert med radens cache-oppføring.
+  Hero = første tittel som har bakgrunnsbilde. Bildet har `fetchpriority="high"`, `srcset` (780/1280) og
+  fast størrelse via CSS, så det ikke gir CLS.
+- **Rader under folden er lazy.** Bare toppraden hentes ved oppstart; de andre bruker
+  `IntersectionObserver` (`useNearViewport`, 400 px margin) og `skip` til de nærmer seg. Uten
+  IntersectionObserver hentes alt med en gang. Plakater har `loading="lazy"`, `srcset` 185/342.
+- **Søkefeltet flyttet til headeren** (på alle sider). På forsiden endrer det bare `q`; andre steder
+  navigerer det til `/?q=…`. Layout flytter ikke fokus etter navigasjon hvis fokus står i søkefeltet.
+- **Plakatkort:** tittelen er lenken og strekkes over kortet med `::after`, så lenkenavnet er bare
+  tittelen og fokusringen omslutter hele kortet. Plakaten har `alt=""` (tittelen står som tekst under).
+  Uten plakat: gradient med tittelen, farge fra `hueFromId`. Kort-ids bruker `useId` (samme tittel kan
+  stå i flere rader). `main` har `min-height: 100vh` slik at footeren aldri hopper opp i bildet
+  (CLS 0,27 på Min liste mobil før dette).
+- **Header:** sticky og gjennomsiktig over heltebilde til man scroller (passiv scroll-lytter, state bare
+  ved skifte); sider med heltebilde setter `data-hero` på `<html>` (`useHeaderOverlay`).
+- **E2E bruker falsk TMDB.** `playwright.config.ts` starter `tmdb:mock` (port 3999) og gir backend
+  `TMDB_API_KEY/URL/IMAGE_URL`. Forsiden har ingen `.count` i bla-modus, så flyttesten søker først.

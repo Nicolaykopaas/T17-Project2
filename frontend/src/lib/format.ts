@@ -30,3 +30,18 @@ export function formatYears(title: Pick<TitleSummary, 'startYear'> & { endYear?:
   }
   return String(title.startYear);
 }
+
+/** Deterministisk fargetone (0–359) fra id, så plassholderen til en tittel alltid ser lik ut. */
+export function hueFromId(id: string): number {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+  return hash % 360;
+}
+
+/** Kutter ved ordgrense så handlingsteksten passer over bildet uten «vis mer». */
+export function truncate(text: string, max = 220): string {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  const space = cut.lastIndexOf(' ');
+  return cut.slice(0, space > 80 ? space : max).trimEnd() + '…';
+}

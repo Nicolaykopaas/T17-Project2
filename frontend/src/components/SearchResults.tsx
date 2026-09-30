@@ -5,8 +5,8 @@ import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
 import { formatNumber } from '../lib/format';
 import { activeFilterCount, toFilters, toSort, type SearchState } from '../lib/searchState';
 import { ErrorMessage } from './ErrorMessage';
-import { ResultSkeleton } from './ResultSkeleton';
-import { TitleCard } from './TitleCard';
+import { GRID_SIZES, PosterCard } from './PosterCard';
+import { PosterSkeleton } from './PosterSkeleton';
 
 export const PAGE_SIZE = 20;
 
@@ -73,7 +73,7 @@ export function SearchResults({ state, onReset }: Props) {
         {status}
       </p>
 
-      {!result && <ResultSkeleton />}
+      {!result && <PosterSkeleton grid count={12} />}
 
       {result && total === 0 && (
         <div className="notice">
@@ -95,9 +95,9 @@ export function SearchResults({ state, onReset }: Props) {
 
       {result && total > 0 && (
         <>
-          <ul className={`results${loading ? ' is-stale' : ''}`}>
+          <ul className={`poster-grid${loading ? ' is-stale' : ''}`}>
             {result.edges.map((edge) => (
-              <TitleCard key={edge.node.id} title={edge.node} />
+              <PosterCard key={edge.node.id} title={edge.node} sizes={GRID_SIZES} />
             ))}
           </ul>
           <div ref={sentinel} aria-hidden="true" />

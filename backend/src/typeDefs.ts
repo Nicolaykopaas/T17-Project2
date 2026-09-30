@@ -71,6 +71,11 @@ export const typeDefs = /* GraphQL */ `
     reviewCount: Int!
     inMyList: Boolean!
     reviews(first: Int = 10, after: String): ReviewConnection! # nyeste først
+    # Bilder og handling fra TMDB (se «Bilder» i docs/api.md). null når TMDB mangler tittelen,
+    # når TMDB_API_KEY ikke er satt, eller når oppslaget feiler/tar for lang tid.
+    overview: String # engelsk handlingsbeskrivelse
+    posterUrl(width: Int = 342): String # 2:3; bredde snappes til 92, 154, 185, 342, 500 eller 780
+    backdropUrl(width: Int = 1280): String # 16:9; bredde snappes til 300, 780 eller 1280
   }
 
   type TitleEdge {

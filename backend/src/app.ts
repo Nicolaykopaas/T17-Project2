@@ -1,5 +1,7 @@
 import { GraphQLError, type ValidationRule } from 'graphql';
 import { createYoga, type Plugin } from 'graphql-yoga';
+import { ArtworkService } from './artwork.js';
+import { config } from './config.js';
 import { createContext, type Context } from './context.js';
 import type { Pool } from './db.js';
 import { depthLimit } from './depthLimit.js';
@@ -30,13 +32,16 @@ export interface AppOptions {
   production?: boolean;
   /** Tillatt CORS-opprinnelse (kun utvikling). false = ingen CORS-headere. */
   corsOrigin?: string | false;
+  /** TMDB-tjenesten. Standard: bygges fra miljøvariablene (TMDB_API_KEY osv.). */
+  artwork?: ArtworkService;
 }
 
 /**
  * Bygger Yoga-appen uten å åpne noen port, slik at testene kan kalle yoga.fetch() direkte.
  * Yoga selv er en (req, res)-handler for node:http og en fetch-funksjon i én.
  */
-export function createApp({ pool, production, corsOrigin = false }: AppOptions) {
+export function createApp({ pool, production, corsOrigin = false, artwork }: AppOptions) {
+  const artworkService = artwork ?? new ArtworkService({ pool, apiKey: config.tmdbApiKey });
   const isProd = production ?? process.env.NODE_ENV === 'production';
 
   // Egendefinert plugin i stedet for ekstra pakker: envelop lar oss legge til valideringsregler.
@@ -51,7 +56,7 @@ export function createApp({ pool, production, corsOrigin = false }: AppOptions) 
     schema,
     graphqlEndpoint: '/graphql',
     plugins: [limits],
-    context: ({ request }) => createContext(pool, request),
+    context: ({ request }) => createContext(pool, request, artworkService),
     logging: process.env.NODE_ENV !== 'test',
     graphiql: !isProd,
     landingPage: !isProd,

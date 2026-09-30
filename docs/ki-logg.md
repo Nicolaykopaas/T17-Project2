@@ -12,3 +12,4 @@
 - 2026-09-30 – M4 ren klon (`npm ci`): lint, typecheck, test og build grønne – leder.
 - 2026-09-30 – M5 deploy-skript, systemd og Apache – leder – ikke kjørt mot VM (krever Nicolay).
 - 2026-09-30 – Fiks: appen feilet på VM-en (http) fordi crypto.randomUUID mangler utenfor sikre kontekster – leder – regresjonstest + verifisert i nettleser over http.
+- 2026-09-30 – TMDB-plakater (backend) og kinoaktig UI (frontend) – backend-utvikler + frontend-utvikler – 209 backend-, 111 komponent- og 48 E2E-tester grønne mot ekte backend og falsk TMDB.

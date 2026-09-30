@@ -12,7 +12,9 @@
     "test": "vitest run",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/import-imdb.ts",
-    "db:fixture": "tsx scripts/generate-fixture.ts"
+    "db:fixture": "tsx scripts/generate-fixture.ts",
+    "db:artwork": "tsx scripts/prefetch-artwork.ts",
+    "tmdb:mock": "tsx scripts/tmdb-mock.ts"
   },
   "devDependencies": {
     "@types/node": "^26.6.3",

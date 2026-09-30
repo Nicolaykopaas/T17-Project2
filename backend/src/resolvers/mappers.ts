@@ -8,7 +8,7 @@ export function mapTitle(row: TitleParent) {
     id: row.id,
     primaryTitle: row.primary_title,
     originalTitle: row.original_title,
-    type: row.title_type === 'movie' ? 'MOVIE' : 'SERIES',
+    type: (row.title_type === 'movie' ? 'MOVIE' : 'SERIES') as 'MOVIE' | 'SERIES',
     startYear: row.start_year,
     endYear: row.end_year,
     runtimeMinutes: row.runtime_minutes,

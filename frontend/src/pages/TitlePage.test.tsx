@@ -22,13 +22,13 @@ function setup(
   before: Parameters<typeof buildMocks>[2] = [],
   log: CallLog = emptyLog(),
 ) {
-  renderApp(
+  const { unmount } = renderApp(
     <Routes>
       <Route path="/title/:id" element={<TitlePage />} />
     </Routes>,
     { route: '/title/tt0000001', mocks: buildMocks(handlers, log, before) },
   );
-  return { log, user: userEvent.setup() };
+  return { log, unmount, user: userEvent.setup() };
 }
 
 describe('TitlePage', () => {
@@ -54,7 +54,12 @@ describe('TitlePage', () => {
     expect(screen.getByText('Serie')).toBeInTheDocument();
     expect(screen.getByText('2012–2020')).toBeInTheDocument();
     expect(screen.getByText('45 min')).toBeInTheDocument();
-    expect(screen.getByText('Drama, Comedy')).toBeInTheDocument();
+    const genres = screen.getByRole('list', { name: 'Sjangre' });
+    expect(
+      within(genres)
+        .getAllByRole('listitem')
+        .map((li) => li.textContent),
+    ).toEqual(['Drama', 'Comedy']);
     expect(screen.getByText(/7,9 \/ 10/).textContent?.replace(/\s/g, ' ')).toContain(
       '12 345 stemmer',
     );
@@ -97,6 +102,49 @@ describe('TitlePage', () => {
     expect(
       await screen.findByRole('heading', { name: 'The Shawshank Redemption' }),
     ).toBeInTheDocument();
+  });
+});
+
+describe('TitlePage: bilder', () => {
+  it('viser bakgrunn (høy prioritet), plakat og handling fra TMDB', async () => {
+    setup({
+      TitleDetails: () => ({
+        title: makeDetails({
+          overview: 'To fanger blir venner.',
+          poster342: 'http://img/p342.jpg',
+          poster500: 'http://img/p500.jpg',
+          backdrop780: 'http://img/b780.jpg',
+          backdrop1280: 'http://img/b1280.jpg',
+        }),
+      }),
+    });
+    expect(await screen.findByText('To fanger blir venner.')).toBeInTheDocument();
+    const [backdrop, poster] = Array.from(document.querySelectorAll('img'));
+    expect(backdrop).toHaveAttribute('fetchpriority', 'high');
+    expect(backdrop).toHaveAttribute(
+      'srcset',
+      'http://img/b780.jpg 780w, http://img/b1280.jpg 1280w',
+    );
+    expect(poster).toHaveAttribute('srcset', 'http://img/p342.jpg 342w, http://img/p500.jpg 500w');
+    expect(document.querySelectorAll('img[alt=""]')).toHaveLength(2);
+    // Headeren blir gjennomsiktig over heltebildet mens siden er åpen.
+    expect(document.documentElement).toHaveAttribute('data-hero');
+  });
+
+  it('faller pent tilbake til plassholder uten bilder og uten handling', async () => {
+    setup({ TitleDetails: () => ({ title: makeDetails() }) });
+    await screen.findByRole('heading', { level: 1, name: 'The Shawshank Redemption' });
+    expect(document.querySelector('img')).toBeNull();
+    expect(document.querySelector('.poster__placeholder')).not.toBeNull();
+    expect(document.querySelector('.title-hero__overview')).toBeNull();
+  });
+
+  it('fjerner hero-markeringen når man forlater siden', async () => {
+    const { unmount } = setup({ TitleDetails: () => ({ title: makeDetails() }) });
+    await screen.findByRole('heading', { level: 1, name: 'The Shawshank Redemption' });
+    expect(document.documentElement).toHaveAttribute('data-hero');
+    unmount();
+    expect(document.documentElement).not.toHaveAttribute('data-hero');
   });
 });
 

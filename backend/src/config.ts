@@ -38,4 +38,8 @@ export const config = {
   isProduction: process.env.NODE_ENV === 'production',
   imdbDataDir: path.resolve(repoRoot, process.env.IMDB_DATA_DIR || 'data'),
   imdbMinVotes: int(process.env.IMDB_MIN_VOTES, 100),
+  // Uten nøkkel gjøres aldri nettverkskall mot TMDB; bare det som allerede ligger i databasen brukes.
+  tmdbApiKey: process.env.TMDB_API_KEY?.trim() || undefined,
+  tmdbApiUrl: (process.env.TMDB_API_URL || 'https://api.themoviedb.org/3').replace(/\/+$/, ''),
+  tmdbImageUrl: (process.env.TMDB_IMAGE_URL || 'https://image.tmdb.org/t/p').replace(/\/+$/, ''),
 };
