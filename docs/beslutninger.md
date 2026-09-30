@@ -116,3 +116,5 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
   ved skifte); sider med heltebilde setter `data-hero` på `<html>` (`useHeaderOverlay`).
 - **E2E bruker falsk TMDB.** `playwright.config.ts` starter `tmdb:mock` (port 3999) og gir backend
   `TMDB_API_KEY/URL/IMAGE_URL`. Forsiden har ingen `.count` i bla-modus, så flyttesten søker først.
+- **README skrevet av lederen.** CLAUDE.md sier at gruppa skriver README, men Nicolay ba eksplisitt
+  om det 2026-09-30. Innholdet bygger på fakta fra `docs/`, og tallene er fra siste testkjøring.
