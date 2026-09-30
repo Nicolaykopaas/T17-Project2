@@ -1,0 +1,30 @@
+# systemd-enhet for GraphQL-backenden på it2810-17.idi.ntnu.no.
+# Installeres med: sudo cp deploy/project2-backend.service /etc/systemd/system/
+#                  sudo systemctl daemon-reload && sudo systemctl enable --now project2-backend
+[Unit]
+Description=IT2810 gruppe 17 prosjekt 2 – GraphQL-backend
+# Backenden er ubrukelig uten databasen, så vent på at Postgres er oppe.
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+# Egen systembruker uten innlogging begrenser skaden hvis prosessen kompromitteres.
+User=project2
+Group=project2
+WorkingDirectory=/opt/project2/backend
+EnvironmentFile=/opt/project2/.env
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node dist/src/index.js
+Restart=on-failure
+RestartSec=5
+
+# Herding: prosessen trenger bare å lese koden og snakke med Postgres over nettverket.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadOnlyPaths=/opt/project2
+
+[Install]
+WantedBy=multi-user.target
