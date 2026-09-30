@@ -42,6 +42,12 @@
   }
 }
 
+/* Reserverer plass til rullefeltet. Uten dette dukker det opp når resultatlisten vokser forbi
+   viewporten, og hele siden flytter seg sideveis (var mesteparten av CLS på desktop). */
+html {
+  scrollbar-gutter: stable;
+}
+
 *,
 *::before,
 *::after {
@@ -52,10 +58,17 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+/* #root (ikke body) er flex-beholderen, siden Layout er dens direkte barn. Da fyller main
+   viewporten fra første bilde, og footeren ligger nederst allerede før innholdet er lastet.
+   Uten dette skjøt det lastede innholdet footeren og main nedover (CLS 0,5-0,9). Flex-elementer
+   har egen margin-kontekst, så barnets marger flytter heller ikke main. */
+#root {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  overflow-wrap: anywhere;
 }
 
 h1 {
