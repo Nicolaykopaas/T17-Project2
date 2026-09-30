@@ -18,6 +18,23 @@ describe('MyListPage', () => {
     expect(screen.getByRole('status')).toHaveTextContent('2 titler');
   });
 
+  it('viser plakatkort i et rutenett med fjern-knapp per kort', async () => {
+    renderApp(<MyListPage />, {
+      mocks: buildMocks(
+        {
+          MyList: () => ({
+            myList: makeConnection([makeTitle(1, { poster342: 'http://img/1.jpg' }), makeTitle(2)]),
+          }),
+        },
+        emptyLog(),
+      ),
+    });
+    await screen.findByRole('link', { name: 'Tittel 1' });
+    expect(screen.getAllByRole('article')).toHaveLength(2);
+    expect(document.querySelector('ul.poster-grid')).not.toBeNull();
+    expect(screen.getAllByRole('button', { name: /^Fjern/ })).toHaveLength(2);
+  });
+
   it('viser tom tilstand med lenke til søk', async () => {
     renderApp(<MyListPage />, {
       mocks: buildMocks({ MyList: () => ({ myList: makeConnection([]) }) }, emptyLog()),

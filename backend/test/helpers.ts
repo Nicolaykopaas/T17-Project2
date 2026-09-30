@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- GraphQL-svar er dynamiske; testene asserter formen */
 import { afterAll, beforeAll } from 'vitest';
+import { ArtworkService } from '../src/artwork.js';
 import { createApp } from '../src/app.js';
 import { config } from '../src/config.js';
 import { createPool, type Pool } from '../src/db.js';
@@ -35,6 +36,8 @@ export function setupApi(): TestEnv {
       pool: env.pool,
       production: false,
       corsOrigin: 'http://localhost:5173',
+      // Uten nøkkel: testene skal aldri kunne nå et ekte TMDB, selv om utvikleren har en i .env.
+      artwork: new ArtworkService({ pool: env.pool, apiKey: undefined }),
     });
     env.gql = async (query, variables, userId = null) => {
       const res = await yoga.fetch('http://localhost/graphql', {

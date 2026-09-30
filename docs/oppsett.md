@@ -41,6 +41,9 @@ Rediger `DATABASE_URL` og `TEST_DATABASE_URL` hvis du ikke bruker `postgres` ute
 | `IMDB_DATA_DIR`     | `./data` (relativt til repo-roten)                 |
 | `IMDB_MIN_VOTES`    | `100`                                              |
 | `NODE_ENV`          | `production` slår av introspeksjon og GraphiQL     |
+| `TMDB_API_KEY`      | (tom: ingen bilder fra TMDB)                       |
+| `TMDB_API_URL`      | `https://api.themoviedb.org/3`                     |
+| `TMDB_IMAGE_URL`    | `https://image.tmdb.org/t/p`                       |
 
 `.env` leses fra repo-roten uansett hvilken mappe kommandoene kjøres fra. Variabler som allerede er
 satt i skallet (eller i CI) går foran `.env`.
@@ -118,6 +121,33 @@ Produksjonsbygg av backend:
 ```bash
 npm run build -w backend
 NODE_ENV=production npm start -w backend
+```
+
+### Bilder (TMDB)
+
+IMDb-datasettene har ingen bilder. Backenden henter plakat, bakgrunnsbilde og handling fra TMDB
+første gang en tittel trenger dem, og lagrer svaret i tabellen `title_artwork` (migrering
+`002_title_artwork.sql`, kjøres av `npm run db:migrate`). Uten `TMDB_API_KEY` gjøres aldri
+nettverkskall; feltene blir `null` og frontend viser plassholdere.
+
+**Med falsk TMDB (utvikling, E2E, ingen internett):**
+
+```bash
+npm run tmdb:mock -w backend            # port 3999 (TMDB_MOCK_PORT), tegner plakater som SVG
+TMDB_API_KEY=test TMDB_API_URL=http://localhost:3999/3 TMDB_IMAGE_URL=http://localhost:3999/t/p \
+  npm run dev -w backend
+```
+
+Mocken svarer «ukjent» for hver 10. tittel-id, så plassholdere kan testes. `TMDB_MOCK_DELAY_MS`
+legger på forsinkelse for å teste tidsgrensen.
+
+**Med ekte nøkkel:** opprett en gratis konto på themoviedb.org og legg enten v3-nøkkelen eller
+v4-lesetokenet (starter med `eyJ`) i `TMDB_API_KEY` i `.env`. La de to andre variablene stå tomme.
+Vil du unngå ventetid i en demo, forhåndshent de mest populære titlene (kan avbrytes og kjøres
+på nytt, maks ca. 30 kall i sekundet):
+
+```bash
+npm run db:artwork -w backend -- 2000   # antall titler; standard 2000
 ```
 
 ## 7. Test og kvalitetssjekk

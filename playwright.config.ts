@@ -26,9 +26,25 @@ export default defineConfig({
   ],
   webServer: [
     {
+      // Falsk TMDB: E2E skal ikke trenge internett eller en ekte API-nøkkel, og plakatene den
+      // tegner er deterministiske.
+      command: 'npm run tmdb:mock -w backend',
+      url: 'http://localhost:3999/t/p/w92/tt0111161.svg',
+      env: { DATABASE_URL: E2E_DATABASE_URL, TMDB_MOCK_PORT: '3999' },
+      reuseExistingServer: !process.env.CI,
+      timeout: 60_000,
+    },
+    {
       command: 'npm run build -w backend && npm run start -w backend',
       url: 'http://localhost:3001/graphql?query=%7B__typename%7D',
-      env: { DATABASE_URL: E2E_DATABASE_URL, PORT: '3001', NODE_ENV: 'test' },
+      env: {
+        DATABASE_URL: E2E_DATABASE_URL,
+        PORT: '3001',
+        NODE_ENV: 'test',
+        TMDB_API_KEY: 'test',
+        TMDB_API_URL: 'http://localhost:3999/3',
+        TMDB_IMAGE_URL: 'http://localhost:3999/t/p',
+      },
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },

@@ -48,9 +48,24 @@ export interface TitleSummary {
   genres: string[];
   averageRating: number | null;
   numVotes: number;
+  /** Plakat i to bredder (for srcset). null når TMDB mangler bildet. */
+  poster185: string | null;
+  poster342: string | null;
+}
+
+/** Tittel med feltene heltebanneret trenger i tillegg. */
+export interface FeaturedTitle extends TitleSummary {
+  overview: string | null;
+  backdrop780: string | null;
+  backdrop1280: string | null;
+  inMyList: boolean;
 }
 
 export interface TitleDetails extends TitleSummary {
+  overview: string | null;
+  poster500: string | null;
+  backdrop780: string | null;
+  backdrop1280: string | null;
   originalTitle: string;
   endYear: number | null;
   runtimeMinutes: number | null;
@@ -80,6 +95,10 @@ export interface SearchVars {
   sort?: SortInput;
   first: number;
   after?: string | null;
+}
+
+export interface FeaturedData {
+  search: Connection<FeaturedTitle>;
 }
 
 export interface FacetsData {

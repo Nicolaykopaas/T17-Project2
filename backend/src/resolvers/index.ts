@@ -1,3 +1,4 @@
+import { BACKDROP_WIDTHS, POSTER_WIDTHS, buildImageUrl } from '../artwork.js';
 import { notFound, unauthenticated } from '../errors.js';
 import type { Context } from '../context.js';
 import {
@@ -140,6 +141,22 @@ export const resolvers = {
       (await ctx.loaders.reviewStats.load(t.id)).count,
     inMyList: (t: TitleNode, _: unknown, ctx: Context) =>
       t.inMyList ?? ctx.loaders.inMyList.load(t.id),
+    // Feltene slår bare opp artwork når de er med i queryen (resolvere kjøres kun for valgte felt).
+    overview: async (t: TitleNode, _: unknown, ctx: Context) =>
+      (await ctx.loaders.artwork.load(t.id, t.type))?.overview ?? null,
+    posterUrl: async (t: TitleNode, args: { width?: number | null }, ctx: Context) => {
+      const width = args.width ?? 342;
+      // Validerer før oppslaget, så en ugyldig bredde aldri koster et TMDB-kall.
+      buildImageUrl('', null, width, POSTER_WIDTHS);
+      const art = await ctx.loaders.artwork.load(t.id, t.type);
+      return buildImageUrl(ctx.artwork.imageUrl, art?.posterPath ?? null, width, POSTER_WIDTHS);
+    },
+    backdropUrl: async (t: TitleNode, args: { width?: number | null }, ctx: Context) => {
+      const width = args.width ?? 1280;
+      buildImageUrl('', null, width, BACKDROP_WIDTHS);
+      const art = await ctx.loaders.artwork.load(t.id, t.type);
+      return buildImageUrl(ctx.artwork.imageUrl, art?.backdropPath ?? null, width, BACKDROP_WIDTHS);
+    },
     reviews: async (
       t: TitleNode,
       args: { first?: number | null; after?: string | null },

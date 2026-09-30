@@ -117,3 +117,10 @@ export function toSort(state: SearchState): SortInput | undefined {
   const field = state.sort ?? 'RELEVANCE';
   return { field, direction: state.dir ?? DEFAULT_DIRECTION[field] };
 }
+
+/** «Bla-modus»: ingenting i URL-en som begrenser eller sorterer, så forsiden viser rader i stedet for treffliste. */
+export function isBrowseState(state: SearchState): boolean {
+  return (
+    state.q === '' && activeFilterCount(state) === 0 && state.sort === null && state.dir === null
+  );
+}
