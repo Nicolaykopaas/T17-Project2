@@ -24,11 +24,11 @@ Alle punktene i `PLAN.md` er gjort og verifisert i utviklingsmiljøet.
 
 ## Hva gjenstår / hva Nicolay må gjøre
 
-1. **Deploy på VM-en:** logg inn og kjør `bash deploy/setup-vm.sh`. Skriptet laster ned de ekte
-   IMDb-filene, noe utviklingsmiljøet ikke fikk lov til (se `BLOCKERS.md`).
-2. **Sjekk med ekte data:** søk, filtre og ytelse er målt på et syntetisk datasett på 120 000
-   titler. Det ekte datasettet får omtrent like mange titler etter filteret (≥ 100 stemmer), men
-   tallene i `docs/ytelse.md` bør måles på nytt på VM-en.
+1. **Deploy på VM-en: gjort 2026-09-30.** Appen kjører på <http://it2810-17.idi.ntnu.no/project2/>
+   med det ekte IMDb-datasettet (190 607 titler med ≥ 100 stemmer). Ved oppdateringer: `git pull` og
+   `bash deploy/setup-vm.sh` på VM-en. Feilsøking: `bash deploy/sjekk.sh`.
+2. **Mål ytelse på nytt med ekte data:** tallene i `docs/ytelse.md` er fra et syntetisk datasett
+   på 120 000 titler. Kjør Lighthouse mot VM-adressen og `EXPLAIN ANALYZE` der.
 3. **GitLab:** repoet ligger på GitHub. Skal det inn på NTNU GitLab, pusher du det dit, og
    `.gitlab-ci.yml` kjører lint, typecheck og enhetstester. Issues og MR-er er ikke opprettet
    (se `docs/beslutninger.md`).
