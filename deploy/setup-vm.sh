@@ -2,6 +2,12 @@
 # Setter opp hele prosjektet på it2810-17.idi.ntnu.no (Ubuntu) i én kjøring.
 # Kjøres fra roten av en klon av repoet:  bash deploy/setup-vm.sh
 # Trygt å kjøre på nytt: hvert steg hopper over det som allerede er gjort.
+# Skriptet setter opp en Ubuntu-server; på Windows/macOS ville det feile halvveis.
+if [ "$(uname -s)" != "Linux" ] || ! command -v apt-get >/dev/null; then
+  echo "Dette skriptet skal kjøres på VM-en, ikke på din egen maskin." >&2
+  echo "Logg inn først:  ssh <ntnu-brukernavn>@it2810-17.idi.ntnu.no" >&2
+  exit 1
+fi
 set -euo pipefail
 
 APP_DIR=/opt/project2
