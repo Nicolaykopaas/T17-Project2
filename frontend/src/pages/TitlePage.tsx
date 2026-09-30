@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { useQuery } from '@apollo/client/react';
 import { CombinedGraphQLErrors } from '@apollo/client';
@@ -8,11 +8,18 @@ import { ReviewForm } from '../components/ReviewForm';
 import { ReviewList } from '../components/ReviewList';
 import { Stars } from '../components/Stars';
 import { TITLE_QUERY } from '../graphql/operations';
+import { useHeaderOverlay } from '../hooks/useHeaderOverlay';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
-import { formatNumber, formatRating, formatYears, typeLabel } from '../lib/format';
+import { formatNumber, formatRating, formatYears, hueFromId, typeLabel } from '../lib/format';
 import NotFoundPage from './NotFoundPage';
 
 const REVIEWS_PAGE_SIZE = 10;
+
+/** Markerer siden som «heltebilde øverst», så headeren er gjennomsiktig til man scroller. */
+function HeaderOverlay() {
+  useHeaderOverlay();
+  return null;
+}
 
 /** Fra søket brukes historikken, så resultater og scrollposisjon er intakt. Ved direkte åpning finnes ingen «forrige». */
 function BackLink() {
@@ -20,13 +27,13 @@ function BackLink() {
   const { key } = useLocation();
   if (key === 'default') {
     return (
-      <p>
+      <p className="backlink">
         <Link to="/">← Til søket</Link>
       </p>
     );
   }
   return (
-    <p>
+    <p className="backlink">
       <button type="button" className="btn btn--link" onClick={() => void navigate(-1)}>
         ← Tilbake
       </button>
@@ -53,24 +60,24 @@ export default function TitlePage() {
 
   if (error && !title) {
     return (
-      <>
+      <div className="container">
         <h1>Tittel</h1>
         <ErrorMessage
           message="Kunne ikke hente tittelen. Sjekk nettverket og prøv igjen."
           onRetry={() => void refetch().catch(() => undefined)}
         />
-      </>
+      </div>
     );
   }
 
   if (!title) {
     return (
       <div aria-busy={loading}>
-        <h1>Laster …</h1>
-        <div className="skeleton" aria-hidden="true">
-          <div className="skeleton__line skeleton__line--title" />
-          <div className="skeleton__line" />
-          <div className="skeleton__line skeleton__line--short" />
+        <HeaderOverlay />
+        <div className="title-hero title-hero--skeleton">
+          <div className="title-hero__inner container">
+            <h1>Laster …</h1>
+          </div>
         </div>
       </div>
     );
@@ -89,81 +96,145 @@ export default function TitlePage() {
     }
   };
 
+  const poster = title.poster342 ?? title.poster500;
+  const backdrop = title.backdrop1280 ?? title.backdrop780;
+
   return (
     <article>
-      <BackLink />
-      <h1>{title.primaryTitle}</h1>
-      {title.originalTitle !== title.primaryTitle && (
-        <p className="muted">Originaltittel: {title.originalTitle}</p>
-      )}
+      <HeaderOverlay />
+      <div className="title-hero" style={{ '--hue': hueFromId(title.id) } as CSSProperties}>
+        <div className="title-hero__media" aria-hidden="true">
+          {backdrop && (
+            <img
+              src={backdrop}
+              srcSet={
+                title.backdrop780 && title.backdrop1280
+                  ? `${title.backdrop780} 780w, ${title.backdrop1280} 1280w`
+                  : undefined
+              }
+              sizes="100vw"
+              alt=""
+              width={1280}
+              height={720}
+              fetchPriority="high"
+              decoding="async"
+            />
+          )}
+        </div>
+        <div className="title-hero__inner container">
+          <BackLink />
+          <div className="title-hero__body">
+            <div className="title-hero__poster" aria-hidden="true">
+              {poster ? (
+                <img
+                  src={poster}
+                  srcSet={
+                    title.poster342 && title.poster500
+                      ? `${title.poster342} 342w, ${title.poster500} 500w`
+                      : undefined
+                  }
+                  sizes="(min-width: 48rem) 18rem, 9rem"
+                  alt=""
+                  width={342}
+                  height={513}
+                  decoding="async"
+                />
+              ) : (
+                <div className="poster__placeholder">
+                  <span>{title.primaryTitle}</span>
+                </div>
+              )}
+            </div>
+            <div className="title-hero__text">
+              <h1>{title.primaryTitle}</h1>
+              {title.originalTitle !== title.primaryTitle && (
+                <p className="muted">Originaltittel: {title.originalTitle}</p>
+              )}
 
-      <dl className="facts">
-        <div>
-          <dt>Type</dt>
-          <dd>{typeLabel(title.type)}</dd>
-        </div>
-        <div>
-          <dt>År</dt>
-          <dd>{formatYears(title)}</dd>
-        </div>
-        {title.runtimeMinutes != null && (
-          <div>
-            <dt>Spilletid</dt>
-            <dd>{title.runtimeMinutes} min</dd>
+              <dl className="facts">
+                <div>
+                  <dt>Type</dt>
+                  <dd>{typeLabel(title.type)}</dd>
+                </div>
+                <div>
+                  <dt>År</dt>
+                  <dd>{formatYears(title)}</dd>
+                </div>
+                {title.runtimeMinutes != null && (
+                  <div>
+                    <dt>Spilletid</dt>
+                    <dd>{title.runtimeMinutes} min</dd>
+                  </div>
+                )}
+                <div>
+                  <dt>IMDb-rating</dt>
+                  <dd className="facts__rating">
+                    {title.averageRating != null ? (
+                      <>
+                        <span aria-hidden="true">★ </span>
+                        {`${formatRating(title.averageRating)} / 10 (${formatNumber(title.numVotes)} stemmer)`}
+                      </>
+                    ) : (
+                      'Ingen rating'
+                    )}
+                  </dd>
+                </div>
+              </dl>
+
+              {title.genres.length > 0 && (
+                <ul className="tags tags--large" aria-label="Sjangre">
+                  {title.genres.map((g) => (
+                    <li key={g}>{g}</li>
+                  ))}
+                </ul>
+              )}
+
+              {title.overview && <p className="title-hero__overview">{title.overview}</p>}
+
+              <div className="actions">
+                <ListToggleButton titleId={title.id} inMyList={title.inMyList} />
+              </div>
+            </div>
           </div>
-        )}
-        <div>
-          <dt>Sjangre</dt>
-          <dd>{title.genres.length ? title.genres.join(', ') : 'Ukjent'}</dd>
         </div>
-        <div>
-          <dt>IMDb-rating</dt>
-          <dd>
-            {title.averageRating != null
-              ? `${formatRating(title.averageRating)} / 10 (${formatNumber(title.numVotes)} stemmer)`
-              : 'Ingen rating'}
-          </dd>
-        </div>
-      </dl>
-
-      <div className="actions">
-        <ListToggleButton titleId={title.id} inMyList={title.inMyList} />
       </div>
 
-      <section aria-labelledby="reviews-heading" className="section">
-        <h2 id="reviews-heading">Anmeldelser</h2>
-        <p className="average">
-          {title.userRating != null && title.reviewCount > 0 ? (
-            <>
-              Snitt fra brukere: <Stars value={title.userRating} />{' '}
-              <strong>{formatRating(title.userRating)}</strong> av 5 ({title.reviewCount}{' '}
-              {title.reviewCount === 1 ? 'anmeldelse' : 'anmeldelser'})
-            </>
-          ) : (
-            'Ingen brukeranmeldelser ennå.'
-          )}
-        </p>
-
-        <ReviewList reviews={reviews.edges.map((e) => e.node)} />
-
-        {moreFailed && (
-          <p className="error-text" role="alert">
-            Kunne ikke laste flere anmeldelser.
+      <div className="container">
+        <section aria-labelledby="reviews-heading" className="section">
+          <h2 id="reviews-heading">Anmeldelser</h2>
+          <p className="average">
+            {title.userRating != null && title.reviewCount > 0 ? (
+              <>
+                Snitt fra brukere: <Stars value={title.userRating} />{' '}
+                <strong>{formatRating(title.userRating)}</strong> av 5 ({title.reviewCount}{' '}
+                {title.reviewCount === 1 ? 'anmeldelse' : 'anmeldelser'})
+              </>
+            ) : (
+              'Ingen brukeranmeldelser ennå.'
+            )}
           </p>
-        )}
-        {reviews.pageInfo.hasNextPage && (
-          <button
-            type="button"
-            className="btn"
-            disabled={loadingMore}
-            onClick={() => void loadMoreReviews()}
-          >
-            {loadingMore ? 'Laster …' : 'Vis flere'}
-          </button>
-        )}
 
-        <ReviewForm titleId={title.id} onSubmitted={() => refetch()} />
-      </section>
+          <ReviewList reviews={reviews.edges.map((e) => e.node)} />
+
+          {moreFailed && (
+            <p className="error-text" role="alert">
+              Kunne ikke laste flere anmeldelser.
+            </p>
+          )}
+          {reviews.pageInfo.hasNextPage && (
+            <button
+              type="button"
+              className="btn"
+              disabled={loadingMore}
+              onClick={() => void loadMoreReviews()}
+            >
+              {loadingMore ? 'Laster …' : 'Vis flere'}
+            </button>
+          )}
+
+          <ReviewForm titleId={title.id} onSubmitted={() => refetch()} />
+        </section>
+      </div>
     </article>
   );
 }

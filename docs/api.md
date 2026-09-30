@@ -80,6 +80,11 @@ type Title {
   reviewCount: Int!
   inMyList: Boolean!
   reviews(first: Int = 10, after: String): ReviewConnection! # nyeste først
+  # Bilder og handling fra TMDB (se «Bilder» under). null når TMDB mangler tittelen,
+  # når TMDB_API_KEY ikke er satt, eller når oppslaget feiler/tar for lang tid.
+  overview: String # engelsk handlingsbeskrivelse
+  posterUrl(width: Int = 342): String # 2:3; bredde snappes til 92, 154, 185, 342, 500 eller 780
+  backdropUrl(width: Int = 1280): String # 16:9; bredde snappes til 300, 780 eller 1280
 }
 
 type TitleEdge {
@@ -141,3 +146,17 @@ type Mutation {
 - Feil returneres som GraphQL-feil med `extensions.code`: `BAD_USER_INPUT`, `NOT_FOUND`,
   `UNAUTHENTICATED` (mangler `x-user-id` på mutation), `INTERNAL_SERVER_ERROR` (uten detaljer).
 - All søk, filtrering, sortering og paginering skjer i SQL.
+
+## Bilder (TMDB)
+
+- IMDb-datasettene har ingen bilder. Backenden slår opp `/find/{imdbId}?external_source=imdb_id`
+  hos TMDB første gang en tittel trenger bilde, og lagrer svaret (også «finnes ikke») i databasen.
+  Etterpå hentes bildene aldri fra TMDB-API-et igjen for den tittelen.
+- Bilde-URL-ene peker direkte til TMDBs bilde-CDN (`TMDB_IMAGE_URL`, standard
+  `https://image.tmdb.org/t/p`). Backenden proxyer ikke bildene.
+- Oppslag skjer samlet per request (én side med titler = ett DB-oppslag + parallelle TMDB-kall
+  med begrenset samtidighet). Et søk skal aldri vente mer enn ca. 2,5 s på bilder; titler som ikke
+  rakk å bli slått opp får `null` i denne responsen og prøves igjen senere.
+- Miljøvariabler: `TMDB_API_KEY` (v3-nøkkel eller v4-token), `TMDB_API_URL` (standard
+  `https://api.themoviedb.org/3`), `TMDB_IMAGE_URL`. I utvikling og E2E brukes en lokal
+  falsk TMDB-server (`npm run tmdb:mock -w backend`) som lager plakater som SVG.

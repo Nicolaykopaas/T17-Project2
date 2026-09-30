@@ -2,8 +2,8 @@ import { useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { useMutation, useQuery } from '@apollo/client/react';
 import { ErrorMessage } from '../components/ErrorMessage';
-import { ResultSkeleton } from '../components/ResultSkeleton';
-import { TitleCard } from '../components/TitleCard';
+import { GRID_SIZES, PosterCard } from '../components/PosterCard';
+import { PosterSkeleton } from '../components/PosterSkeleton';
 import { MY_LIST_QUERY, TOGGLE_LIST_MUTATION } from '../graphql/operations';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { formatNumber } from '../lib/format';
@@ -60,7 +60,7 @@ export default function MyListPage() {
   };
 
   return (
-    <>
+    <div className="container">
       <h1 ref={heading} tabIndex={-1}>
         Min liste
       </h1>
@@ -79,7 +79,7 @@ export default function MyListPage() {
           onRetry={() => void refetch().catch(() => undefined)}
         />
       )}
-      {!list && loading && <ResultSkeleton count={3} />}
+      {!list && loading && <PosterSkeleton grid count={6} />}
 
       {list && list.edges.length === 0 && (
         <div className="notice">
@@ -94,11 +94,13 @@ export default function MyListPage() {
 
       {list && list.edges.length > 0 && (
         <>
-          <ul className="results" aria-busy={loading}>
+          <ul className="poster-grid" aria-busy={loading}>
             {list.edges.map(({ node }) => (
-              <TitleCard
+              <PosterCard
                 key={node.id}
                 title={node}
+                sizes={GRID_SIZES}
+                headingLevel={2}
                 actions={
                   <button
                     type="button"
@@ -131,6 +133,6 @@ export default function MyListPage() {
           )}
         </>
       )}
-    </>
+    </div>
   );
 }

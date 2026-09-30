@@ -1,51 +1,74 @@
-/* Farger er valgt for WCAG AA (tekst 4.5:1, kontroller 3:1) i begge moduser. */
+/*
+ * Kinoaktig tema: mørkt er standard, lyst følger systemet (prefers-color-scheme: light).
+ * Alle fargepar er valgt for WCAG AA (tekst 4.5:1, kontroller 3:1) i begge temaer.
+ * Header, heltebilder og plakat-overlegg er alltid mørke (--on-media), fordi de ligger over bilder.
+ */
 :root {
-  color-scheme: light dark;
-  --bg: #ffffff;
-  --surface: #f3f4f6;
-  --border: #6b7280;
-  --border-soft: #d1d5db;
-  --text: #14161a;
-  --muted: #4b5260;
-  --primary: #0b57d0;
-  --on-primary: #ffffff;
-  --focus: #0b57d0;
-  --danger: #b00020;
-  --success: #0b6b2e;
-  --skeleton: #e5e7eb;
+  color-scheme: dark light;
+  --bg: #0a0a0c;
+  --surface: #16171b;
+  --surface-2: #1f2127;
+  --border: #7d8494;
+  --border-soft: #2c2f38;
+  --text: #f4f5f7;
+  --muted: #adb3bf;
+  --accent: #f5c518;
+  --on-accent: #111318;
+  --accent-text: #f5c518;
+  --focus: #ffffff;
+  --danger: #ff8a94;
+  --success: #7ddc9b;
+  --skeleton: #1f2127;
+  --shadow: 0 0.75rem 1.75rem rgb(0 0 0 / 0.6);
+
+  /* Fast mørke flater over bilder, uavhengig av tema */
+  --on-media: #ffffff;
+  --on-media-muted: #d5d8df;
+  --media-bg: #0a0a0c;
+
   --radius: 8px;
   --gap: 1rem;
-  --max-width: 72rem;
+  --max-width: 80rem;
+  --header-h: 6.5rem;
+  --row-pad: max(var(--gap), calc((100% - var(--max-width)) / 2 + var(--gap)));
   font-family:
     system-ui,
     -apple-system,
     'Segoe UI',
     Roboto,
+    'Helvetica Neue',
     sans-serif;
   line-height: 1.5;
 }
 
-@media (prefers-color-scheme: dark) {
+@media (prefers-color-scheme: light) {
   :root {
-    --bg: #12141a;
-    --surface: #1c1f27;
-    --border: #8b93a3;
-    --border-soft: #3a3f4b;
-    --text: #eceef2;
-    --muted: #b4bac6;
-    --primary: #8ab4ff;
-    --on-primary: #0b1020;
-    --focus: #8ab4ff;
-    --danger: #ff9aa5;
-    --success: #7ddc9b;
-    --skeleton: #2a2e39;
+    --bg: #f5f4f1;
+    --surface: #ffffff;
+    --surface-2: #ebe9e4;
+    --border: #6b7080;
+    --border-soft: #d7d4cc;
+    --text: #14151a;
+    --muted: #4a4f5d;
+    --accent-text: #7a5200;
+    --focus: #14151a;
+    --danger: #b00020;
+    --success: #0b6b2e;
+    --skeleton: #e4e1da;
+    --shadow: 0 0.75rem 1.75rem rgb(20 20 30 / 0.25);
   }
 }
 
-/* Reserverer plass til rullefeltet. Uten dette dukker det opp når resultatlisten vokser forbi
-   viewporten, og hele siden flytter seg sideveis (var mesteparten av CLS på desktop). */
+@media (min-width: 48rem) {
+  :root {
+    --header-h: 4.25rem;
+  }
+}
+
+/* Reserverer plass til rullefeltet, ellers flytter siden seg sideveis når listen vokser forbi viewporten. */
 html {
   scrollbar-gutter: stable;
+  background: var(--bg);
 }
 
 *,
@@ -59,33 +82,40 @@ body {
   background: var(--bg);
   color: var(--text);
   overflow-wrap: anywhere;
+  /* Radene scroller internt; siden selv skal aldri få sideveis overflow. */
+  overflow-x: clip;
 }
 
-/* #root (ikke body) er flex-beholderen, siden Layout er dens direkte barn. Da fyller main
-   viewporten fra første bilde, og footeren ligger nederst allerede før innholdet er lastet.
-   Uten dette skjøt det lastede innholdet footeren og main nedover (CLS 0,5-0,9). Flex-elementer
-   har egen margin-kontekst, så barnets marger flytter heller ikke main. */
+/* #root er flex-beholderen så main fyller viewporten fra første bilde og footeren ligger nederst
+   før innholdet er lastet (unngår CLS). */
 #root {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
 
+h1,
+h2,
+h3 {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
 h1 {
   font-size: 1.75rem;
-  line-height: 1.2;
+  line-height: 1.15;
   margin: 1.25rem 0 1rem;
 }
 h2 {
-  font-size: 1.25rem;
+  font-size: 1.3rem;
+  line-height: 1.2;
 }
 h3 {
-  font-size: 1.05rem;
+  font-size: 1rem;
   margin: 0;
 }
 
 a {
-  color: var(--primary);
+  color: var(--accent-text);
 }
 
 :focus-visible {
@@ -102,9 +132,13 @@ main:focus {
   margin-inline: auto;
   padding-inline: var(--gap);
 }
+/* Minst én skjermhøyde: da ligger footeren alltid under folden mens innholdet lastes, og hopper ikke
+   opp i bildet når en kort side (f.eks. Min liste) ble ferdig lastet (var mesteparten av CLS på mobil). */
 main {
   flex: 1;
-  padding-bottom: 2rem;
+  min-height: 100vh;
+  padding-bottom: 2.5rem;
+  min-width: 0;
 }
 
 .sr-only {
@@ -123,32 +157,54 @@ main {
   position: absolute;
   left: 0.5rem;
   top: -4rem;
-  z-index: 10;
+  z-index: 30;
   padding: 0.5rem 1rem;
-  background: var(--primary);
-  color: var(--on-primary);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 700;
   border-radius: var(--radius);
 }
 .skip-link:focus {
   top: 0.5rem;
 }
 
-/* Header og footer */
+/* Header: heldekkende, men gjennomsiktig over heltebilde til man scroller (:root[data-hero]). */
 .site-header {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border-soft);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--media-bg);
+  box-shadow: 0 1px 0 #2c2f38;
+  color: var(--on-media);
+  transition:
+    background-color 0.25s,
+    box-shadow 0.25s;
+}
+:root[data-hero] .site-header:not(.is-scrolled) {
+  background: linear-gradient(to bottom, rgb(10 10 12 / 0.9), rgb(10 10 12 / 0));
+  box-shadow: none;
 }
 .site-header__inner {
   display: flex;
   flex-wrap: wrap;
+  align-content: center;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem 1rem;
-  padding-block: 0.5rem;
+  gap: 0.25rem 1rem;
+  height: var(--header-h);
 }
 .brand {
-  font-weight: 700;
-  font-size: 1.15rem;
+  font-weight: 900;
+  font-size: 1.4rem;
+  letter-spacing: -0.03em;
+  color: var(--on-media);
+  text-decoration: none;
+  padding: 0.25rem 0;
+}
+.brand span {
+  color: #f5c518;
+}
+.site-header nav {
+  margin-left: auto;
 }
 .site-header ul {
   display: flex;
@@ -157,26 +213,56 @@ main {
   margin: 0;
   padding: 0;
 }
-.site-header a {
-  display: inline-block;
-  padding: 0.5rem 0.75rem;
+.site-header nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0 0.6rem;
   border-radius: var(--radius);
-  color: var(--text);
+  color: var(--on-media-muted);
   text-decoration: none;
+  font-weight: 600;
 }
-.site-header a:hover {
-  text-decoration: underline;
+.site-header nav a:hover {
+  color: var(--on-media);
 }
-.site-header a[aria-current='page'] {
-  font-weight: 700;
-  box-shadow: inset 0 -3px 0 var(--primary);
+.site-header nav a[aria-current='page'] {
+  color: var(--on-media);
+  box-shadow: inset 0 -3px 0 #f5c518;
   border-radius: 0;
 }
+.site-header :focus-visible,
+.hero :focus-visible,
+.title-hero :focus-visible,
+.row__nav:focus-visible {
+  outline-color: #ffffff;
+}
+.site-header .searchbox {
+  flex: 1 1 100%;
+  order: 3;
+}
+@media (min-width: 48rem) {
+  .site-header .searchbox {
+    flex: 0 1 22rem;
+    order: 0;
+  }
+  .site-header nav {
+    margin-left: 0;
+  }
+  .site-header nav + .searchbox {
+    margin-left: auto;
+  }
+}
+
 .site-footer {
   border-top: 1px solid var(--border-soft);
-  padding-block: 1rem;
+  padding-block: 1.25rem;
   color: var(--muted);
   font-size: 0.9rem;
+}
+.site-footer p {
+  margin: 0.25rem 0;
+  max-width: 48rem;
 }
 
 /* Skjemaelementer */
@@ -194,7 +280,7 @@ textarea {
   padding: 0.55rem 0.7rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: var(--bg);
+  background: var(--surface);
   color: var(--text);
 }
 textarea {
@@ -210,7 +296,6 @@ textarea {
   margin-bottom: 1rem;
 }
 .field label,
-.searchbox__label,
 legend {
   font-weight: 600;
 }
@@ -244,46 +329,67 @@ fieldset {
   align-items: center;
   justify-content: center;
   min-height: 2.75rem;
-  padding: 0.4rem 1rem;
+  padding: 0.4rem 1.1rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--text);
   cursor: pointer;
   text-decoration: none;
+  font-weight: 600;
 }
 .btn:hover:not(:disabled) {
-  border-color: var(--primary);
+  border-color: var(--accent-text);
 }
 .btn:disabled {
   cursor: progress;
   opacity: 0.7;
 }
 .btn--primary {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: var(--on-primary);
-  font-weight: 600;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 700;
+}
+.btn--primary:hover:not(:disabled) {
+  filter: brightness(1.08);
+  border-color: var(--accent);
+}
+.btn--ghost {
+  background: rgb(38 40 46 / 0.9);
+  border-color: rgb(255 255 255 / 0.35);
+  color: #ffffff;
 }
 .btn--link {
   background: none;
   border-color: transparent;
-  color: var(--primary);
+  color: var(--accent-text);
   text-decoration: underline;
   padding-inline: 0.5rem;
 }
 
-/* Søkefelt */
-.searchbox {
-  margin-bottom: 1rem;
+/* Søkefelt (ligger i headeren) */
+.searchbox__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 .searchbox__field {
   position: relative;
-  margin-top: 0.25rem;
 }
 .searchbox input {
   padding-right: 3rem;
   min-height: 2.75rem;
+  border-radius: 999px;
+  padding-left: 1.1rem;
+}
+.site-header .searchbox input {
+  background: #16171b;
+  border-color: #7d8494;
+  color: #f4f5f7;
 }
 .searchbox input::-webkit-search-cancel-button {
   display: none;
@@ -296,13 +402,16 @@ fieldset {
   min-width: 2.75rem;
   border: 0;
   background: none;
-  color: var(--text);
+  color: inherit;
   font-size: 1.5rem;
   cursor: pointer;
-  border-radius: var(--radius);
+  border-radius: 999px;
 }
 
-/* Layout søk */
+/* Søkemodus */
+.page-title {
+  font-size: 1.9rem;
+}
 .layout {
   display: grid;
   gap: var(--gap);
@@ -321,13 +430,17 @@ fieldset {
   margin-bottom: 0.75rem;
 }
 
-/* Filterpanel: kollapsbart på smal skjerm, alltid åpent på bred */
+/* Filterpanel: utfellbar skuff på smal skjerm, sidekolonne på bred */
 .filters__toggle {
   width: 100%;
 }
 .filters__body {
   display: none;
   margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
 }
 .filters__body.is-open {
   display: block;
@@ -344,7 +457,7 @@ fieldset {
   height: 1.15rem;
   margin-top: 0.2rem;
   flex: none;
-  accent-color: var(--primary);
+  accent-color: var(--accent);
 }
 .check-list {
   max-height: 14rem;
@@ -384,71 +497,24 @@ fieldset {
 .chip {
   min-height: 2.25rem;
   padding: 0.2rem 0.75rem;
-  border: 1px solid var(--primary);
+  border: 1px solid var(--accent-text);
   border-radius: 999px;
   background: var(--surface);
   color: var(--text);
   cursor: pointer;
 }
 
-/* Resultater */
 .count {
   font-weight: 600;
   margin: 0 0 0.75rem;
   min-height: 1.5rem;
-}
-.results {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 0.75rem;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
-}
-.results.is-stale {
-  opacity: 0.55;
-}
-.card {
-  background: var(--surface);
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius);
-  padding: 0.85rem 1rem;
-}
-.card__title a {
-  color: var(--text);
-}
-.card__meta,
-.card__rating {
-  margin: 0.25rem 0;
-}
-.card__meta {
-  display: flex;
-  gap: 0.4rem;
-  color: var(--muted);
-}
-.card__actions {
-  margin-top: 0.5rem;
-}
-.tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  list-style: none;
-  margin: 0.25rem 0;
-  padding: 0;
-  font-size: 0.85rem;
-}
-.tags li {
-  border: 1px solid var(--border-soft);
-  border-radius: 999px;
-  padding: 0 0.6rem;
 }
 .more {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
-  margin-top: 1rem;
+  margin-top: 1.5rem;
 }
 .notice {
   border: 1px solid var(--border-soft);
@@ -463,47 +529,435 @@ fieldset {
   margin-top: 0;
 }
 
-/* Skjelett */
-.skeleton__line {
-  height: 0.9rem;
-  margin: 0.6rem 0;
-  border-radius: 4px;
-  background: var(--skeleton);
-  animation: pulse 1.4s ease-in-out infinite;
+/* Sjangermerker */
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 0.8rem;
 }
-.skeleton__line--title {
-  height: 1.2rem;
-  width: 70%;
+.tags li {
+  border: 1px solid currentcolor;
+  border-radius: 999px;
+  padding: 0 0.6rem;
 }
-.skeleton__line--short {
-  width: 40%;
+.tags--large {
+  font-size: 0.9rem;
+  margin: 0.75rem 0;
 }
-@keyframes pulse {
-  50% {
-    opacity: 0.45;
+
+/* Plakatkort. Tittelen er en lenke som strekkes over hele kortet. */
+.poster {
+  position: relative;
+  list-style: none;
+  min-width: 0;
+}
+.poster__card {
+  position: relative;
+}
+.poster__art {
+  position: relative;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.poster__art img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.poster__placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 0.75rem;
+  text-align: center;
+  color: #ffffff;
+  font-weight: 800;
+  line-height: 1.2;
+  background: linear-gradient(
+    160deg,
+    hsl(var(--hue, 220) 45% 26%),
+    hsl(calc(var(--hue, 220) + 40) 50% 12%)
+  );
+}
+.poster__overlay {
+  position: absolute;
+  inset: auto 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 2.5rem 0.6rem 0.6rem;
+  color: var(--on-media);
+  background: linear-gradient(to top, rgb(0 0 0 / 0.92) 30%, rgb(0 0 0 / 0));
+  font-size: 0.8rem;
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+}
+.poster__votes {
+  color: var(--on-media-muted);
+}
+.poster__caption {
+  min-height: 4.6rem;
+  padding-top: 0.5rem;
+}
+.poster__title {
+  font-weight: 700;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.poster__title a {
+  color: var(--text);
+  text-decoration: none;
+}
+.poster__title a::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius);
+}
+.poster__title a:focus-visible {
+  outline: none;
+}
+.poster__title a:focus-visible::after {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+.poster__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.5rem;
+  margin: 0.15rem 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.poster__rating {
+  color: var(--accent-text);
+  font-weight: 700;
+}
+.poster__actions {
+  position: relative;
+  z-index: 2;
+  margin-top: 0.4rem;
+}
+.poster:hover .poster__overlay,
+.poster:focus-within .poster__overlay {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .poster__art {
+    transition:
+      transform 0.18s ease,
+      box-shadow 0.18s ease;
+  }
+  @media (hover: hover) {
+    .poster:hover,
+    .poster:focus-within {
+      z-index: 2;
+    }
+    .poster:hover .poster__art,
+    .poster:focus-within .poster__art {
+      transform: scale(1.06);
+      box-shadow: var(--shadow);
+    }
   }
 }
 
-/* Detaljside */
-.facts {
+/* Rutenett (søk og min liste). Minst to kolonner helt ned til 320 px. */
+.poster-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
-  gap: 0.75rem 1rem;
-  margin: 1rem 0;
+  gap: 1.25rem 0.9rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 8.5rem), 1fr));
+}
+@media (min-width: 40rem) {
+  .poster-grid {
+    grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  }
+}
+.poster-grid.is-stale {
+  opacity: 0.55;
+}
+
+/* Rader */
+.rows {
+  position: relative;
+  padding-top: 0.5rem;
+}
+.rows--plain {
+  padding-top: 1rem;
+}
+.row {
+  --poster-w: 9rem;
+  margin-bottom: 1rem;
+}
+@media (min-width: 48rem) {
+  .row {
+    --poster-w: 11rem;
+  }
+}
+.row__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.row__head h2 {
+  margin: 1rem 0 0.25rem;
+}
+.row__all {
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 0.5rem 0;
+}
+.row__viewport {
+  position: relative;
+}
+.row__list {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  list-style: none;
+  margin: 0;
+  padding: 0.85rem var(--row-pad) 0.5rem;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: var(--row-pad);
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+}
+.row__list > .poster {
+  flex: 0 0 var(--poster-w);
+  scroll-snap-align: start;
+}
+.row__nav {
+  position: absolute;
+  top: 0.85rem;
+  z-index: 3;
+  width: 3rem;
+  height: calc(var(--poster-w) * 1.5);
+  border: 0;
+  color: #ffffff;
+  font-size: 2.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.row__nav--prev {
+  left: 0;
+  background: linear-gradient(to right, rgb(10 10 12 / 0.9), rgb(10 10 12 / 0));
+}
+.row__nav--next {
+  right: 0;
+  background: linear-gradient(to left, rgb(10 10 12 / 0.9), rgb(10 10 12 / 0));
+}
+/* På berøringsskjerm swiper man; knappene tar bare plass over plakatene. */
+@media (hover: none) {
+  .row__nav {
+    display: none;
+  }
+}
+
+/* Hero (forside) */
+.hero,
+.title-hero {
+  --text: var(--on-media);
+  --muted: var(--on-media-muted);
+  --accent-text: #f5c518;
+  color: var(--on-media);
+  position: relative;
+  margin-top: calc(var(--header-h) * -1);
+  background: linear-gradient(135deg, hsl(var(--hue, 220) 40% 20%), var(--media-bg) 70%);
+  overflow: hidden;
+  isolation: isolate;
+}
+.hero {
+  display: flex;
+  align-items: flex-end;
+  min-height: 34rem;
+}
+@media (min-width: 48rem) {
+  .hero {
+    aspect-ratio: 16 / 8;
+    min-height: 30rem;
+    max-height: 46rem;
+  }
+}
+.hero__media,
+.title-hero__media {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+}
+.hero__media img,
+.title-hero__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 20%;
+  display: block;
+}
+.hero__media::after,
+.title-hero__media::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to top, var(--bg) 0, rgb(10 10 12 / 0) 4rem),
+    linear-gradient(to top, rgb(10 10 12 / 0.92) 0, rgb(10 10 12 / 0.5) 50%, rgb(10 10 12 / 0.15)),
+    linear-gradient(to right, rgb(10 10 12 / 0.75), rgb(10 10 12 / 0) 65%);
+}
+.hero__content {
+  padding-block: 6rem 3.5rem;
+  max-width: var(--max-width);
+}
+.hero__content > * {
+  max-width: 40rem;
+}
+.hero__eyebrow {
+  margin: 0 0 0.25rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #f5c518;
+}
+.hero__title {
+  margin: 0;
+  font-size: clamp(2rem, 6vw, 3.75rem);
+  font-weight: 900;
+  line-height: 1.05;
+  text-shadow: 0 2px 12px rgb(0 0 0 / 0.5);
+}
+.hero__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.9rem;
+  margin: 0.75rem 0;
+  font-weight: 600;
+}
+.hero__overview {
+  margin: 0 0 1.25rem;
+  font-size: 1.05rem;
+  text-shadow: 0 1px 8px rgb(0 0 0 / 0.6);
+}
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.hero--skeleton {
+  align-items: flex-end;
+}
+.hero--skeleton .skeleton__line--title {
+  height: 2.5rem;
+  width: min(24rem, 80%);
+}
+
+/* Detaljside */
+.title-hero {
+  padding-top: calc(var(--header-h) + 0.5rem);
+  padding-bottom: 4rem;
+  min-height: 26rem;
+}
+.title-hero__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+.title-hero__poster {
+  width: 8.5rem;
+  flex: none;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  background: var(--surface-2);
+}
+.title-hero__poster img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.title-hero__text {
+  min-width: 0;
+  flex: 1;
+}
+.title-hero h1 {
+  margin: 0 0 0.25rem;
+  font-size: clamp(2rem, 6vw, 3.25rem);
+  font-weight: 900;
+  line-height: 1.05;
+  text-shadow: 0 2px 12px rgb(0 0 0 / 0.5);
+}
+.title-hero__overview {
+  max-width: 44rem;
+  font-size: 1.05rem;
+  text-shadow: 0 1px 8px rgb(0 0 0 / 0.6);
+}
+.title-hero--skeleton h1 {
+  margin-top: 6rem;
+}
+.backlink {
+  margin: 0 0 1rem;
+}
+.title-hero .backlink a,
+.title-hero .btn--link {
+  color: #ffffff;
+}
+@media (min-width: 48rem) {
+  .title-hero {
+    padding-bottom: 5rem;
+  }
+  .title-hero__body {
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 2rem;
+  }
+  .title-hero__poster {
+    width: 16rem;
+  }
+}
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.75rem;
+  margin: 1rem 0 0;
 }
 .facts dt {
-  color: var(--muted);
-  font-size: 0.875rem;
+  color: var(--on-media-muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 .facts dd {
   margin: 0;
-  font-weight: 600;
+  font-weight: 700;
+}
+.facts__rating {
+  color: #f5c518;
 }
 .actions {
-  margin-block: 1rem;
+  margin-block: 1.25rem 0;
 }
 .section {
   margin-top: 2rem;
+}
+.average {
+  margin-top: 0;
 }
 .reviews {
   list-style: none;
@@ -513,6 +967,7 @@ fieldset {
   gap: 0.75rem;
 }
 .review {
+  background: var(--surface);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius);
   padding: 0.75rem 1rem;
@@ -528,18 +983,19 @@ fieldset {
   white-space: pre-wrap;
 }
 .badge {
-  background: var(--primary);
-  color: var(--on-primary);
+  background: var(--accent);
+  color: var(--on-accent);
   border-radius: 999px;
   padding: 0 0.6rem;
   font-size: 0.8rem;
+  font-weight: 700;
 }
 .stars {
-  color: var(--text);
+  color: var(--accent-text);
   letter-spacing: 0.05em;
 }
 .stars__empty {
-  color: var(--border-soft);
+  color: var(--border);
 }
 .review-form {
   margin-top: 1.5rem;
@@ -570,13 +1026,38 @@ fieldset {
   cursor: pointer;
 }
 .star-input__option:has(input:checked) {
-  background: var(--primary);
-  color: var(--on-primary);
-  border-color: var(--primary);
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
 }
 .star-input__option:has(input:focus-visible) {
   outline: 3px solid var(--focus);
   outline-offset: 2px;
+}
+
+/* Skjelett */
+.skeleton__block {
+  background: var(--skeleton);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+.skeleton__line {
+  height: 0.9rem;
+  margin: 0.5rem 0;
+  border-radius: 4px;
+  background: var(--skeleton);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+.skeleton__line--title {
+  height: 1.1rem;
+  width: 75%;
+}
+.skeleton__line--short {
+  width: 45%;
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.45;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

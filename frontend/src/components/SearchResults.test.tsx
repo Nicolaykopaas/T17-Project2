@@ -80,7 +80,7 @@ describe('SearchResults', () => {
       mocks: buildMocks({ Search: () => ({ search: makeConnection([title]) }) }, emptyLog()),
     });
     expect(await screen.findByText('Ukjent år')).toBeInTheDocument();
-    expect(screen.getByText('Ingen IMDb-rating')).toBeInTheDocument();
+    expect(screen.getByText('Ingen rating')).toBeInTheDocument();
   });
 
   it('«Last flere» henter neste side med cursor og legger den til under', async () => {

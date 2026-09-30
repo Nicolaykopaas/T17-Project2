@@ -5,12 +5,15 @@ import { expect, test } from '@playwright/test';
 test('søk, filtrer, sorter, scroll, åpne detalj og skriv anmeldelse', async ({ page }) => {
   await page.goto('./');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Søk i filmer og serier');
+  // Forsiden uten søk er bla-modus: heltebanner og rader, ennå ingen treffliste.
+  await expect(page.getByRole('region', { name: 'Mest populære' })).toBeVisible();
   const count = page.locator('.count[role="status"]');
-  await expect(count).toHaveText(/\d[\d\s]* treff/);
+  await expect(count).toHaveCount(0);
 
-  // Søk: debouncet og case-insensitivt.
+  // Søk: debouncet og case-insensitivt. Da går siden over i søkemodus med antall treff.
   await page.getByLabel('Søk etter tittel').fill('THE');
   await expect(page).toHaveURL(/q=THE/);
+  await expect(count).toHaveText(/\d[\d\s]* treff/);
   const countAfterSearch = await count.textContent();
 
   // Filtrer: type Film. Antallet skal endre seg og filteret vises som chip.
@@ -29,6 +32,8 @@ test('søk, filtrer, sorter, scroll, åpne detalj og skriv anmeldelse', async ({
   await expect(page).toHaveURL(/sort=rating/);
   const cards = page.locator('main article');
   await expect(cards.first()).toBeVisible();
+  // Mens nye treff hentes, står de gamle igjen dempet (is-stale); vent til sorterte treff er på plass.
+  await expect(page.locator('main ul.is-stale')).toHaveCount(0);
   const ratings = await cards.evaluateAll((els) =>
     els
       .slice(0, 5)
@@ -121,4 +126,95 @@ test('tilbake fra detaljsiden bevarer scroll-posisjonen', async ({ page }) => {
   await page.goBack();
   await expect(page).toHaveURL(/q=dark/);
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(before - 50);
+});
+
+test('forsiden: heltebanner, plakatrader og «Se alle» går til søkemodus', async ({ page }) => {
+  await page.goto('./');
+  const hero = page.locator('section.hero');
+  await expect(hero.getByRole('heading', { level: 2 })).toBeVisible();
+  await expect(hero.getByRole('link', { name: /Se detaljer/ })).toBeVisible();
+  await expect(hero.getByRole('button', { name: /min liste/ })).toBeVisible();
+
+  // Plakatene er ekte bilder (fra falsk TMDB), lastet og med tom alt-tekst siden tittelen står under.
+  const firstPoster = page.locator('section.row article img').first();
+  await expect(firstPoster).toHaveAttribute('alt', '');
+  await expect
+    .poll(() => firstPoster.evaluate((img: HTMLImageElement) => img.naturalWidth))
+    .toBeGreaterThan(0);
+
+  const topMovies = page.getByRole('region', { name: 'Høyest rangerte filmer' });
+  await topMovies.getByRole('link', { name: /Se alle/ }).click();
+  await expect(page).toHaveURL(/types=film/);
+  await expect(page).toHaveURL(/sort=rating/);
+  await expect(page.locator('.count[role="status"]')).toHaveText(/\d[\d\s]* treff/);
+  await expect(page.getByRole('list', { name: 'Aktive filtre' })).toContainText('Film');
+  await expect(page.getByLabel('Sorter etter')).toHaveValue('RATING');
+});
+
+test('forsiden: rader under folden henter data først når de nærmer seg viewport', async ({
+  page,
+}) => {
+  const genreRequests: string[] = [];
+  page.on('request', (req) => {
+    if (req.method() !== 'POST' || !req.url().includes('graphql')) return;
+    const body = req.postData() ?? '';
+    if (body.includes('Science fiction') || body.includes('"Sci-Fi"')) genreRequests.push(body);
+  });
+  await page.goto('./');
+  await expect(page.getByRole('region', { name: 'Mest populære' })).toBeVisible();
+  expect(genreRequests).toHaveLength(0);
+
+  const scifi = page.getByRole('region', { name: 'Science fiction' });
+  await scifi.scrollIntoViewIfNeeded();
+  await expect(scifi.getByRole('article').first()).toBeVisible();
+  expect(genreRequests.length).toBeGreaterThan(0);
+});
+
+test('forsiden: raden kan scrolles med knapper og piltaster', async ({ page, isMobile }) => {
+  await page.goto('./');
+  const row = page.getByRole('region', { name: 'Mest populære' });
+  const firstLink = row.getByRole('article').first().getByRole('link');
+  await expect(firstLink).toBeVisible();
+  await firstLink.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(row.getByRole('article').nth(1).getByRole('link')).toBeFocused();
+
+  // Knappene vises bare på enheter med peker; på berøringsskjerm swiper man.
+  if (!isMobile) {
+    const list = row.locator('ul.row__list');
+    const next = row.getByRole('button', { name: /^Neste/ });
+    await expect(next).toBeVisible();
+    await expect(row.getByRole('button', { name: /^Forrige/ })).toHaveCount(0);
+    await next.click();
+    await expect.poll(() => list.evaluate((el) => el.scrollLeft)).toBeGreaterThan(50);
+    await expect(row.getByRole('button', { name: /^Forrige/ })).toBeVisible();
+  }
+});
+
+test('TMDB-attribusjon står i footeren', async ({ page }) => {
+  await page.goto('./');
+  const footer = page.getByRole('contentinfo');
+  await expect(footer).toContainText('Bilder og beskrivelser fra TMDB');
+  await expect(footer).toContainText('ikke godkjent eller sertifisert av TMDB');
+  await expect(footer.getByRole('link', { name: /TMDB/ })).toHaveAttribute(
+    'href',
+    'https://www.themoviedb.org/',
+  );
+});
+
+test('headeren er gjennomsiktig over heltebildet og heldekkende ved scroll', async ({ page }) => {
+  await page.goto('./');
+  const header = page.getByRole('banner');
+  await expect(page.locator('section.hero')).toBeVisible();
+  await expect(header).not.toHaveClass(/is-scrolled/);
+  await page.evaluate(() => window.scrollTo(0, 600));
+  await expect(header).toHaveClass(/is-scrolled/);
+});
+
+test('søkefeltet i headeren virker fra detaljsiden', async ({ page }) => {
+  await page.goto('./title/tt0468569');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('The Dark Knight');
+  await page.getByLabel('Søk etter tittel').fill('godfather');
+  await expect(page).toHaveURL(/project2\/?\?q=godfather/);
+  await expect(page.locator('.count[role="status"]')).toHaveText(/\d[\d\s]* treff/);
 });

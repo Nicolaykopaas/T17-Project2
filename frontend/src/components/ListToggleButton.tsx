@@ -5,9 +5,11 @@ import { TOGGLE_LIST_MUTATION } from '../graphql/operations';
 interface Props {
   titleId: string;
   inMyList: boolean;
+  /** «secondary» brukes over heltebilder, ved siden av en primærknapp. */
+  variant?: 'primary' | 'secondary';
 }
 
-export function ListToggleButton({ titleId, inMyList }: Props) {
+export function ListToggleButton({ titleId, inMyList, variant = 'primary' }: Props) {
   const [toggleList, { loading }] = useMutation(TOGGLE_LIST_MUTATION);
   const [message, setMessage] = useState('');
   const [failed, setFailed] = useState(false);
@@ -28,7 +30,7 @@ export function ListToggleButton({ titleId, inMyList }: Props) {
     <>
       <button
         type="button"
-        className="btn btn--primary"
+        className={`btn ${variant === 'primary' ? 'btn--primary' : 'btn--ghost'}`}
         aria-pressed={inMyList}
         disabled={loading}
         onClick={() => void onClick()}

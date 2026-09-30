@@ -46,6 +46,21 @@ SQL
   echo "NODE_ENV=production" >> .env
   chmod 600 .env
 fi
+# TMDB-nøkkel (for plakater): skriptet spør første gang. Kan også gis som miljøvariabel.
+# Den skrives bare til .env på VM-en, aldri til git. Uten nøkkel vises plassholdere.
+if [ -z "${TMDB_API_KEY:-}" ] && ! grep -q '^TMDB_API_KEY=.\+' .env && [ -t 0 ]; then
+  # Spør i stedet for å kreve nøkkelen på kommandolinjen, der den ville havnet i shell-historikken.
+  read -r -s -p "Lim inn TMDB API-nøkkel (eller trykk Enter for å hoppe over): " TMDB_API_KEY || true
+  echo
+  # Innliming fra Windows kan ta med \r og mellomrom.
+  TMDB_API_KEY="$(printf '%s' "$TMDB_API_KEY" | tr -d '\r[:space:]')"
+fi
+if [ -n "${TMDB_API_KEY:-}" ]; then
+  grep -v '^TMDB_API_KEY=' .env > .env.tmp || true
+  echo "TMDB_API_KEY=$TMDB_API_KEY" >> .env.tmp
+  mv .env.tmp .env
+  chmod 600 .env
+fi
 sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname = '$DB_NAME'" | grep -q 1 \
   || sudo -u postgres createdb "$DB_NAME" --owner "$DB_USER"
 # pg_trgm krever superbruker første gang; migreringen bruker IF NOT EXISTS.
@@ -63,6 +78,12 @@ for f in title.basics.tsv.gz title.ratings.tsv.gz; do
   curl -fsSL -z "data/$f" -o "data/$f" "https://datasets.imdbws.com/$f"
 done
 npm run db:seed
+
+if grep -q '^TMDB_API_KEY=.\+' .env; then
+  step "Henter plakater for de mest populære titlene (TMDB)"
+  # Varmer opp bildecachen så forsiden har plakater med en gang; resten hentes når de vises.
+  npm run db:artwork -- 2000 || echo "Advarsel: forhåndshenting av plakater feilet – de hentes ved visning i stedet."
+fi
 
 step "Starter backend som systemd-tjeneste"
 sudo chown -R project2:project2 "$APP_DIR"
