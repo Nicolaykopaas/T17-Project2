@@ -15,3 +15,4 @@ blob-report/
 *.tsbuildinfo
 .DS_Store
 .claude/DONE.local
+data/e2e/
