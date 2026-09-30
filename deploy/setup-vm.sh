@@ -81,7 +81,25 @@ sudo apachectl configtest
 sudo systemctl reload apache2
 
 step "Sjekker at alt svarer"
-sleep 2
-curl -fsS -X POST http://localhost/project2/graphql -H 'content-type: application/json' \
-  -d '{"query":"{ search(first: 1) { totalCount } }"}' && echo
+# Backenden trenger et par sekunder på å starte; prøv noen ganger før vi gir opp.
+check() {
+  curl -fsS -m 5 -X POST "$1" -H 'content-type: application/json' \
+    -d '{"query":"{ search(first: 1) { totalCount } }"}'
+}
+for i in 1 2 3 4 5 6 7 8 9 10; do
+  check http://127.0.0.1:3001/graphql >/dev/null 2>&1 && break
+  sleep 2
+done
+# `if !` i stedet for `cmd && echo`: set -e overser feil i &&-lister, og da ville skriptet
+# meldt «Ferdig!» selv om API-et ikke svarte.
+if ! check http://127.0.0.1:3001/graphql; then
+  echo "FEIL: backenden svarer ikke på port 3001. Se: sudo journalctl -u project2-backend -n 50" >&2
+  exit 1
+fi
+echo
+if ! check http://localhost/project2/graphql; then
+  echo "FEIL: backenden svarer, men ikke via Apache. Se: sudo tail -n 50 /var/log/apache2/error.log" >&2
+  exit 1
+fi
+echo
 echo "Ferdig! Åpne http://it2810-17.idi.ntnu.no/project2/"
