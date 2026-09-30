@@ -107,3 +107,18 @@ test('tastatur: skip-link flytter fokus til hovedinnholdet', async ({ page }) =>
   await page.keyboard.press('Enter');
   await expect(page.locator('main')).toBeFocused();
 });
+
+test('tilbake fra detaljsiden bevarer scroll-posisjonen', async ({ page }) => {
+  await page.goto('./?q=dark');
+  const cards = page.locator('main article');
+  await expect(cards.nth(10)).toBeVisible();
+  await cards.nth(10).scrollIntoViewIfNeeded();
+  const before = await page.evaluate(() => window.scrollY);
+  expect(before).toBeGreaterThan(200);
+
+  await cards.nth(10).getByRole('link').click();
+  await expect(page).toHaveURL(/\/title\//);
+  await page.goBack();
+  await expect(page).toHaveURL(/q=dark/);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(before - 50);
+});

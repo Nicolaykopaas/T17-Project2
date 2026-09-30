@@ -84,3 +84,24 @@ Execution Time: 8.949 ms
 `npm run db:seed -w backend` importerer 120 000 syntetiske titler (162 000 linjer i `basics`) på ca.
 17 s, inkludert oppdatering av alle indekser. Fila strømmes (gunzip + readline) og skrives i
 batcher på 2 000 rader; bare rating-rader over stemmegrensen holdes i minnet.
+
+## Lighthouse
+
+Målt 2026-09-30 med Lighthouse (Chromium, headless) mot produksjonsbygget servert av `vite preview`
+og backend med det syntetiske datasettet (120 000 titler). Format: Performance / Accessibility /
+Best Practices / SEO.
+
+| Side                        | Mobil          | Desktop         |
+| --------------------------- | -------------- | --------------- |
+| `/project2/`                | 94/100/100/100 | 97/100/100/100  |
+| `/project2/title/tt0468569` | 96/100/100/100 | 100/100/100/100 |
+| `/project2/my-list`         | 96/100/100/100 | 100/100/100/100 |
+
+- `vite preview` komprimerer ikke. Med gzip (som Apache-konfigen i `deploy/` slår på) ble forsiden
+  97 på mobil og 99 på desktop.
+- Performance varierer 1–3 poeng mellom kjøringer, mest på forsiden på mobil (Total Blocking Time).
+- Før fiksen lå Performance på 72–79. Årsaken var layoutskift: footeren startet midt i
+  viewporten og ble skjøvet ned når innholdet kom, og rullefeltet flyttet siden sideveis. Løst med
+  `#root` som flex-kolonne med `min-height: 100vh` og `scrollbar-gutter: stable`.
+- Initial JS er ca. 166 kB gzip (React, Apollo Client med rxjs, React Router). Detaljside og
+  «Min liste» lazy-lastes. Videre kutt ville krevd å bytte ut Apollo, som er fastsatt i CLAUDE.md.
