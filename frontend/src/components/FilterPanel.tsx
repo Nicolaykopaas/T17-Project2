@@ -68,6 +68,20 @@ export function FilterPanel({ state, onChange }: Props) {
       </button>
 
       <div id={panelId} className={`filters__body${open ? ' is-open' : ''}`}>
+        <label className="check check--available">
+          <input
+            type="checkbox"
+            checked={state.available}
+            onChange={() => onChange({ available: !state.available })}
+          />
+          <span>
+            Kun filmer du kan se
+            <span className="muted">
+              {suffix(facetData?.facets.available ?? (facetData ? 0 : undefined))}
+            </span>
+          </span>
+        </label>
+
         <fieldset>
           <legend>Type</legend>
           {TYPES.map((t) => (

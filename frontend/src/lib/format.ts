@@ -45,3 +45,12 @@ export function truncate(text: string, max = 220): string {
   const space = cut.lastIndexOf(' ');
   return cut.slice(0, space > 80 ? space : max).trimEnd() + '…';
 }
+
+/** «12:03» eller «1:32:10». Ugyldige verdier (NaN, Infinity, negative) vises som 0:00. */
+export function formatClock(seconds: number): string {
+  const total = Number.isFinite(seconds) && seconds > 0 ? Math.floor(seconds) : 0;
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = String(total % 60).padStart(2, '0');
+  return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${s}` : `${m}:${s}`;
+}

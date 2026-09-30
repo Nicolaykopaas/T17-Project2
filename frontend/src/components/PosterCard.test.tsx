@@ -102,3 +102,18 @@ describe('PosterCard: overskriftsnivå', () => {
     expect(screen.getByRole('heading', { level: 2 })).toBeInTheDocument();
   });
 });
+
+describe('PosterCard: «Se nå»-merke', () => {
+  it('viser «Se nå» som tekst når tittelen har stream', () => {
+    renderCard(makeTitle(5, { primaryTitle: 'Gratis', stream: { url: 'http://x/v.mp4' } }));
+    const card = screen.getByRole('article');
+    expect(within(card).getByText('Se nå')).toBeVisible();
+    // Kortets tilgjengelige navn er fortsatt bare tittelen.
+    expect(card).toHaveAccessibleName('Gratis');
+  });
+
+  it('viser ikke merket uten stream', () => {
+    renderCard();
+    expect(screen.queryByText('Se nå')).not.toBeInTheDocument();
+  });
+});

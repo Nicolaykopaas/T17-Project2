@@ -8,6 +8,7 @@ import RouteError from './pages/RouteError';
 
 // Detalj- og listesiden er ikke nødvendige for første visning, så de lastes ved behov.
 const TitlePage = lazy(() => import('./pages/TitlePage'));
+const WatchPage = lazy(() => import('./pages/WatchPage'));
 const MyListPage = lazy(() => import('./pages/MyListPage'));
 
 export const routes: RouteObject[] = [
@@ -18,6 +19,7 @@ export const routes: RouteObject[] = [
     children: [
       { index: true, element: <HomePage /> },
       { path: 'title/:id', element: <TitlePage /> },
+      { path: 'watch/:id', element: <WatchPage /> },
       { path: 'my-list', element: <MyListPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],

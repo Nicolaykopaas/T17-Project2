@@ -53,7 +53,16 @@ export function Hero({ title }: { title: FeaturedTitle }) {
         </p>
         {title.overview && <p className="hero__overview">{truncate(title.overview)}</p>}
         <div className="hero__actions">
-          <Link className="btn btn--primary" to={`/title/${title.id}`}>
+          {title.stream && (
+            <Link className="btn btn--primary" to={`/watch/${title.id}`}>
+              <span aria-hidden="true">▶&nbsp;</span>Se filmen
+              <span className="sr-only">: {title.primaryTitle}</span>
+            </Link>
+          )}
+          <Link
+            className={`btn ${title.stream ? 'btn--ghost' : 'btn--primary'}`}
+            to={`/title/${title.id}`}
+          >
             Se detaljer<span className="sr-only">: {title.primaryTitle}</span>
           </Link>
           <ListToggleButton titleId={title.id} inMyList={false} variant="secondary" />

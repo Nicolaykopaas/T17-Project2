@@ -22,6 +22,8 @@ const row = (id: string, heading: string, patch: Partial<SearchState>): BrowseRo
 // Sortering og filtrering gjøres av serveren via variablene under; klienten sorterer aldri selv.
 export const BROWSE_ROWS: BrowseRow[] = [
   row('popular', 'Mest populære', { sort: 'RELEVANCE' }),
+  // Høyt oppe fordi dette er det eneste i appen man faktisk kan spille av.
+  row('free', 'Se gratis nå', { available: true, sort: 'RELEVANCE' }),
   row('top-movies', 'Høyest rangerte filmer', { types: ['MOVIE'], sort: 'RATING' }),
   row('series', 'Populære serier', { types: ['SERIES'], sort: 'RELEVANCE' }),
   row('action', 'Action', { genres: ['Action'] }),

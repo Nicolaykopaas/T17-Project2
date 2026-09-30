@@ -150,6 +150,34 @@ på nytt, maks ca. 30 kall i sekundet):
 npm run db:artwork -w backend -- 2000   # antall titler; standard 2000
 ```
 
+### Gratisfilmer fra Internet Archive
+
+`npm run db:archive` fyller tabellen `title_streams` (migrering `003_title_streams.sql`) med lovlige
+gratisfilmer fra Internet Archive, koblet til IMDb-titler. Vi lagrer bare pekere (element-id og
+filnavn); videoen strømmes fra archive.org. Kjør `npm run db:migrate` og importer IMDb-titlene først.
+Skriptet kan kjøres på nytt uten duplikater (upsert).
+
+**Mot ekte Archive** (trenger internett, tar noen minutter; pent tempo, ca. 4 samtidige kall):
+
+```bash
+npm run db:archive                    # alle lovlige kandidater
+npm run db:archive -- --limit 50      # bare de 50 første koblede (test). Env: ARCHIVE_LIMIT=50
+```
+
+**Mot falsk Archive** (utvikling, E2E, ingen internett; port `ARCHIVE_MOCK_PORT`, standard 3998):
+
+```bash
+npm run archive:mock -w backend                       # i ett terminalvindu
+ARCHIVE_URL=http://localhost:3998 npm run db:archive  # i et annet: 5 filmer lagres
+ARCHIVE_URL=http://localhost:3998 npm run dev -w backend
+```
+
+Mocken tilbyr noen elementer koblet til de kjente titlene i det syntetiske datasettet (Shawshank,
+Godfather, Matrix, Pulp Fiction, Amélie), ett med ulovlig lisens, ett uten spillbar fil og ett uten
+treff hos IMDb; alle skal hoppes over. Den serverer `e2e/fixtures/test-video.webm` med
+`Accept-Ranges` og Range-støtte (206). `ARCHIVE_URL` (standard `https://archive.org`) må også være
+satt for API-serveren, siden det avgjør hvilke URL-er `Title.stream` gir ut.
+
 ## 7. Test og kvalitetssjekk
 
 ```bash

@@ -7,6 +7,7 @@ import { ListToggleButton } from '../components/ListToggleButton';
 import { ReviewForm } from '../components/ReviewForm';
 import { ReviewList } from '../components/ReviewList';
 import { Stars } from '../components/Stars';
+import { StreamInfo } from '../components/StreamInfo';
 import { TITLE_QUERY } from '../graphql/operations';
 import { useHeaderOverlay } from '../hooks/useHeaderOverlay';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
@@ -192,8 +193,14 @@ export default function TitlePage() {
               {title.overview && <p className="title-hero__overview">{title.overview}</p>}
 
               <div className="actions">
+                {title.stream && (
+                  <Link className="btn btn--primary" to={`/watch/${title.id}`}>
+                    <span aria-hidden="true">▶&nbsp;</span>Se filmen
+                  </Link>
+                )}
                 <ListToggleButton titleId={title.id} inMyList={title.inMyList} />
               </div>
+              {title.stream && <StreamInfo stream={title.stream} />}
             </div>
           </div>
         </div>

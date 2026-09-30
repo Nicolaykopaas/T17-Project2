@@ -14,8 +14,16 @@ import {
   SEARCH_QUERY,
   TITLE_QUERY,
   TOGGLE_LIST_MUTATION,
+  WATCH_QUERY,
 } from '../graphql/operations';
-import type { FeaturedTitle, Review, TitleDetails, TitleSummary } from '../graphql/types';
+import type {
+  FeaturedTitle,
+  Review,
+  Stream,
+  TitleDetails,
+  TitleSummary,
+  WatchTitle,
+} from '../graphql/types';
 
 export type Vars = Record<string, unknown>;
 type Handler = (vars: Vars) => unknown;
@@ -26,6 +34,7 @@ const OPERATIONS = {
   Facets: FACETS_QUERY,
   Genres: GENRES_QUERY,
   TitleDetails: TITLE_QUERY,
+  Watch: WATCH_QUERY,
   MyList: MY_LIST_QUERY,
   AddReview: ADD_REVIEW_MUTATION,
   ToggleList: TOGGLE_LIST_MUTATION,
@@ -42,6 +51,7 @@ export function emptyLog(): CallLog {
     Facets: [],
     Genres: [],
     TitleDetails: [],
+    Watch: [],
     MyList: [],
     AddReview: [],
     ToggleList: [],
@@ -108,6 +118,7 @@ export function makeTitle(n: number, overrides: Partial<TitleSummary> = {}): Tit
     numVotes: 1234 * n,
     poster185: null,
     poster342: null,
+    stream: null,
     ...overrides,
   };
 }
@@ -181,6 +192,7 @@ export function makeDetails(overrides: Partial<TitleDetails> = {}) {
     poster500: null,
     backdrop780: null,
     backdrop1280: null,
+    stream: null,
     reviews: makeReviewConnection([]),
     ...overrides,
   };
@@ -200,6 +212,33 @@ export const FACETS = {
     { __typename: 'FacetCount', value: 'MOVIE', count: 40 },
     { __typename: 'FacetCount', value: 'SERIES', count: 17 },
   ],
+  available: 3,
 };
 
 export const GENRE_LIST = ['Action', 'Drama'];
+
+export function makeStream(overrides: Partial<Stream> = {}): Stream {
+  return {
+    __typename: 'Stream',
+    url: 'https://archive.example/download/film/film.mp4',
+    archiveUrl: 'https://archive.example/details/film',
+    license: 'Public Domain',
+    licenseUrl: 'https://creativecommons.org/publicdomain/mark/1.0/',
+    durationSeconds: 5530,
+    subtitlesUrl: null,
+    ...overrides,
+  };
+}
+
+export function makeWatchTitle(overrides: Partial<WatchTitle> = {}): WatchTitle {
+  return {
+    __typename: 'Title',
+    id: 'tt0000001',
+    primaryTitle: 'Nosferatu',
+    startYear: 1922,
+    runtimeMinutes: 94,
+    backdrop780: null,
+    stream: makeStream(),
+    ...overrides,
+  };
+}

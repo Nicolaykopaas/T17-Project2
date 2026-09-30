@@ -42,4 +42,6 @@ export const config = {
   tmdbApiKey: process.env.TMDB_API_KEY?.trim() || undefined,
   tmdbApiUrl: (process.env.TMDB_API_URL || 'https://api.themoviedb.org/3').replace(/\/+$/, ''),
   tmdbImageUrl: (process.env.TMDB_IMAGE_URL || 'https://image.tmdb.org/t/p').replace(/\/+$/, ''),
+  // Videoen strømmes rett fra Internet Archive; vi lagrer bare pekere. Kan peke mot den falske serveren.
+  archiveUrl: (process.env.ARCHIVE_URL || 'https://archive.org').replace(/\/+$/, ''),
 };

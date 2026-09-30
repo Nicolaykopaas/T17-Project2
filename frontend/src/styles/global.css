@@ -951,6 +951,9 @@ fieldset {
   color: #f5c518;
 }
 .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
   margin-block: 1.25rem 0;
 }
 .section {
@@ -1068,4 +1071,337 @@ fieldset {
     transition: none !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* «Kun filmer du kan se» står øverst og skilles fra fasettene under. */
+.check--available {
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-soft);
+  font-weight: 700;
+}
+
+/* «▶ Se nå» på plakater: tekst på solid bakgrunn, så kontrasten ikke avhenger av bildet under. */
+.poster__badge {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 1;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 0.8rem;
+  font-weight: 800;
+  line-height: 1.4;
+  box-shadow: 0 1px 6px rgb(0 0 0 / 0.5);
+  pointer-events: none;
+}
+
+.stream-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.5rem;
+  margin: 1rem 0 0;
+  font-size: 0.95rem;
+}
+.watch__info .stream-info {
+  margin-top: 0;
+}
+
+/* Spillerside */
+.watch {
+  padding-top: 0.5rem;
+}
+.watch h1 {
+  margin-top: 0;
+}
+.watch__info {
+  margin-top: 1.5rem;
+  max-width: 44rem;
+}
+
+/*
+ * Spilleren er alltid mørk, som en kinosal, uavhengig av tema. Fargene under er derfor faste og
+ * valgt for kontrast mot svart/mørk gradient (hvit tekst, gul aksent).
+ */
+.player {
+  --p-text: #ffffff;
+  --p-accent: #f5c518;
+  position: relative;
+  aspect-ratio: 16 / 9;
+  /* Hele bildet skal få plass i vinduet uten å scrolle, også på brede skjermer. */
+  width: min(100%, calc((100vh - 11rem) * 16 / 9));
+  min-width: min(100%, 20rem);
+  margin-inline: auto;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: #000000;
+  color: var(--p-text);
+  box-shadow: var(--shadow);
+  isolation: isolate;
+}
+.player:focus {
+  outline: none;
+}
+.player__video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000000;
+  cursor: pointer;
+}
+.player ::cue {
+  font-size: 1.1rem;
+}
+.player :focus-visible {
+  outline-color: #ffffff;
+  box-shadow: 0 0 0 2px #000000;
+}
+.player__loading {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: rgb(0 0 0 / 0.35);
+  font-weight: 600;
+  pointer-events: none;
+}
+.player__spinner {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 4px solid rgb(255 255 255 / 0.3);
+  border-top-color: var(--p-accent);
+  border-radius: 50%;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .player__spinner {
+    animation: player-spin 0.9s linear infinite;
+  }
+}
+@keyframes player-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.player__bigplay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.player__bigplay svg {
+  box-sizing: content-box;
+  width: 3rem;
+  height: 3rem;
+  padding: 1.1rem;
+  border-radius: 50%;
+  background: rgb(0 0 0 / 0.65);
+  border: 2px solid rgb(255 255 255 / 0.85);
+  color: var(--p-accent);
+}
+.player__toast {
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  z-index: 3;
+  transform: translateX(-50%);
+  max-width: calc(100% - 2rem);
+  padding: 0.3rem 0.9rem;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.8);
+  font-weight: 700;
+  pointer-events: none;
+}
+.player__controls {
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 2.5rem 0.75rem 0.5rem;
+  background: linear-gradient(to top, rgb(0 0 0 / 0.9) 35%, rgb(0 0 0 / 0));
+  transition: opacity 0.2s;
+}
+/* Skjules bare mens den spiller og bare uten tastaturfokus; tastaturbrukere skal alltid se hvor de er. */
+.player.is-idle:not(:focus-visible):not(:has(:focus-visible)) .player__controls {
+  opacity: 0;
+  pointer-events: none;
+}
+.player.is-idle:not(:focus-visible):not(:has(:focus-visible)) {
+  cursor: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .player__controls {
+    transition: none;
+  }
+}
+.player__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+.player__spacer {
+  flex: 1;
+}
+.player__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0 0.4rem;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--p-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.player__btn:hover {
+  background: rgb(255 255 255 / 0.18);
+}
+.player__btn[aria-pressed='true'] {
+  color: #111318;
+  background: var(--p-accent);
+}
+.player__time {
+  padding-inline: 0.5rem;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+/* Sliderne: felles utseende, med bufret og spilt del som gradient på sporet. */
+.player input[type='range'] {
+  appearance: none;
+  height: 2.75rem;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.player input[type='range']:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.player__timeline {
+  width: 100%;
+  --track: linear-gradient(
+    to right,
+    var(--p-accent) 0 var(--progress, 0%),
+    rgb(255 255 255 / 0.55) var(--progress, 0%) var(--buffered, 0%),
+    rgb(255 255 255 / 0.25) var(--buffered, 0%) 100%
+  );
+}
+.player__volume {
+  width: 6rem;
+  --track: linear-gradient(
+    to right,
+    var(--p-accent) 0 var(--v, 100%),
+    rgb(255 255 255 / 0.3) var(--v, 100%) 100%
+  );
+}
+.player input[type='range']::-webkit-slider-runnable-track {
+  height: 0.35rem;
+  border-radius: 999px;
+  background: var(--track);
+}
+.player input[type='range']::-moz-range-track {
+  height: 0.35rem;
+  border-radius: 999px;
+  background: var(--track);
+}
+.player input[type='range']::-webkit-slider-thumb {
+  appearance: none;
+  width: 1rem;
+  height: 1rem;
+  margin-top: -0.325rem;
+  border: 2px solid #000000;
+  border-radius: 50%;
+  background: #ffffff;
+}
+.player input[type='range']::-moz-range-thumb {
+  width: 0.8rem;
+  height: 0.8rem;
+  border: 2px solid #000000;
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+.player__error {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 1rem;
+  text-align: center;
+  background: rgb(0 0 0 / 0.88);
+}
+.player__error p {
+  margin: 0 0 0.5rem;
+}
+.player__error a {
+  color: var(--p-accent);
+}
+.player__error .btn {
+  background: #ffffff;
+  color: #111318;
+}
+
+/* På smale skjermer ville kontrollene dekket det meste av bildet; legg dem under videoen. */
+@media (max-width: 40rem) {
+  /* Lydstyrken styres med telefonens knapper; demp-knappen holder. */
+  .player__volume,
+  .player__spacer {
+    display: none;
+  }
+  .player:not(.is-fullscreen) {
+    width: 100%;
+    aspect-ratio: auto;
+    display: flex;
+    flex-direction: column;
+    background: #0a0a0c;
+  }
+  .player:not(.is-fullscreen) .player__video {
+    aspect-ratio: 16 / 9;
+    height: auto;
+  }
+  .player:not(.is-fullscreen) .player__loading,
+  .player:not(.is-fullscreen) .player__bigplay {
+    bottom: auto;
+    aspect-ratio: 16 / 9;
+  }
+  .player:not(.is-fullscreen) .player__controls,
+  .player.is-idle:not(:focus-visible):not(:has(:focus-visible)):not(.is-fullscreen)
+    .player__controls {
+    position: static;
+    opacity: 1;
+    pointer-events: auto;
+    padding: 0.25rem 0.5rem 0.5rem;
+    background: #0a0a0c;
+  }
+  .player:not(.is-fullscreen) .player__error {
+    position: static;
+    padding: 1.5rem 1rem;
+  }
+}
+.player.is-fullscreen {
+  width: 100%;
+  aspect-ratio: auto;
+  border-radius: 0;
 }
