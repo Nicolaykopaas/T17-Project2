@@ -1,0 +1,17 @@
+node_modules/
+dist/
+coverage/
+*.log
+.env
+.env.*
+!.env.example
+data/*.tsv
+data/*.tsv.gz
+!data/.gitkeep
+playwright-report/
+test-results/
+blob-report/
+.vite/
+*.tsbuildinfo
+.DS_Store
+.claude/DONE.local
