@@ -110,8 +110,14 @@ function sortKeys(field: SortField, query: string | null, p: Params): KeyDef[] {
     case 'RELEVANCE': {
       if (!query) return [VOTES, ID];
       const q = `lower(${p.add(query)}::text)`;
-      // Høyeste likhet mot primær- eller originaltittel; stemmer og id som tiebreak.
-      const rel = `GREATEST(similarity(lower(t.primary_title), ${q}), similarity(lower(t.original_title), ${q}))`;
+      // Likhet alene rangerer obskure titler med identisk navn over klassikerne brukeren som regel
+      // mener («Dark Knight», 1 500 stemmer, før «The Dark Knight»). word_similarity gir full score
+      // når søkeordene står i tittelen, likhet belønner eksakte treff, og popularitet (log10 av
+      // stemmer, mettet ved 10 mill.) skiller resten. Stemmer og id er tiebreak.
+      const wordSim = `GREATEST(word_similarity(${q}, lower(t.primary_title)), word_similarity(${q}, lower(t.original_title)))`;
+      const sim = `GREATEST(similarity(lower(t.primary_title), ${q}), similarity(lower(t.original_title), ${q}))`;
+      const pop = `LEAST(log(GREATEST(t.num_votes, 1)) / 7.0, 1.0)`;
+      const rel = `(0.6 * ${wordSim} + 0.2 * ${sim} + 0.2 * ${pop})`;
       return [{ expr: rel, select: `(${rel})::float8`, cast: 'float8', kind: 'float' }, VOTES, ID];
     }
     case 'RATING':

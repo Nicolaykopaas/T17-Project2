@@ -73,10 +73,13 @@ describe('paginering og sortering', () => {
     },
   );
 
-  it('relevans med søketekst er monotont synkende i likhet, deretter stemmer', async () => {
+  it('relevans med søketekst følger vektet ord-likhet, likhet og popularitet, deretter stemmer', async () => {
+    // Uavhengig gjengivelse av formelen i search.ts – fanger opp utilsiktede endringer i rangeringen.
     const { rows } = await env.pool.query<{ id: string; rel: number; num_votes: number }>(
       `SELECT id, num_votes,
-              GREATEST(similarity(lower(primary_title), 'dark'), similarity(lower(original_title), 'dark'))::float8 AS rel
+              (0.6 * GREATEST(word_similarity('dark', lower(primary_title)), word_similarity('dark', lower(original_title)))
+               + 0.2 * GREATEST(similarity(lower(primary_title), 'dark'), similarity(lower(original_title), 'dark'))
+               + 0.2 * LEAST(log(GREATEST(num_votes, 1)) / 7.0, 1.0))::float8 AS rel
        FROM titles WHERE lower(primary_title) LIKE '%dark%' OR lower(original_title) LIKE '%dark%'
        ORDER BY rel DESC, num_votes DESC, id DESC`,
     );
