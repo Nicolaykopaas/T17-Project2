@@ -54,12 +54,21 @@ SQL
 fi
 # TMDB-nøkkel (for plakater): skriptet spør første gang. Kan også gis som miljøvariabel.
 # Den skrives bare til .env på VM-en, aldri til git. Uten nøkkel vises plassholdere.
-if [ -z "${TMDB_API_KEY:-}" ] && ! grep -q '^TMDB_API_KEY=.\+' .env && [ -t 0 ]; then
-  # Spør i stedet for å kreve nøkkelen på kommandolinjen, der den ville havnet i shell-historikken.
-  read -r -s -p "Lim inn TMDB API-nøkkel (eller trykk Enter for å hoppe over): " TMDB_API_KEY || true
-  echo
-  # Innliming fra Windows kan ta med \r og mellomrom.
-  TMDB_API_KEY="$(printf '%s' "$TMDB_API_KEY" | tr -d '\r[:space:]')"
+# En gyldig nøkkel er 32 hex-tegn (v3) eller en lang JWT (v4). En tidligere mislykket innliming
+# (f.eks. bare ett tegn) skal ikke hindre at vi spør på nytt.
+valid_key() { [[ "$1" =~ ^[0-9a-fA-F]{32}$ || "$1" =~ ^eyJ[A-Za-z0-9._-]{40,}$ ]]; }
+CURRENT_KEY="$(sed -n 's/^TMDB_API_KEY=//p' .env | tr -d '\r')"
+if [ -z "${TMDB_API_KEY:-}" ] && ! valid_key "$CURRENT_KEY" && [ -t 0 ]; then
+  for attempt in 1 2 3; do
+    # Synlig input: skjult innliming ga ingen tilbakemelding og feilet i praksis.
+    read -r -p "Lim inn TMDB API-nøkkel (32 tegn, eller Enter for å hoppe over): " TMDB_API_KEY || true
+    # Innliming fra Windows kan ta med \r og mellomrom.
+    TMDB_API_KEY="$(printf '%s' "$TMDB_API_KEY" | tr -d '\r[:space:]')"
+    [ -z "$TMDB_API_KEY" ] && break
+    valid_key "$TMDB_API_KEY" && break
+    echo "Det ser ikke ut som en TMDB-nøkkel (${#TMDB_API_KEY} tegn). Prøv igjen."
+    TMDB_API_KEY=""
+  done
 fi
 if [ -n "${TMDB_API_KEY:-}" ]; then
   grep -v '^TMDB_API_KEY=' .env > .env.tmp || true
@@ -85,7 +94,7 @@ for f in title.basics.tsv.gz title.ratings.tsv.gz; do
 done
 npm run db:seed
 
-if grep -q '^TMDB_API_KEY=.\+' .env; then
+if valid_key "$(sed -n 's/^TMDB_API_KEY=//p' .env | tr -d '\r')"; then
   step "Henter plakater for de mest populære titlene (TMDB)"
   # Varmer opp bildecachen så forsiden har plakater med en gang; resten hentes når de vises.
   npm run db:artwork -- 2000 || echo "Advarsel: forhåndshenting av plakater feilet – de hentes ved visning i stedet."

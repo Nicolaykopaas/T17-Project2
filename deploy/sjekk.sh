@@ -44,6 +44,6 @@ line "8. TMDB (plakater)"
 # Nøkkelen skrives aldri ut, bare om den finnes og hvor lang den er.
 KEYLEN=$(sudo sed -n 's/^TMDB_API_KEY=//p' /opt/project2/.env 2>/dev/null | tr -d '\r\n' | wc -c)
 if [ "$KEYLEN" -gt 0 ]; then echo "Nøkkel: lagret ($KEYLEN tegn)"; else echo "Nøkkel: MANGLER – kjør bash deploy/setup-vm.sh på nytt"; fi
-sudo -u postgres psql -d project2 -tAc "SELECT status || ': ' || count(*) FROM title_artwork GROUP BY status" 2>/dev/null \
+sudo -u postgres psql -d project2 -tAc "SELECT 'Plakater hentet: ' || count(*) FILTER (WHERE status = 'found') || ', ikke funnet hos TMDB: ' || count(*) FILTER (WHERE status = 'missing') FROM title_artwork" 2>/dev/null \
   || echo "(tabellen title_artwork finnes ikke ennå – kjør bash deploy/setup-vm.sh)"
 
