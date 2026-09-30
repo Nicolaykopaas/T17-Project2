@@ -1,10 +1,21 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { createBrowserRouter, RouterProvider } from 'react-router';
+import { ApolloProvider } from '@apollo/client/react';
+import { createClient } from './apollo/client';
+import { routes } from './routes';
+import './styles/global.css';
+
+const client = createClient();
+// BASE_URL er '/project2/'; routeren vil ha basename uten avsluttende skråstrek.
+const router = createBrowserRouter(routes, {
+  basename: import.meta.env.BASE_URL.replace(/\/$/, ''),
+});
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <main>
-      <h1>Filmsøk</h1>
-    </main>
+    <ApolloProvider client={client}>
+      <RouterProvider router={router} />
+    </ApolloProvider>
   </StrictMode>,
 );
