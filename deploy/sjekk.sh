@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 # Feilsøking på VM-en: kjører alle sjekkene og skriver resultatet samlet, så det kan limes inn
 # i én melding. Endrer ingenting.
+# Skriptet setter opp en Ubuntu-server; på Windows/macOS ville det feile halvveis.
+if [ "$(uname -s)" != "Linux" ] || ! command -v apt-get >/dev/null; then
+  echo "Dette skriptet skal kjøres på VM-en, ikke på din egen maskin." >&2
+  echo "Logg inn først:  ssh <ntnu-brukernavn>@it2810-17.idi.ntnu.no" >&2
+  exit 1
+fi
 Q='{"query":"{ search(first: 1) { totalCount } }"}'
 line() { printf '\n===== %s =====\n' "$1"; }
 
