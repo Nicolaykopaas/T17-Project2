@@ -49,7 +49,10 @@ export function escapeLike(text: string): string {
   return text.replace(/[\\%_]/g, (c) => `\\${c}`);
 }
 
-export type Dimension = 'genres' | 'decades' | 'types';
+export type Dimension = 'genres' | 'decades' | 'types' | 'available';
+
+// Ett PK-oppslag i title_streams per kandidatrad (semi-join), aldri en skanning av tabellen.
+const HAS_STREAM = 'EXISTS (SELECT 1 FROM title_streams s WHERE s.title_id = t.id)';
 
 /**
  * WHERE-betingelser for søketekst + filtre. `skip` utelater ett filter, brukt av fasettene:
@@ -82,6 +85,7 @@ function filterConditions(
   if (filters.minRating !== null) {
     conds.push(`t.average_rating >= ${p.add(filters.minRating)}::numeric`);
   }
+  if (skip !== 'available' && filters.availableOnly) conds.push(HAS_STREAM);
   return conds;
 }
 
@@ -219,6 +223,7 @@ export interface FacetsResult {
   genres: FacetCount[];
   decades: FacetCount[];
   types: FacetCount[];
+  available: number;
 }
 
 export async function getFacets(
@@ -236,7 +241,16 @@ export async function getFacets(
     );
     return rows;
   };
-  const [genres, decades, types] = await Promise.all([
+  const countAvailable = async () => {
+    const p = new Params();
+    const conds = [...filterConditions(query, filters, p, 'available'), HAS_STREAM];
+    const { rows } = await pool.query<{ n: number }>(
+      `SELECT count(*)::int AS n FROM titles t ${where(conds)}`,
+      p.values,
+    );
+    return rows[0]?.n ?? 0;
+  };
+  const [genres, decades, types, available] = await Promise.all([
     run(
       'genres',
       'g AS value, count(*)::int AS count',
@@ -258,6 +272,7 @@ export async function getFacets(
       '',
       'GROUP BY t.title_type ORDER BY t.title_type',
     ),
+    countAvailable(),
   ]);
 
   // Valgte verdier vises alltid, også med 0 treff, slik at brukeren ser hva som er valgt.
@@ -274,6 +289,7 @@ export async function getFacets(
       types.map((t) => ({ value: t.value.toUpperCase(), count: t.count })),
       filters.types.map((t) => t.toUpperCase()),
     ),
+    available,
   };
 }
 

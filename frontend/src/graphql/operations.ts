@@ -12,6 +12,8 @@ import type {
   SearchVars,
   TitleData,
   TitleVars,
+  WatchData,
+  WatchVars,
   ToggleListData,
   ToggleListVars,
 } from './types';
@@ -27,6 +29,9 @@ const SUMMARY_FIELDS = `
   numVotes
   poster185: posterUrl(width: 185)
   poster342: posterUrl(width: 342)
+  stream {
+    url
+  }
 `;
 
 // Heltebanneret trenger handling og bakgrunnsbilde i to bredder (srcset).
@@ -103,6 +108,7 @@ export const FACETS_QUERY: TypedDocumentNode<FacetsData, FacetsVars> = gql`
         value
         count
       }
+      available
     }
   }
 `;
@@ -125,6 +131,14 @@ export const TITLE_QUERY: TypedDocumentNode<TitleData, TitleVars> = gql`
       userRating
       reviewCount
       inMyList
+      stream {
+        url
+        archiveUrl
+        license
+        licenseUrl
+        durationSeconds
+        subtitlesUrl
+      }
       reviews(first: $first, after: $after) {
         totalCount
         pageInfo {
@@ -143,6 +157,27 @@ export const TITLE_QUERY: TypedDocumentNode<TitleData, TitleVars> = gql`
             isMine
           }
         }
+      }
+    }
+  }
+`;
+
+// Egen liten query for spillersiden: ingen anmeldelser eller plakater som ikke brukes der.
+export const WATCH_QUERY: TypedDocumentNode<WatchData, WatchVars> = gql`
+  query Watch($id: ID!) {
+    title(id: $id) {
+      id
+      primaryTitle
+      startYear
+      runtimeMinutes
+      backdrop780: backdropUrl(width: 780)
+      stream {
+        url
+        archiveUrl
+        license
+        licenseUrl
+        durationSeconds
+        subtitlesUrl
       }
     }
   }

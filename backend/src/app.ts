@@ -34,13 +34,21 @@ export interface AppOptions {
   corsOrigin?: string | false;
   /** TMDB-tjenesten. Standard: bygges fra miljøvariablene (TMDB_API_KEY osv.). */
   artwork?: ArtworkService;
+  /** Base-URL for Internet Archive i stream-URL-ene. Standard: ARCHIVE_URL. */
+  archiveUrl?: string;
 }
 
 /**
  * Bygger Yoga-appen uten å åpne noen port, slik at testene kan kalle yoga.fetch() direkte.
  * Yoga selv er en (req, res)-handler for node:http og en fetch-funksjon i én.
  */
-export function createApp({ pool, production, corsOrigin = false, artwork }: AppOptions) {
+export function createApp({
+  pool,
+  production,
+  corsOrigin = false,
+  artwork,
+  archiveUrl,
+}: AppOptions) {
   const artworkService = artwork ?? new ArtworkService({ pool, apiKey: config.tmdbApiKey });
   const isProd = production ?? process.env.NODE_ENV === 'production';
 
@@ -56,7 +64,8 @@ export function createApp({ pool, production, corsOrigin = false, artwork }: App
     schema,
     graphqlEndpoint: '/graphql',
     plugins: [limits],
-    context: ({ request }) => createContext(pool, request, artworkService),
+    context: ({ request }) =>
+      createContext(pool, request, artworkService, archiveUrl ?? config.archiveUrl),
     logging: process.env.NODE_ENV !== 'test',
     graphiql: !isProd,
     landingPage: !isProd,

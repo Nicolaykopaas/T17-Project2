@@ -11,6 +11,7 @@ import {
   makeDetails,
   makeReview,
   makeReviewConnection,
+  makeStream,
   renderApp,
   type CallLog,
   type Vars,
@@ -291,5 +292,42 @@ describe('TitlePage: anmeldelser', () => {
     });
     expect(await screen.findByText('<img src=x onerror=alert(1)>')).toBeInTheDocument();
     expect(document.querySelector('img')).toBeNull();
+  });
+});
+
+describe('TitlePage: gratisversjon', () => {
+  it('viser «Se filmen» som primærlenke til spilleren, med lisens og kilde', async () => {
+    setup({
+      TitleDetails: () => ({
+        title: makeDetails({ stream: makeStream({ license: 'CC BY 4.0' }) }),
+      }),
+    });
+    const watch = await screen.findByRole('link', { name: /Se filmen/ });
+    expect(watch).toHaveAttribute('href', '/watch/tt0000001');
+    expect(watch).toHaveClass('btn--primary');
+    const license = screen.getByRole('link', { name: /CC BY 4\.0/ });
+    expect(license).toHaveAttribute('href', 'https://creativecommons.org/publicdomain/mark/1.0/');
+    const source = screen.getByRole('link', { name: /Internet Archive/ });
+    expect(source).toHaveAttribute('href', 'https://archive.example/details/film');
+    expect(source).toHaveAttribute('rel', expect.stringContaining('noopener'));
+    expect(screen.getByText(/Kilde:/)).toBeInTheDocument();
+  });
+
+  it('viser lisensen som ren tekst når den ikke har lenke', async () => {
+    setup({
+      TitleDetails: () => ({
+        title: makeDetails({ stream: makeStream({ licenseUrl: null, license: 'Public Domain' }) }),
+      }),
+    });
+    await screen.findByRole('link', { name: /Se filmen/ });
+    expect(screen.getByText('Public Domain')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Public Domain/ })).not.toBeInTheDocument();
+  });
+
+  it('har ingen «Se filmen» eller lisens uten stream', async () => {
+    setup({ TitleDetails: () => ({ title: makeDetails() }) });
+    await screen.findByRole('heading', { level: 1, name: 'The Shawshank Redemption' });
+    expect(screen.queryByRole('link', { name: /Se filmen/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Lisens:/)).not.toBeInTheDocument();
   });
 });

@@ -27,6 +27,13 @@ export function ActiveFilters({ state, onChange, onReset }: Props) {
       remove: () => onChange({ types: state.types.filter((x) => x !== t) }),
     })),
   ];
+  if (state.available) {
+    chips.unshift({
+      key: 'available',
+      label: 'Kun filmer du kan se',
+      remove: () => onChange({ available: false }),
+    });
+  }
   if (state.minRating !== null) {
     chips.push({
       key: 'rating',

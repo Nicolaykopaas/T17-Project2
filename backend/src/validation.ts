@@ -49,6 +49,7 @@ export interface FiltersInput {
   decades?: number[] | null;
   types?: ('MOVIE' | 'SERIES')[] | null;
   minRating?: number | null;
+  availableOnly?: boolean | null;
 }
 
 export interface Filters {
@@ -56,6 +57,7 @@ export interface Filters {
   decades: number[];
   types: ('movie' | 'series')[];
   minRating: number | null;
+  availableOnly: boolean;
 }
 
 export function validateFilters(input: FiltersInput | null | undefined): Filters {
@@ -89,6 +91,7 @@ export function validateFilters(input: FiltersInput | null | undefined): Filters
     types: [...new Set(types)],
     // 0 betyr «ingen grense»; `>= 0` ville ellers utelatt titler uten rating.
     minRating: minRating && minRating > 0 ? minRating : null,
+    availableOnly: input?.availableOnly === true,
   };
 }
 

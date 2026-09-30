@@ -187,6 +187,48 @@ describe('HomePage: filtre', () => {
     await waitFor(() => expect(log.Search.at(-1)).toEqual({ query: 'alien', first: 20 }));
   });
 
+  it('«Kun filmer du kan se» står først, viser antall og oppdaterer URL, variabler og chip', async () => {
+    const { log, user } = setup();
+    const box = await screen.findByRole('checkbox', { name: /^Kun filmer du kan se/ });
+    const checkboxes = screen.getAllByRole('checkbox');
+    expect(checkboxes[0]).toBe(box);
+    await waitFor(() =>
+      expect(box.closest('label')!.textContent!.replace(/\s/g, ' ')).toBe(
+        'Kun filmer du kan se (3)',
+      ),
+    );
+    expect(box).not.toBeChecked();
+
+    await user.click(box);
+    await waitFor(() => expect(currentUrl().searchParams.get('available')).toBe('1'));
+    expect(box).toBeChecked();
+    await waitFor(() =>
+      expect(log.Search.at(-1)).toMatchObject({ filters: { availableOnly: true } }),
+    );
+    await waitFor(() =>
+      expect(log.Facets.at(-1)).toMatchObject({ filters: { availableOnly: true } }),
+    );
+    const chips = screen.getByRole('list', { name: 'Aktive filtre' });
+    const chip = within(chips).getByRole('button', { name: /Kun filmer du kan se/ });
+
+    await user.click(chip);
+    await waitFor(() => expect(currentUrl().searchParams.has('available')).toBe(false));
+    expect(screen.getByRole('checkbox', { name: /^Kun filmer du kan se/ })).not.toBeChecked();
+  });
+
+  it('leser available=1 fra URL, og «Nullstill alle» fjerner den', async () => {
+    const { user, log } = setup('/?q=alien&available=1');
+    expect(await screen.findByRole('checkbox', { name: /^Kun filmer du kan se/ })).toBeChecked();
+    await waitFor(() =>
+      expect(log.Search.at(-1)).toMatchObject({
+        query: 'alien',
+        filters: { availableOnly: true },
+      }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Nullstill alle' }));
+    await waitFor(() => expect(currentUrl().search).toBe('?q=alien'));
+  });
+
   it('filterpanelet kan kollapses med en knapp som har aria-expanded', async () => {
     const { user } = setup();
     const toggle = screen.getByRole('button', { name: /^Filtre/ });
@@ -295,6 +337,71 @@ describe('HomePage: bla-modus', () => {
       sort: { field: 'RATING', direction: 'DESC' },
       first: 20,
     });
+  });
+
+  it('har raden «Se gratis nå» rett under toppraden, med filter og «Se alle» til available=1', async () => {
+    const io = stubIntersectionObserver();
+    const { log, user } = setup('/');
+    await screen.findByRole('region', { name: 'Med bilde' });
+    const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
+    expect(headings.indexOf('Se gratis nå')).toBe(headings.indexOf('Mest populære') + 1);
+
+    const free = screen.getByRole('heading', { name: 'Se gratis nå' });
+    io.reveal(free.closest('section')!.parentElement!);
+    await waitFor(() => expect(log.Search).toHaveLength(1));
+    expect(log.Search[0]).toMatchObject({
+      filters: { availableOnly: true },
+      sort: { field: 'RELEVANCE', direction: 'DESC' },
+      first: 20,
+    });
+
+    const link = screen.getByRole('link', { name: /Se alle i Se gratis nå/ });
+    expect(link.getAttribute('href')).toMatch(/^\/\?available=1/);
+    await user.click(link);
+    await waitFor(() => expect(currentUrl().searchParams.get('available')).toBe('1'));
+    expect(await screen.findByRole('checkbox', { name: /^Kun filmer du kan se/ })).toBeChecked();
+  });
+
+  it('skjuler «Se gratis nå» når ingen filmer kan sees', async () => {
+    const io = stubIntersectionObserver();
+    setup('/', (vars) => ({
+      search: makeConnection(
+        (vars.filters as { availableOnly?: boolean })?.availableOnly ? [] : titles,
+      ),
+    }));
+    await screen.findByRole('region', { name: 'Med bilde' });
+    const free = screen.getByRole('heading', { name: 'Se gratis nå' });
+    io.reveal(free.closest('section')!.parentElement!);
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { name: 'Se gratis nå' })).not.toBeInTheDocument(),
+    );
+  });
+
+  it('viser «Se filmen» i hero når hero-tittelen har stream', async () => {
+    stubIntersectionObserver();
+    const log = emptyLog();
+    renderApp(<HomePage />, {
+      route: '/',
+      mocks: buildMocks(
+        {
+          Featured: () => ({
+            search: makeConnection([
+              makeFeatured(12, {
+                primaryTitle: 'Gratisfilm',
+                backdrop1280: 'http://x/b.jpg',
+                stream: { url: 'http://x/v.mp4' },
+              }),
+            ]),
+          }),
+        },
+        log,
+      ),
+    });
+    const hero = await screen.findByRole('region', { name: 'Gratisfilm' });
+    expect(within(hero).getByRole('link', { name: /Se filmen/ })).toHaveAttribute(
+      'href',
+      '/watch/tt0000012',
+    );
   });
 
   it('har «Se alle»-lenker som setter filtre og sortering i URL-en', async () => {

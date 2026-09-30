@@ -7,6 +7,8 @@ const E2E_DATABASE_URL =
 // Egen datamappe slik at et syntetisk datasett aldri overskriver ekte IMDb-filer i data/.
 const DATA_DIR = path.resolve(import.meta.dirname, '..', 'data', 'e2e');
 const FIXTURE_SIZE = '20000';
+// Falsk Internet Archive (startes av webServer i playwright.config.ts før denne filen kjører).
+const ARCHIVE_URL = 'http://localhost:3998';
 
 /**
  * Sørger for en E2E-database med kjent innhold: opprettes ved behov, migreres, fylles med det
@@ -37,4 +39,10 @@ export default async function globalSetup() {
   }
   await db.query('TRUNCATE reviews, list_items');
   await db.end();
+
+  // Hver kjøring, ikke bare første: importen er idempotent, og mocken kan ha endret seg siden sist.
+  execSync('npm run db:archive -w backend', {
+    env: { ...env, ARCHIVE_URL },
+    stdio: 'inherit',
+  });
 }

@@ -5,6 +5,8 @@ import { defineConfig, devices } from '@playwright/test';
 const E2E_DATABASE_URL =
   process.env.E2E_DATABASE_URL ?? 'postgres://postgres@localhost:5432/project2_e2e';
 
+const ARCHIVE_URL = 'http://localhost:3998';
+
 // I miljøer med en forhåndsinstallert Chromium (f.eks. CI-bilder) kan stien overstyres.
 const executablePath = process.env.PW_CHROMIUM_PATH || undefined;
 
@@ -35,6 +37,16 @@ export default defineConfig({
       timeout: 60_000,
     },
     {
+      // Falsk Internet Archive: metadata, nedlasting med Range-støtte og undertekster, servert fra
+      // e2e/fixtures/test-video.webm. Må stå før globalSetup, som importerer filmene fra den
+      // (Playwright starter webServer før globalSetup).
+      command: 'npm run archive:mock -w backend',
+      url: 'http://localhost:3998/metadata/probe',
+      env: { ARCHIVE_MOCK_PORT: '3998' },
+      reuseExistingServer: !process.env.CI,
+      timeout: 60_000,
+    },
+    {
       command: 'npm run build -w backend && npm run start -w backend',
       url: 'http://localhost:3001/graphql?query=%7B__typename%7D',
       env: {
@@ -44,6 +56,7 @@ export default defineConfig({
         TMDB_API_KEY: 'test',
         TMDB_API_URL: 'http://localhost:3999/3',
         TMDB_IMAGE_URL: 'http://localhost:3999/t/p',
+        ARCHIVE_URL: ARCHIVE_URL,
       },
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,

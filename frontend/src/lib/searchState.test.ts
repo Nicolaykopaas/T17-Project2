@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   EMPTY_STATE,
+  activeFilterCount,
+  isBrowseState,
   parseSearchState,
   serializeSearchState,
   toFilters,
@@ -13,7 +15,7 @@ describe('searchState', () => {
   it('leser alle parametre', () => {
     expect(
       parse(
-        'q=alien&genres=Action,Drama&decades=1990,2000&types=film,serie&minRating=7&sort=ar&dir=asc',
+        'q=alien&genres=Action,Drama&decades=1990,2000&types=film,serie&minRating=7&available=1&sort=ar&dir=asc',
       ),
     ).toEqual({
       q: 'alien',
@@ -21,6 +23,7 @@ describe('searchState', () => {
       decades: [1990, 2000],
       types: ['MOVIE', 'SERIES'],
       minRating: 7,
+      available: true,
       sort: 'YEAR',
       dir: 'ASC',
     });
@@ -42,6 +45,22 @@ describe('searchState', () => {
   it('runder tur uten tap', () => {
     const state = parse('q=x&genres=Action&sort=tittel&dir=desc&minRating=8');
     expect(parseSearchState(serializeSearchState(state))).toEqual(state);
+  });
+
+  it('leser available=1 fra URL, og bare akkurat 1', () => {
+    expect(parse('available=1').available).toBe(true);
+    expect(parse('available=true').available).toBe(false);
+    expect(parse('available=0').available).toBe(false);
+    expect(parse('').available).toBe(false);
+  });
+
+  it('available gir availableOnly som filter, teller som aktivt filter og runder tur', () => {
+    const state = parse('available=1');
+    expect(toFilters(state)).toEqual({ availableOnly: true });
+    expect(activeFilterCount(state)).toBe(1);
+    expect(isBrowseState(state)).toBe(false);
+    expect(serializeSearchState(state).toString()).toBe('available=1');
+    expect(toFilters({ ...EMPTY_STATE, available: false })).toBeUndefined();
   });
 
   it('serialiserer bare det som er satt', () => {

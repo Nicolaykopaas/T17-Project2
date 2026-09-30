@@ -4,6 +4,7 @@ import { expect, test } from '@playwright/test';
 // WCAG 2.1 AA er kravet i CLAUDE.md; axe sjekker det som kan sjekkes automatisk.
 const pages = [
   { name: 'forside (bla-modus)', path: './', ready: 'Søk i filmer og serier', scrollAll: true },
+  { name: 'søk med kun filmer du kan se', path: './?available=1', ready: 'Søk i filmer og serier' },
   { name: 'søk uten tekst', path: './?sort=relevans', ready: 'Søk i filmer og serier' },
   {
     name: 'søk med treff og filter',
@@ -11,6 +12,8 @@ const pages = [
     ready: 'Søk i filmer og serier',
   },
   { name: 'detalj', path: './title/tt0468569', ready: 'The Dark Knight' },
+  { name: 'detalj med gratisfilm', path: './title/tt0111161', ready: 'The Shawshank Redemption' },
+  { name: 'spiller', path: './watch/tt0111161', ready: 'The Shawshank Redemption' },
   { name: 'min liste', path: './my-list', ready: 'Min liste' },
   { name: 'ukjent side', path: './finnes/ikke', ready: null },
 ];
@@ -44,7 +47,7 @@ for (const { name, path, ready, scrollAll } of pages) {
 
 test('ingen horisontal scroll ved 320 px', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 640 });
-  for (const path of ['./', './?q=dark', './title/tt0468569', './my-list']) {
+  for (const path of ['./', './?q=dark', './title/tt0468569', './watch/tt0111161', './my-list']) {
     await page.goto(path);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     const overflow = await page.evaluate(

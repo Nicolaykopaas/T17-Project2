@@ -37,6 +37,7 @@ input SearchFilters {
   decades: [Int!] # f.eks. 1990 = 1990–1999; flere tiår = ELLER
   types: [TitleType!] # flere typer = ELLER
   minRating: Float # 0–10
+  availableOnly: Boolean # bare titler med stream
 }
 
 type PageInfo {
@@ -85,6 +86,16 @@ type Title {
   overview: String # engelsk handlingsbeskrivelse
   posterUrl(width: Int = 342): String # 2:3; bredde snappes til 92, 154, 185, 342, 500 eller 780
   backdropUrl(width: Int = 1280): String # 16:9; bredde snappes til 300, 780 eller 1280
+  stream: Stream # lovlig gratisversjon fra Internet Archive, null hvis ingen
+}
+
+type Stream {
+  url: String! # direkte videofil (MP4/WebM) som nettleseren kan spille, støtter Range-requests
+  archiveUrl: String! # siden på archive.org (kilde)
+  license: String! # f.eks. "Public Domain" eller "CC BY 4.0"
+  licenseUrl: String
+  durationSeconds: Int
+  subtitlesUrl: String # WebVTT, bare hvis Internet Archive har en .vtt-fil
 }
 
 type TitleEdge {
@@ -107,6 +118,7 @@ type Facets {
   genres: [FacetCount!]!
   decades: [FacetCount!]!
   types: [FacetCount!]!
+  available: Int! # antall treff med stream, med alle andre filtre aktive
 }
 
 input AddReviewInput {
@@ -160,3 +172,15 @@ type Mutation {
 - Miljøvariabler: `TMDB_API_KEY` (v3-nøkkel eller v4-token), `TMDB_API_URL` (standard
   `https://api.themoviedb.org/3`), `TMDB_IMAGE_URL`. I utvikling og E2E brukes en lokal
   falsk TMDB-server (`npm run tmdb:mock -w backend`) som lager plakater som SVG.
+
+## Strømming (Internet Archive)
+
+- Bare filmer Internet Archive markerer som fri bruk: `licenseurl` er Creative Commons eller
+  public domain, eller elementet ligger i en kuratert public domain-samling (se
+  `docs/beslutninger.md`). Alt annet hoppes over.
+- `npm run db:archive` henter kandidater fra Internet Archive, kobler dem til IMDb-titler (IMDb-ID
+  i metadata, ellers entydig treff på normalisert tittel og år ±1) og lagrer én spillbar fil per
+  tittel i `title_streams`. Idempotent.
+- Videoen strømmes direkte fra archive.org. Vi lagrer eller proxyer ingen video.
+- `ARCHIVE_URL` (standard `https://archive.org`) kan pekes mot den falske serveren
+  (`npm run archive:mock -w backend`) i utvikling og E2E.

@@ -100,6 +100,11 @@ if valid_key "$(sed -n 's/^TMDB_API_KEY=//p' .env | tr -d '\r')"; then
   npm run db:artwork -- 2000 || echo "Advarsel: forhåndshenting av plakater feilet – de hentes ved visning i stedet."
 fi
 
+step "Henter lovlige filmer fra Internet Archive"
+# Kobler IMDb-titler til gratis public domain-/Creative Commons-versjoner. Feil her skal ikke
+# stoppe deployen: appen fungerer, bare uten «Se filmen» for titler som mangler.
+npm run db:archive || echo "Advarsel: henting fra Internet Archive feilet – prøv igjen senere med npm run db:archive."
+
 step "Starter backend som systemd-tjeneste"
 sudo chown -R project2:project2 "$APP_DIR"
 sudo cp deploy/project2-backend.service /etc/systemd/system/
