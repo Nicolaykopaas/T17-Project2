@@ -20,6 +20,8 @@ export function createCache() {
         fields: {
           // Anmeldelsene tilhører én tittel; sidene slås sammen, og ny første side erstatter lista.
           reviews: relayStylePagination(false),
+          // Lister henter bare `stream { url }`, detaljene henter resten; feltene skal flettes, ikke erstatte.
+          stream: { merge: true },
         },
       },
     },

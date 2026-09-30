@@ -57,6 +57,12 @@ export function PosterCard({ title, actions, sizes = ROW_SIZES, headingLevel = 3
               <span>{title.primaryTitle}</span>
             </div>
           )}
+          {title.stream && (
+            // Tekst, ikke bare ikon: fargen alene skal ikke bære betydningen.
+            <span className="poster__badge">
+              <span aria-hidden="true">▶ </span>Se nå
+            </span>
+          )}
           <div className="poster__overlay">
             {title.genres.length > 0 && (
               <ul className="tags" aria-label="Sjangre">

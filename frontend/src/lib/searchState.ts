@@ -13,6 +13,8 @@ export interface SearchState {
   decades: number[];
   types: TitleType[];
   minRating: number | null;
+  /** Bare titler med lovlig strøm («Kun filmer du kan se»). */
+  available: boolean;
   /** null = ikke valgt, serveren bruker sin standard (relevans). */
   sort: SortField | null;
   dir: SortDirection | null;
@@ -24,6 +26,7 @@ export const EMPTY_STATE: SearchState = {
   decades: [],
   types: [],
   minRating: null,
+  available: false,
   sort: null,
   dir: null,
 };
@@ -79,6 +82,7 @@ export function parseSearchState(params: URLSearchParams): SearchState {
         .filter((t): t is TitleType => t !== undefined),
     ),
     minRating,
+    available: params.get('available') === '1',
     sort: URL_TO_SORT[params.get('sort') ?? ''] ?? null,
     dir: dir === 'asc' ? 'ASC' : dir === 'desc' ? 'DESC' : null,
   };
@@ -91,6 +95,7 @@ export function serializeSearchState(state: SearchState): URLSearchParams {
   if (state.decades.length) params.set('decades', state.decades.join(','));
   if (state.types.length) params.set('types', state.types.map((t) => TYPE_TO_URL[t]).join(','));
   if (state.minRating !== null) params.set('minRating', String(state.minRating));
+  if (state.available) params.set('available', '1');
   if (state.sort) params.set('sort', SORT_TO_URL[state.sort]);
   if (state.dir) params.set('dir', state.dir === 'ASC' ? 'asc' : 'desc');
   return params;
@@ -98,7 +103,11 @@ export function serializeSearchState(state: SearchState): URLSearchParams {
 
 export function activeFilterCount(state: SearchState): number {
   return (
-    state.genres.length + state.decades.length + state.types.length + (state.minRating ? 1 : 0)
+    state.genres.length +
+    state.decades.length +
+    state.types.length +
+    (state.minRating ? 1 : 0) +
+    (state.available ? 1 : 0)
   );
 }
 
@@ -109,6 +118,7 @@ export function toFilters(state: SearchState): SearchFilters | undefined {
   if (state.decades.length) filters.decades = state.decades;
   if (state.types.length) filters.types = state.types;
   if (state.minRating !== null) filters.minRating = state.minRating;
+  if (state.available) filters.availableOnly = true;
   return Object.keys(filters).length ? filters : undefined;
 }
 

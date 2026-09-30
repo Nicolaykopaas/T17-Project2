@@ -54,6 +54,19 @@ Brukergenererte data: anmeldelser (1–5 stjerner + tekst) og "min liste".
 - [x] `docs/deploy.md`: Postgres-oppsett, systemd-fil for backend, Apache-konfig for `/project2`, gzip/cache-headere
 - [x] `deploy/`-mappe med systemd-unit og Apache-konfig ferdig utfylt for `it2810-17.idi.ntnu.no`
 
+## M6 – Se lovlige filmer fra Internet Archive
+
+Kun filmer som Internet Archive markerer som fri bruk (public domain eller Creative Commons). Vi
+lenker til og strømmer fra archive.org og lagrer ingen video selv.
+
+- [x] Backend: tabell `title_streams` (title_id, archive_id, fil, lisens, varighet) + migrering
+- [x] Importskript `db:archive`: hent filmer fra Internet Archive-samlinger med fri lisens, koble til IMDb-titler via IMDb-ID i metadata (ellers tittel + år), velg en MP4-fil som nettlesere kan spille. Idempotent, testet mot falsk Archive-server
+- [x] API: `Title.stream { url, license, archiveUrl }` og filter `availableOnly` (+ fasettantall)
+- [x] Frontend: filter «Kun filmer du kan se», rad «Se gratis nå» på forsiden, merke på plakater
+- [x] Videospiller på `/watch/:id`: spill/pause, spoling (tidslinje og ±10 s), volum og demping, fullskjerm, tastatur (mellomrom, piler, M, F), undertekster når de finnes, lisens og kilde under spilleren
+- [x] Tester: import og kobling, API, spillerkontroller (komponent), E2E med liten testvideo, axe
+- [x] Deploy: `setup-vm.sh` kjører `db:archive` etter importen
+
 ## Ferdig
 
 - [x] Oppsummering i `docs/status.md`: hva er gjort, hva gjenstår, hva Nicolay må gjøre

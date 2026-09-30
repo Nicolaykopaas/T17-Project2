@@ -1,6 +1,8 @@
 import { createArtworkLoader, type ArtworkLoader, type ArtworkService } from './artwork.js';
 import type { Pool } from './db.js';
+import { config } from './config.js';
 import { batchLoader } from './loaders.js';
+import { createStreamLoader, type StreamLoader } from './stream.js';
 import { parseUserId } from './validation.js';
 
 export interface ReviewStats {
@@ -15,13 +17,19 @@ export interface Context {
   artwork: ArtworkService;
   loaders: {
     artwork: ArtworkLoader;
+    stream: StreamLoader;
     reviewStats: { load: (titleId: string) => Promise<ReviewStats> };
     inMyList: { load: (titleId: string) => Promise<boolean> };
   };
 }
 
 /** Bygges per request, slik at loader-cachene aldri lekker data mellom brukere. */
-export function createContext(pool: Pool, request: Request, artwork: ArtworkService): Context {
+export function createContext(
+  pool: Pool,
+  request: Request,
+  artwork: ArtworkService,
+  archiveUrl: string = config.archiveUrl,
+): Context {
   const userId = parseUserId(request.headers.get('x-user-id'));
   return {
     pool,
@@ -29,6 +37,7 @@ export function createContext(pool: Pool, request: Request, artwork: ArtworkServ
     artwork,
     loaders: {
       artwork: createArtworkLoader(artwork),
+      stream: createStreamLoader(pool, archiveUrl),
       // Én spørring for hele resultatsiden i stedet for én per tittel (N+1).
       reviewStats: batchLoader<ReviewStats>(
         async (ids) => {

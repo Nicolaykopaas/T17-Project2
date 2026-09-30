@@ -52,7 +52,8 @@ function SearchView({
   state: SearchState;
   update: (patch: Partial<SearchState>) => void;
 }) {
-  const reset = () => update({ genres: [], decades: [], types: [], minRating: null });
+  const reset = () =>
+    update({ genres: [], decades: [], types: [], minRating: null, available: false });
 
   return (
     <div className="container">

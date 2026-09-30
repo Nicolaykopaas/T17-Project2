@@ -28,6 +28,7 @@ export const typeDefs = /* GraphQL */ `
     decades: [Int!] # f.eks. 1990 = 1990–1999; flere tiår = ELLER
     types: [TitleType!] # flere typer = ELLER
     minRating: Float # 0–10
+    availableOnly: Boolean # bare titler med stream
   }
 
   type PageInfo {
@@ -76,6 +77,16 @@ export const typeDefs = /* GraphQL */ `
     overview: String # engelsk handlingsbeskrivelse
     posterUrl(width: Int = 342): String # 2:3; bredde snappes til 92, 154, 185, 342, 500 eller 780
     backdropUrl(width: Int = 1280): String # 16:9; bredde snappes til 300, 780 eller 1280
+    stream: Stream # lovlig gratisversjon fra Internet Archive, null hvis ingen
+  }
+
+  type Stream {
+    url: String! # direkte videofil (MP4/WebM) som nettleseren kan spille, støtter Range-requests
+    archiveUrl: String! # siden på archive.org (kilde)
+    license: String! # f.eks. "Public Domain" eller "CC BY 4.0"
+    licenseUrl: String
+    durationSeconds: Int
+    subtitlesUrl: String # WebVTT, bare hvis Internet Archive har en .vtt-fil
   }
 
   type TitleEdge {
@@ -98,6 +109,7 @@ export const typeDefs = /* GraphQL */ `
     genres: [FacetCount!]!
     decades: [FacetCount!]!
     types: [FacetCount!]!
+    available: Int! # antall treff med stream, med alle andre filtre aktive
   }
 
   input AddReviewInput {

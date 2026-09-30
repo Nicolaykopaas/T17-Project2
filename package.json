@@ -20,7 +20,8 @@
     "db:migrate": "npm run db:migrate -w backend",
     "db:seed": "npm run db:seed -w backend",
     "prepare": "husky",
-    "db:artwork": "npm run db:artwork -w backend --"
+    "db:artwork": "npm run db:artwork -w backend --",
+    "db:archive": "npm run db:archive -w backend --"
   },
   "lint-staged": {
     "*.{ts,tsx,js,mjs,cjs}": [

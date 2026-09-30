@@ -157,6 +157,7 @@ export const resolvers = {
       const art = await ctx.loaders.artwork.load(t.id, t.type);
       return buildImageUrl(ctx.artwork.imageUrl, art?.backdropPath ?? null, width, BACKDROP_WIDTHS);
     },
+    stream: (t: TitleNode, _: unknown, ctx: Context) => ctx.loaders.stream.load(t.id),
     reviews: async (
       t: TitleNode,
       args: { first?: number | null; after?: string | null },

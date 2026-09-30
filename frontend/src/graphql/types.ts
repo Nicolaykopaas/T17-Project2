@@ -14,6 +14,7 @@ export interface SearchFilters {
   decades?: number[];
   types?: TitleType[];
   minRating?: number;
+  availableOnly?: boolean;
 }
 
 export interface PageInfo {
@@ -51,6 +52,19 @@ export interface TitleSummary {
   /** Plakat i to bredder (for srcset). null når TMDB mangler bildet. */
   poster185: string | null;
   poster342: string | null;
+  /** Bare url hentes i lister; nok til å vise «Se nå»-merket uten å dra med lisensfeltene. */
+  stream: { url: string } | null;
+}
+
+/** Lovlig gratisversjon fra Internet Archive (se docs/api.md). */
+export interface Stream {
+  __typename?: 'Stream';
+  url: string;
+  archiveUrl: string;
+  license: string;
+  licenseUrl: string | null;
+  durationSeconds: number | null;
+  subtitlesUrl: string | null;
 }
 
 /** Tittel med feltene heltebanneret trenger i tillegg. */
@@ -73,6 +87,18 @@ export interface TitleDetails extends TitleSummary {
   reviewCount: number;
   inMyList: boolean;
   reviews: Connection<Review>;
+  stream: Stream | null;
+}
+
+/** Det spillersiden trenger. */
+export interface WatchTitle {
+  __typename?: 'Title';
+  id: string;
+  primaryTitle: string;
+  startYear: number | null;
+  runtimeMinutes: number | null;
+  backdrop780: string | null;
+  stream: Stream | null;
 }
 
 export interface FacetCount {
@@ -84,6 +110,7 @@ export interface Facets {
   genres: FacetCount[];
   decades: FacetCount[];
   types: FacetCount[];
+  available: number;
 }
 
 export interface SearchData {
@@ -120,6 +147,13 @@ export interface TitleVars {
   id: string;
   first: number;
   after?: string | null;
+}
+
+export interface WatchData {
+  title: WatchTitle | null;
+}
+export interface WatchVars {
+  id: string;
 }
 
 export interface MyListData {

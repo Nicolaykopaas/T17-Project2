@@ -118,3 +118,54 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
   `TMDB_API_KEY/URL/IMAGE_URL`. Forsiden har ingen `.count` i bla-modus, så flyttesten søker først.
 - **README skrevet av lederen.** CLAUDE.md sier at gruppa skriver README, men Nicolay ba eksplisitt
   om det 2026-09-30. Innholdet bygger på fakta fra `docs/`, og tallene er fra siste testkjøring.
+- **Strømming fra Internet Archive (M6): bare pekere, ingen video.** `title_streams` (migrering 003)
+  har én rad per tittel (PK `title_id`, `ON DELETE CASCADE`) med element-id, filnavn, lisens,
+  varighet og valgfri `.vtt`. Egen tabell av samme grunn som `title_artwork`: `titles` er en
+  reimporterbar IMDb-kopi. `availableOnly` er `EXISTS (SELECT 1 FROM title_streams s WHERE s.title_id = t.id)`,
+  som planleggeren kjører som PK-oppslag per kandidatrad; `Facets.available` teller med alle andre
+  filtre (og søketeksten) men uten `availableOnly`. `Title.stream` slås opp med én spørring per side
+  (samme loader-mønster som anmeldelser). URL-ene bygges ved lesing fra `ARCHIVE_URL`, ikke lagret, så
+  serveren kan byttes (mock/ekte) uten ny import. Element-id må matche `^[A-Za-z0-9._-]+$` (og ikke
+  `..`), filnavn kan ikke ha `/`, `\`, `..` eller kontrolltegn; ellers blir `stream` `null`, og
+  filnavnet URL-enkodes.
+- **Lisensregel for importen (`isLawful` i `scripts/import-archive.ts`).** Et Archive-element er
+  lovlig hvis (a) `licenseurl` har verten `creativecommons.org` (eller subdomene), eller URL-en
+  inneholder `publicdomain` (CC0, Public Domain Mark, usa.gov-erklæringen), eller (b) elementet ligger
+  i en kuratert public domain-samling: `feature_films`, `film_noir` eller `silent_films`. Alt annet
+  hoppes over, også elementer i `classic_tv` uten lisens-URL, siden den samlingen blander opphavsrett
+  og public domain. Vi sjekker verten i stedet for å teste om URL-en «inneholder» creativecommons.org,
+  slik at `http://evil.example/creativecommons.org/…` ikke slipper gjennom. CC-varianter med NC/ND
+  godtas fordi vi bare lenker til og viser videoen på archive.org, uten å kopiere eller endre den.
+  Lisensteksten utledes fra URL-en (`CC BY 4.0`, `CC BY-NC-ND 3.0`, `CC0`, `Public Domain`); kuratert
+  samling uten URL gir `Public Domain`. Søket mot Scrape API er bredere enn regelen (det tar også med
+  `classic_tv`) og regelen brukes på hvert treff, så feil i søkespørringen aldri gir ulovlige titler.
+- **Kobling Archive -> IMDb.** 1) `urn:imdb:ttNNNNNNN` i `external-identifier`, hvis id-en finnes i
+  `titles`. 2) Ellers normalisert tittel (Unicode NFKD uten aksenter, små bokstaver, tegnsetting til
+  mellomrom, ledende «the»/«a» fjernet) mot primær- og originaltittel for `movie`-titler, med år ±1
+  (Archive og IMDb er sjelden enige), og bare ved nøyaktig ett treff. Tvetydige treff hoppes over: feil
+  film på feil side er verre enn ingen film. Flere Archive-elementer for samme tittel: IMDb-ID-koblingen
+  vinner, ellers det første (deterministisk). Filmer indekseres i minnet ved importstart (normaliseringen
+  skjer i JS), IMDb-id-er slås opp i én spørring per Scrape-side.
+- **Filvalg.** Nettleserne spiller MP4 (H.264) overalt, så rekkefølgen er `.mp4` (formatene h.264 /
+  h.264 IA først, så 512Kb MPEG4, så MPEG4-originaler, så andre), deretter `.webm`, deretter `.ogv`.
+  Innen samme klasse velges den minste filen (bærekraft: ikke send en 4 GB-original til en
+  strømmer). Filer i undermapper hoppes over. Varighet leses fra `length` (sekunder eller tt:mm:ss) på
+  valgt fil, ellers fra en annen fil i elementet. `.vtt` med samme grunnnavn som videoen foretrekkes.
+- **Importens oppførsel mot Archive.** Fire samtidige arbeidere, men felles taktgiver (150 ms mellom
+  kallstart), 20 s tidsgrense per kall, ett nytt forsøk ved 5xx/429/timeout/nettverksfeil (ikke ved 404),
+  upsert per tittel, og `--limit`/`ARCHIVE_LIMIT` som stopper innsamlingen etter N koblede titler. Et
+  element som feiler teller som `feilet` uten å stoppe resten; skriptet avslutter da med kode 1.
+- **Falsk Archive (`scripts/archive-mock.ts`) serverer WebM.** Testvideoen er `.webm`, så de spillbare
+  filene i mocken heter `.webm` (ellers ville `Content-Type: video/mp4` løyet om bytene). Filvalg
+  mellom mp4/webm/ogv dekkes av enhetstester på `chooseFiles`.
+
+## M6 – Spiller og «Se gratis nå» (frontend)
+
+- **Egen spiller på native `<video>`, ingen bibliotek.** Innebygde kontroller varierer i tastaturstøtte og kan ikke få norske navn. Spilleren (`VideoPlayer.tsx`, ca. 4 kB gzip inkl. side) er lazy-lastet sammen med `/watch/:id`.
+- **Kontroller over bildet på bred skjerm, under bildet under 40 rem.** Overlegg ville dekket det meste av en 320 px bred video. Kontrollene skjules etter 3 s uten bevegelse bare mens den spiller og aldri ved tastaturfokus (`:has(:focus-visible)`).
+- **Snarveier gjelder når fokus er inne i spilleren** (wrapper med `tabIndex=-1`, ikke globale). Knapper eier mellomrom, sliders eier piltastene, så ingenting utløses to ganger.
+- **CORS-fallback for undertekster.** `<track>` krever `crossorigin` på videoen. Feiler videoen med det, prøver vi én gang uten undertekster i stedet for å miste filmen.
+- **`stream { url }` i lister, full `stream` bare på detalj/spiller.** Nok til «Se nå»-merket uten ekstra bytes. `Title.stream` har `merge: true` i Apollo-cachen så de to feltmengdene flettes.
+- **Volum og demping huskes i `localStorage`** (`filmsok:player`); ødelagt verdi gir standard.
+- **Tilbake-lenken på spillersiden går alltid til `/title/:id`** (deterministisk, også ved direkte åpning).
+- **Mobil skjuler volumslideren** (maskinvareknapper); demp-knappen finnes.
