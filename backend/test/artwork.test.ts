@@ -68,7 +68,8 @@ describe('snapWidth', () => {
     expect(snapWidth(421, p)).toBe(500);
     expect(snapWidth(99999, p)).toBe(780);
     expect(snapWidth(1, p)).toBe(92);
-    expect(snapWidth(1000, [300, 780, 1280])).toBe(1280);
+    expect(snapWidth(1000, [300, 780, 1280])).toBe(780); // 220 fra 780, 280 fra 1280
+    expect(snapWidth(1030, [300, 780, 1280])).toBe(1280); // likt avstand (250): den største
   });
   it('avviser ≤ 0 og ikke-heltall', () => {
     expect(() => snapWidth(0, [1])).toThrow();
