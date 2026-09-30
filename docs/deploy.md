@@ -3,6 +3,9 @@
 Stegene under kjøres av Nicolay på VM-en (krever NTNU-VPN og `sudo`). Agentene har ikke kjørt dem.
 Ferdige filer ligger i `deploy/`.
 
+**Raskeste vei:** `bash deploy/setup-vm.sh` fra en klon av repoet på VM-en gjør alle stegene under
+automatisk (genererer også databasepassord i `.env`). Stegene under er det samme, gjort for hånd.
+
 ## 1. PostgreSQL
 
 ```bash
