@@ -186,16 +186,16 @@ Appen kjører på `it2810-17.idi.ntnu.no`:
 - Apache serverer frontend fra `/project2/` og proxyer `/project2/graphql` til backenden.
 - Backenden kjører på port 3001 som systemd-tjenesten `project2-backend`.
 
-Oppdatering etter nye endringer:
+Oppdatering etter nye endringer er én linje fra PowerShell eller en terminal:
 
 ```bash
-ssh <brukernavn>@it2810-17.idi.ntnu.no
-cd ~/T17-Project2 && git pull && bash deploy/setup-vm.sh
+ssh -t <brukernavn>@it2810-17.idi.ntnu.no bash T17-Project2/deploy/oppdater.sh
 ```
 
-Skriptet installerer det som mangler, bygger, migrerer, importerer data og publiserer. Første
-gang spør det etter TMDB-nøkkelen, som lagres bare i `.env` på VM-en. `bash deploy/sjekk.sh`
-feilsøker hele kjeden. Mer i [`docs/deploy.md`](docs/deploy.md).
+`oppdater.sh` henter siste kode og kjører `setup-vm.sh`. Det skriptet installerer det som
+mangler, bygger, migrerer, importerer data, henter plakater og publiserer. Første gang gis
+TMDB-nøkkelen som argument (`oppdater.sh <nøkkel>`) og lagres bare i `.env` på VM-en.
+`bash deploy/sjekk.sh` feilsøker hele kjeden. Mer i [`docs/deploy.md`](docs/deploy.md).
 
 ## Bruk av KI
 
