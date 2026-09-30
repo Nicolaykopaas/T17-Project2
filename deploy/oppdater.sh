@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Én kommando for å oppdatere VM-en, laget for å kunne kjøres rett fra PowerShell:
-#   ssh -t <bruker>@it2810-17.idi.ntnu.no "git -C T17-Project2 pull; bash T17-Project2/deploy/oppdater.sh [TMDB-nøkkel]"
+#   ssh -t <bruker>@it2810-17.idi.ntnu.no bash T17-Project2/deploy/oppdater.sh [TMDB-nøkkel]
+# Linja har bevisst ingen anførselstegn: PowerShell på Windows ødela dem ved innliming.
 # Uten nøkkel beholdes den som allerede er lagret.
 set -euo pipefail
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -23,4 +24,7 @@ if [ -n "$KEY" ]; then
 fi
 
 cd "$REPO_DIR"
+# Hent siste versjon selv, så brukeren slipper en egen git pull. setup-vm.sh leses først etter
+# pull, så endringer i den tas med i samme kjøring.
+git pull --ff-only
 exec bash deploy/setup-vm.sh
