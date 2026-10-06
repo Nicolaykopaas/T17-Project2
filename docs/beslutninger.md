@@ -232,8 +232,8 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
 '([\\%_])', '\\\1', 'g') || '%'`.
 - **Kompleksitetsgrensen veier lister med `first`.** I tillegg til rotfelt og totalt antall felt har
   `complexityLimit` en vektet kostnad: feltene under `search`, `myList` og `reviews` teller `first`
-  ganger (standard 20/20/10 når `first` utelates, 50 når `first` er en variabel uten
-  standardverdi). 8 x `search(first: 50) { reviews(first: 50) }` er under feltgrensene, men koster
+  ganger (standard 20/20/10 når `first` utelates, 50 når `first` er en variabel, også når den
+  har en lavere standardverdi, siden klienten kan overstyre den i `variables`). 8 x `search(first: 50) { reviews(first: 50) }` er under feltgrensene, men koster
   millioner og avvises. Grensen er 2 500; frontendens største spørring koster ca. 1 100.
   Regelen er memoisert per fragment (også `depthLimit`), siden en kjede av fragmenter som hver
   spres ti ganger i det neste ellers tok minutter CPU under validering.
@@ -255,3 +255,49 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
 - **Forsideradene bruker `ROW_QUERY` uten `totalCount`.** Antallet vises aldri der, og hver `totalCount` er en `count(*)`; forsiden sparer åtte slike. Samme `search`-felt og cache-nøkkel, men siden raden mangler `totalCount` gir «Se alle» cache-miss, og søkespørringen henter første side på nytt, nå med antallet.
 - **Brukervalgt tema: bryter med fast navn «Mørkt tema» og `aria-pressed`.** Ikonet er eneste synlige innhold, så navnet («Mørkt tema») er fast og tilstanden bæres av `aria-pressed`; valget synkroniseres mellom faner via `storage`-eventet. Uten valg følger siden systemet (`prefers-color-scheme`); første klikk setter `data-theme` på `<html>` og lagrer i `localStorage` (`filmsok:theme`, try/catch). Det er ingen «tilbake til system»-tilstand, for å holde knappen enkel. `public/theme-init.js` lastes synkront i `<head>` (uten `defer`/`module`) og setter `data-theme` før første maling (ingen blink). De lyse fargene står to ganger i `global.css` (systemvalg og eksplisitt valg); `theme.test.ts` feiler hvis blokkene blir ulike.
 - **CSP:** temaskriptet ligger i en egen fil og ingen inline-skript trengs, så `script-src 'self'` holder (ingen hash å vedlikeholde). En test sjekker at skriptet bruker samme `localStorage`-nøkkel som `THEME_KEY`.
+
+## Sluttgjennomgang av backend
+
+- **Tokengrense (1 000) og kroppsgrense (64 kB) mot CPU-DoS i validering.** graphql-js sin regel
+  `OverlappingFieldsCanBeMerged` er kvadratisk i antall felt, og `complexityLimit` stopper ikke de
+  andre reglene: `{ genres genres … }` med 8 000 felt (55 kB) blokkerte event-loopen i ca. 5 s. En
+  `onParse`-plugin parser derfor med `maxTokens`, så dokumentet avvises før validering. Frontendens
+  største operasjon har 128 tokens (GraphiQLs introspeksjonsspørring ca. 180), så grensen har åtte
+  ganger slingringsmonn; en test krever minst fire ganger. Yogas `maxRequestBodySize` er satt til
+  64 kB (standard er 25 MB).
+- **Variabel `first` regnes alltid som 50 i kostnadsgrensen.** Standardverdien (`$n: Int = 1`) kan
+  overstyres i `variables`, så å bruke den lot en angriper be om 50 per side og betale for 1.
+- **`facets` har en fast tilleggskostnad på 500.** Hver `facets` kjører fire aggregeringer over
+  hele tabellen; åtte aliasede ga 32 parallelle helskanninger mot en pool på 10. Med grensen 2 500
+  rommer en operasjon fire, og frontend sender én. Vi la ikke til en minnecache for fasetter uten
+  søk (60 s TTL): kostnadsgrensen fjerner angrepsflaten, og en cache ville gitt gammel telling rett
+  etter import uten at noen målt gevinst krever det.
+- **Migreringer og importer kjører uten API-ets `statement_timeout`.** Poolens 15 s-grense er et
+  vern mot løpske spørringer fra API-et. `ALTER TABLE … ADD COLUMN … STORED` (migrering 004) tar
+  10–20 s eller mer på VM-en med ca. 190 000 titler, og en avbrutt migrering ruller tilbake og kan
+  aldri bli ferdig. `migrate()` setter `statement_timeout = 0` og `lock_timeout = '30s'` på sin
+  klient og nullstiller begge etterpå (tilkoblingen går tilbake til poolen). `import-imdb` bruker en
+  pool med 10 minutters grense, siden en batch på 2 000 rader oppdaterer tre GIN-indekser.
+  `import-archive` og `db:artwork` gjør bare små upserts og ett enkelt utvalg, og beholder
+  standardgrensen.
+- **TMDB-oppslagskøen er begrenset til 200 ventende.** Scraping av søk og detaljsider kunne fylle
+  den delte, FIFO-baserte køen med titusenvis av ventende oppslag og sulte vanlige brukere.
+  Oppslag utover grensen avvises (`busy`) uten TMDB-kall, uten lagring og uten negativ cache, så
+  bildet hentes som vanlig neste gang det er plass. Plakater er valgfrie, så avvisning gir `null`.
+- **Cursor med umulig dato gir `BAD_USER_INPUT`.** Mønsteret slapp gjennom `2026-13-45 00:00:00`,
+  som Postgres avviser (22008) og dermed ga maskert 500. Komponentene valideres mot kalender i JS.
+  Vi bruker ikke `Date.parse` på strengen, siden Postgres' tidsstempelformat (`+00`, mikrosekunder)
+  ikke er ISO 8601 og ikke-ISO-parsing varierer mellom JS-motorer.
+- **IMDb-importen skriver bare endrede rader.** `ON CONFLICT DO UPDATE … WHERE (kolonner) IS DISTINCT
+FROM (EXCLUDED.kolonner)` hindrer at hver omkjøring lager en ny radversjon per tittel (bloat), regner
+  ut de genererte kolonnene på nytt og oppdaterer GIN-indeksene. `title_genres` bygges bare på nytt
+  for rader som ble satt inn eller endret (`RETURNING id`). **Titler som faller under `minVotes` ved en
+  senere import slettes ikke**: importen er bare upsert, og sletting ville også fjernet brukernes
+  anmeldelser og lister (fremmednøkler med `ON DELETE CASCADE`). Vil man rydde, må det gjøres bevisst.
+- **Keep-alive 65 s på Node-serveren.** Node lukker ledige forbindelser etter 5 s, mens Apache
+  gjenbruker dem lenger, noe som ga sporadiske 502. `headersTimeout` er satt litt høyere (66 s).
+- **`setup-vm.sh` starter backend rett etter migreringen.** Tidligere var siden nede under hele
+  importen, plakathentingen og Archive-skanningen (minutter). Importene er upsert-trygge og kan
+  kjøre mens backend svarer. Tjenesten kjører som `project2`, så `.env` får gruppen `project2` og
+  modus 640 i stedet for at hele katalogen skifter eier (importene kjører som deploy-brukeren og
+  skriver til `data/`). Apache lastes på nytt til slutt.
