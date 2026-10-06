@@ -1,9 +1,9 @@
 import { badInput } from './errors.js';
 
 export const MAX_FIRST = 50;
-export const MAX_QUERY_LENGTH = 200;
-export const MAX_AUTHOR_LENGTH = 50;
-export const MAX_REVIEW_TEXT_LENGTH = 2000;
+const MAX_QUERY_LENGTH = 200;
+const MAX_AUTHOR_LENGTH = 50;
+const MAX_REVIEW_TEXT_LENGTH = 2000;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

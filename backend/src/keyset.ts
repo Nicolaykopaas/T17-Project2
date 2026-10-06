@@ -4,7 +4,7 @@ import { badInput } from './errors.js';
  * Keyset-paginering (cursor) på en sammensatt sorteringsnøkkel. OFFSET ville blitt tregere jo
  * lenger ned brukeren scroller og gir duplikater/hull når data endres mellom sidene.
  *
- * Alle nøkler sorteres i SAMMEN retning, slik at vi kan bruke radsammenligning
+ * Alle nøkler sorteres i SAMME retning, slik at vi kan bruke radsammenligning
  * `(a, b, id) < ($1, $2, $3)`. Det lar Postgres bruke en vanlig btree-indeks på (a, b, id)
  * i stedet for en OR-kjede, og siste nøkkel er alltid unik slik at rekkefølgen er total.
  */

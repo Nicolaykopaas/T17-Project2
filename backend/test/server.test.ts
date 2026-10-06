@@ -1,5 +1,11 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { buildSchema, parse, specifiedRules, validate } from 'graphql';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createApp } from '../src/app.js';
+import { createApp, MAX_COST, MAX_FIELDS, MAX_QUERY_DEPTH, MAX_ROOT_FIELDS } from '../src/app.js';
+import { complexityLimit } from '../src/complexityLimit.js';
+import { depthLimit } from '../src/depthLimit.js';
+import { typeDefs } from '../src/typeDefs.js';
 import { config } from '../src/config.js';
 import { createPool, type Pool } from '../src/db.js';
 import { resetData } from './fixtures.js';
@@ -106,29 +112,54 @@ describe('servergrenser', () => {
         errors?: { message: string; extensions?: { code?: string } }[];
       }>;
 
-    // Kopier av frontendens største spørringer (frontend/src/graphql/operations.ts). Hvis disse
-    // begynner å feile, har grensene blitt for stramme for den faktiske klienten.
-    const SUMMARY = `id primaryTitle type startYear genres averageRating numVotes
-      poster185: posterUrl(width: 185) poster342: posterUrl(width: 342) stream { url }`;
-    const HERO = `overview backdrop780: backdropUrl(width: 780) backdrop1280: backdropUrl(width: 1280)`;
-    // Frontenden sender `first` som variabel, som kostnadsberegningen regner som 50.
-    const FEATURED = `query Featured($first: Int) { search(first: $first) { pageInfo { hasNextPage endCursor }
-      edges { cursor node { ${SUMMARY} ${HERO} inMyList } } } }`;
-    // Forsideradene (ROW_QUERY) ber ikke om totalCount.
-    const ROW = `query Row($first: Int) { search(first: $first) { pageInfo { hasNextPage endCursor }
-      edges { cursor node { ${SUMMARY} } } } }`;
-    const SEARCH = `query Search($first: Int) { search(first: $first) { totalCount pageInfo { hasNextPage endCursor }
-      edges { cursor node { ${SUMMARY} } } } }`;
-    const TITLE = `query { title(id: "tt0000001") { ${SUMMARY} ${HERO}
-      poster500: posterUrl(width: 500) originalTitle endYear runtimeMinutes userRating reviewCount
-      inMyList stream { url archiveUrl license licenseUrl durationSeconds subtitlesUrl }
-      reviews(first: 10) { totalCount pageInfo { hasNextPage endCursor }
-        edges { cursor node { id titleId author rating text createdAt isMine } } } } }`;
+    // Vaktbikkje: alle frontendens operasjoner må være gyldige mot skjemaet OG innenfor grensene. Vi
+    // leser operations.ts som tekst i stedet for å importere den: backendens tsconfig har
+    // rootDir = backend, og importen ville dratt inn Apollo Client og frontendens typer. De to
+    // delte tekstfragmentene (`${...}`) er enkle konstanter, så de kan limes inn direkte. Reglene
+    // og grensene er de samme som createApp bruker (app.ts), så testen ikke kan drive fra appen.
+    // Begynner den å feile, er enten skjemaet endret uten at klienten fulgte med, eller grensene
+    // har blitt for stramme for den faktiske klienten.
+    // buildSchema fra samme graphql-instans som validate: Yogas ferdige schema kommer fra en annen
+    // modulinstans i Vitest og avvises. Validering trenger ingen resolvere.
+    const schema = buildSchema(typeDefs);
+    const operationsSource = readFileSync(
+      fileURLToPath(new URL('../../frontend/src/graphql/operations.ts', import.meta.url)),
+      'utf8',
+    );
+    const fragments = new Map(
+      [...operationsSource.matchAll(/^const (\w+) = `([^`]*)`;/gm)].map((m) => [m[1]!, m[2]!]),
+    );
+    const documents = [
+      ...operationsSource.matchAll(/^export const (\w+)\b[^=]*= gql`([^`]*)`;/gm),
+    ].map((m) => ({
+      name: m[1]!,
+      source: m[2]!.replace(/\$\{(\w+)\}/g, (all, key: string) => fragments.get(key) ?? all),
+    }));
 
-    it('slipper gjennom frontendens største spørringer', async () => {
-      for (const q of [FEATURED, ROW, SEARCH, TITLE]) {
-        const res = await run(q);
-        expect(res.errors, q.slice(0, 40)).toBeUndefined();
+    it('finner alle frontendens operasjoner', () => {
+      // Hver `gql`-mal i fila må bli funnet. Et fast minimum ville latt en ny operasjon i et format
+      // regexen ikke kjenner, gli forbi uten å bli validert. Alle operasjoner skal ligge i
+      // operations.ts.
+      expect(documents.length).toBeGreaterThan(0);
+      expect(documents.length).toBe([...operationsSource.matchAll(/gql`/g)].length);
+      for (const d of documents) expect(d.source, d.name).not.toContain('${');
+    });
+
+    it('slipper gjennom frontendens operasjoner', () => {
+      for (const { name, source } of documents) {
+        const errors = validate(schema, parse(source), [
+          ...specifiedRules,
+          depthLimit(MAX_QUERY_DEPTH),
+          complexityLimit({
+            maxRootFields: MAX_ROOT_FIELDS,
+            maxFields: MAX_FIELDS,
+            maxCost: MAX_COST,
+          }),
+        ]);
+        expect(
+          errors.map((e) => e.message),
+          name,
+        ).toEqual([]);
       }
     });
 

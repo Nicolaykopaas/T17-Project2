@@ -6,7 +6,7 @@ import { clientIp, MutationLimiter } from './rateLimit.js';
 import { createStreamLoader, type StreamLoader } from './stream.js';
 import { parseUserId } from './validation.js';
 
-export interface ReviewStats {
+interface ReviewStats {
   count: number;
   average: number | null;
 }

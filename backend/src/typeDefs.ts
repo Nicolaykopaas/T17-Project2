@@ -6,7 +6,7 @@ export const typeDefs = /* GraphQL */ `
   }
 
   enum SortField {
-    RELEVANCE # likhet med søketeksten; uten søketekst: flest stemmer først
+    RELEVANCE # vektet word_similarity/similarity på tittel + popularitet; 1–2 tegn og uten søketekst: popularitet
     RATING
     YEAR
     TITLE

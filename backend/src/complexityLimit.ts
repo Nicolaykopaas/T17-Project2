@@ -23,7 +23,7 @@ export interface ComplexityLimits {
  * hardkodet i stedet for å slås opp i skjemaet for å holde regelen enkel; nye forbindelser må
  * legges til her.
  */
-export const LIST_FIELDS: Record<string, number> = { search: 20, myList: 20, reviews: 10 };
+const LIST_FIELDS: Record<string, number> = { search: 20, myList: 20, reviews: 10 };
 /** Tak for `first` (samme som MAX_FIRST i validation.ts), brukt når `first` er en variabel. */
 const MAX_FIRST_ASSUMED = 50;
 
