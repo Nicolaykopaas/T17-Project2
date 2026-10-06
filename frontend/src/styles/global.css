@@ -1406,7 +1406,7 @@ fieldset {
   border-radius: 0;
 }
 
-/* === Kategorinavigasjon på forsiden (#14) – samlet her for enkel merge === */
+/* === Kategorinavigasjon på forsiden (#14) === */
 .catnav {
   padding-top: 0.75rem;
 }
@@ -1415,10 +1415,13 @@ fieldset {
   gap: 0.5rem;
   list-style: none;
   margin: 0;
-  padding: 0.25rem 0.25rem 0.5rem;
+  /* Rom nok til fokusringen (3px + 2px offset), ellers klippes den av overflow. */
+  padding: 0.375rem;
   /* Smal skjerm: én rad som scroller sidelengs inni navigasjonen, så siden selv aldri får sidescroll. */
   overflow-x: auto;
   overscroll-behavior-x: contain;
+  /* Samme rom som paddingen, slik at en fokusert chip ikke ender helt i kanten med klippet ring. */
+  scroll-padding-inline: 0.375rem;
 }
 .catnav__list li {
   flex: none;
@@ -1448,7 +1451,7 @@ fieldset {
 .row-anchor {
   scroll-margin-top: calc(var(--header-h) + 0.5rem);
 }
-.row-anchor h2:focus-visible {
-  outline-offset: 4px;
+.row-anchor:focus-visible {
+  outline-offset: -3px;
 }
 /* === Slutt: kategorinavigasjon === */

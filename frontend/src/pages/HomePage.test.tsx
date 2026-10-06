@@ -221,6 +221,24 @@ describe('HomePage: filtre', () => {
     ).not.toBeChecked();
   });
 
+  it('avkrysningsboksen er avkrysset umiddelbart etter klikk, uten å vente på routeren', async () => {
+    // Regresjon: uten flushSync tilbakestilte React den kontrollerte boksen til forrige verdi til
+    // router-transitionen var ferdig, og den hoppet synlig tilbake.
+    setup();
+    const box = await screen.findByRole('checkbox', {
+      name: /^Kun filmer som kan strømmes gratis/,
+    });
+    // Rå DOM-klikk utenfor act(): Testing Librarys hjelpere ville ellers flushet transitionen og
+    // skjult feilen.
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = false;
+    try {
+      box.click();
+      expect(box).toBeChecked();
+    } finally {
+      (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    }
+  });
+
   it('leser available=1 fra URL, og «Nullstill alle» fjerner den', async () => {
     const { user, log } = setup('/?q=alien&available=1');
     expect(
@@ -386,6 +404,28 @@ describe('HomePage: bla-modus', () => {
     );
   });
 
+  it('hopp til en tom rad gir fokus på raden, ikke på body', async () => {
+    const io = stubIntersectionObserver();
+    const { user } = setup('/', (vars) => ({
+      search: makeConnection(
+        (vars.filters as { availableOnly?: boolean })?.availableOnly ? [] : titles,
+      ),
+    }));
+    await screen.findByRole('region', { name: 'Med bilde' });
+    const nav = screen.getByRole('navigation', { name: 'Kategorier' });
+    await user.click(within(nav).getByRole('link', { name: 'Se gratis nå' }));
+    const row = screen.getByRole('group', { name: 'Se gratis nå' });
+    expect(row).toHaveFocus();
+
+    // Raden laster og viser seg tom; overskriften forsvinner, men fokus blir på raden.
+    io.reveal(document.getElementById('rad-free')!);
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { name: 'Se gratis nå' })).not.toBeInTheDocument(),
+    );
+    expect(row).toHaveFocus();
+    expect(document.body).not.toHaveFocus();
+  });
+
   it('viser «Se filmen» i hero når hero-tittelen har stream', async () => {
     stubIntersectionObserver();
     const log = emptyLog();
@@ -456,7 +496,7 @@ describe('HomePage: bla-modus', () => {
     expect(nav.compareDocumentPosition(firstRow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('flytter fokus til radens overskrift ved klikk og Enter, uten å endre URL', async () => {
+  it('flytter fokus til raden ved klikk og Enter, uten å endre URL', async () => {
     stubIntersectionObserver();
     const { user } = setup('/');
     await screen.findByRole('region', { name: 'Med bilde' });
@@ -464,13 +504,13 @@ describe('HomePage: bla-modus', () => {
     const before = currentUrl().href;
 
     await user.click(within(nav).getByRole('link', { name: 'Drama' }));
-    const drama = screen.getByRole('heading', { name: 'Drama' });
+    const drama = screen.getByRole('group', { name: 'Drama' });
     expect(drama).toHaveFocus();
     expect(drama).toHaveAttribute('tabindex', '-1');
 
     within(nav).getByRole('link', { name: 'Komedie' }).focus();
     await user.keyboard('{Enter}');
-    expect(screen.getByRole('heading', { name: 'Komedie' })).toHaveFocus();
+    expect(screen.getByRole('group', { name: 'Komedie' })).toHaveFocus();
     expect(currentUrl().href).toBe(before);
   });
 

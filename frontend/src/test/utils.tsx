@@ -3,7 +3,10 @@ import type { ReactElement } from 'react';
 import { MockedProvider } from '@apollo/client/testing/react';
 import type { MockLink } from '@apollo/client/testing';
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter, useLocation } from 'react-router';
+import { createMemoryRouter, useLocation } from 'react-router';
+// /dom-varianten kobler på ReactDOM.flushSync, slik som i main.tsx; uten den ville testene ikke
+// fange at URL-endringer må committes synkront.
+import { RouterProvider } from 'react-router/dom';
 import { createCache } from '../apollo/cache';
 import {
   ADD_REVIEW_MUTATION,
@@ -91,12 +94,23 @@ export function renderApp(
   ui: ReactElement,
   { mocks = [], route = '/' }: { mocks?: MockLink.MockedResponse[]; route?: string } = {},
 ) {
+  const router = createMemoryRouter(
+    [
+      {
+        path: '*',
+        element: (
+          <>
+            {ui}
+            <LocationProbe />
+          </>
+        ),
+      },
+    ],
+    { initialEntries: [route] },
+  );
   return render(
     <MockedProvider mocks={mocks} cache={createCache()}>
-      <MemoryRouter initialEntries={[route]}>
-        {ui}
-        <LocationProbe />
-      </MemoryRouter>
+      <RouterProvider router={router} />
     </MockedProvider>,
   );
 }
