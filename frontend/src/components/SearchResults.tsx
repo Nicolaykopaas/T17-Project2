@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { useQuery } from '@apollo/client/react';
+import { useApiUnavailable } from '../apollo/apiStatus';
 import { SEARCH_QUERY } from '../graphql/operations';
 import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
 import { formatNumber } from '../lib/format';
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export function SearchResults({ state, onReset }: Props) {
+  const apiDown = useApiUnavailable();
   const { data, previousData, loading, error, fetchMore, refetch } = useQuery(SEARCH_QUERY, {
     variables: {
       query: state.q || null,
@@ -52,6 +54,8 @@ export function SearchResults({ state, onReset }: Props) {
   useInfiniteScroll(sentinel, () => void loadMore(), hasNext && !moreFailed, endCursor);
 
   if (error && !result) {
+    // Ved nedetid sier banneret i Layout allerede fra; ikke ny alert og ikke ny «Prøv igjen».
+    if (apiDown) return <p className="muted">Søket er ikke tilgjengelig akkurat nå.</p>;
     return (
       <ErrorMessage
         message="Kunne ikke hente titler. Sjekk nettverket og prøv igjen."
@@ -106,7 +110,7 @@ export function SearchResults({ state, onReset }: Props) {
               Viser {formatNumber(result.edges.length)} av {formatNumber(total)}
             </p>
             {moreFailed && (
-              <p className="error-text" role="alert">
+              <p className="error-text" role={apiDown ? undefined : 'alert'}>
                 Kunne ikke laste flere.
               </p>
             )}

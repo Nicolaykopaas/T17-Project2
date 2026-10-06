@@ -1,6 +1,9 @@
 import { ApolloClient, HttpLink } from '@apollo/client';
 import { ApolloLink } from '@apollo/client';
 import { SetContextLink } from '@apollo/client/link/context';
+import { tap } from 'rxjs';
+import { ErrorLink } from '@apollo/client/link/error';
+import { apiUnavailable, isNetworkDown } from './apiStatus';
 import { createCache } from './cache';
 import { getUserId } from './userId';
 
@@ -11,9 +14,24 @@ const userIdLink = new SetContextLink((prev) => ({
   headers: { ...prev.headers, 'x-user-id': getUserId() },
 }));
 
+// Setter tilstanden ved nettverksfeil og nullstiller ved første svar fra serveren (også et
+// GraphQL-feilsvar: da svarte den). I linkkjeden slik at alle queries og mutations dekkes.
+const apiStatusLink = ApolloLink.from([
+  new ErrorLink(({ error }) => {
+    if (isNetworkDown(error)) apiUnavailable(true);
+  }),
+  new ApolloLink((operation, forward) =>
+    forward(operation).pipe(
+      tap(() => {
+        if (apiUnavailable()) apiUnavailable(false);
+      }),
+    ),
+  ),
+]);
+
 export function createClient() {
   return new ApolloClient({
     cache: createCache(),
-    link: ApolloLink.from([userIdLink, new HttpLink({ uri })]),
+    link: ApolloLink.from([userIdLink, apiStatusLink, new HttpLink({ uri })]),
   });
 }

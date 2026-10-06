@@ -16,6 +16,10 @@ curl -sS -m 10 -X POST http://127.0.0.1:3001/graphql -H 'content-type: applicati
 line "2. Via Apache (/project2/graphql)"
 curl -sS -m 10 -i -X POST http://localhost/project2/graphql -H 'content-type: application/json' -d "$Q" | head -n 20
 
+line "2b. Helsesjekk (backend direkte og via Apache)"
+curl -sS -m 5 -w '  (HTTP %{http_code})\n' http://127.0.0.1:3001/health
+curl -sS -m 5 -w '  (HTTP %{http_code})\n' http://localhost/project2/health
+
 line "7. Samme spørringer som forsiden sender (via Apache)"
 UID_HDR='x-user-id: 00000000-0000-4000-8000-000000000000'
 curl -sS -m 20 -w '\n(HTTP %{http_code}, %{time_total}s)\n' -X POST http://localhost/project2/graphql \
