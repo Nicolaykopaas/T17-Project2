@@ -14,6 +14,7 @@ import {
   FEATURED_QUERY,
   GENRES_QUERY,
   MY_LIST_QUERY,
+  ROW_QUERY,
   SEARCH_QUERY,
   TITLE_QUERY,
   TOGGLE_LIST_MUTATION,
@@ -33,6 +34,7 @@ type Handler = (vars: Vars) => unknown;
 
 const OPERATIONS = {
   Search: SEARCH_QUERY,
+  Row: ROW_QUERY,
   Featured: FEATURED_QUERY,
   Facets: FACETS_QUERY,
   Genres: GENRES_QUERY,
@@ -50,6 +52,7 @@ export type CallLog = Record<OperationName, Vars[]>;
 export function emptyLog(): CallLog {
   return {
     Search: [],
+    Row: [],
     Featured: [],
     Facets: [],
     Genres: [],

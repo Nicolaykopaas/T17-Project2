@@ -124,8 +124,15 @@ export interface SearchVars {
   after?: string | null;
 }
 
+/** Forsideradene ber ikke om `totalCount` (se ROW_QUERY). */
+type WithoutCount<T> = Omit<Connection<T>, 'totalCount'>;
+
+export interface RowData {
+  search: WithoutCount<TitleSummary>;
+}
+
 export interface FeaturedData {
-  search: Connection<FeaturedTitle>;
+  search: WithoutCount<FeaturedTitle>;
 }
 
 export interface FacetsData {
