@@ -92,6 +92,45 @@ test('min liste: legg til fra detaljsiden og fjern igjen', async ({ page }) => {
   await expect(page.getByRole('link', { name: 'The Dark Knight' })).toHaveCount(0);
 });
 
+test('anmeldelser: skriv, slett med bekreftelse, og snitt og antall oppdateres', async ({
+  page,
+}) => {
+  await page.goto('./title/tt0111161');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('The Shawshank Redemption');
+  const average = page.locator('.average');
+  await expect(average).toContainText('Ingen brukeranmeldelser ennå.');
+
+  const text = `Slettes straks ${Date.now()}`;
+  await page.getByLabel('Navn').fill('Slette-tester');
+  await page.getByRole('radio', { name: '5 stjerner' }).check();
+  await page.getByRole('textbox', { name: /^Anmeldelse/ }).fill(text);
+  await page.getByRole('button', { name: 'Send anmeldelse' }).click();
+  await expect(page.getByText(text)).toBeVisible();
+  await expect(average).toContainText('5,0');
+  await expect(average).toContainText('1 anmeldelse');
+
+  // Avbryt sletter ikke.
+  const review = page.getByRole('article').filter({ hasText: text });
+  await review.getByRole('button', { name: /^Slett/ }).click();
+  await review.getByRole('button', { name: 'Avbryt' }).click();
+  await expect(page.getByText(text)).toBeVisible();
+
+  // Bekreftet sletting fjerner den, kunngjør det og flytter fokus til overskriften.
+  await review.getByRole('button', { name: /^Slett/ }).click();
+  await page.getByRole('button', { name: 'Bekreft sletting' }).click();
+  await expect(page.getByText(text)).toHaveCount(0);
+  await expect(page.getByRole('status').filter({ hasText: 'Anmeldelsen er slettet.' })).toHaveCount(
+    1,
+  );
+  await expect(page.getByRole('heading', { level: 2, name: 'Anmeldelser' })).toBeFocused();
+  await expect(average).toContainText('Ingen brukeranmeldelser ennå.');
+
+  // Borte også etter omlasting (slettet i databasen, ikke bare i cachen).
+  await page.reload();
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  await expect(page.getByText(text)).toHaveCount(0);
+});
+
 test('ingen treff og direkte lenke til ukjent side', async ({ page }) => {
   await page.goto('./?q=' + encodeURIComponent('zzqx%_\'"finnesikke'));
   await expect(page.locator('.count[role="status"]')).toHaveText(/^0 treff|Ingen treff/);
