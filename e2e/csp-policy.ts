@@ -12,6 +12,13 @@ const found = /Header always set Content-Security-Policy "([^"]+)"/.exec(conf)?.
 if (!found) throw new Error('Fant ikke Content-Security-Policy i deploy/apache-project2.conf');
 export const productionPolicy: string = found;
 
+// Mock-byttet under skjuler om en vert fjernes fra produksjonspolicyen, så vakt dem eksplisitt.
+for (const origin of ['https://image.tmdb.org', 'https://archive.org', 'https://*.archive.org']) {
+  if (!productionPolicy.includes(origin)) {
+    throw new Error(`Content-Security-Policy i deploy/apache-project2.conf mangler ${origin}`);
+  }
+}
+
 /**
  * Samme policy, men med de eksterne vertene byttet mot mock-serverne (TMDB på 3999, Internet
  * Archive på 3998). Alt annet er uendret, så et nytt opphav appen begynner å bruke gir brudd.

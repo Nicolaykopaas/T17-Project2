@@ -55,26 +55,51 @@ test('forside, detalj og spiller laster uten CSP-brudd', async ({ page }) => {
   await expect
     .poll(() => video.evaluate((v: HTMLVideoElement) => v.readyState), { timeout: 15_000 })
     .toBeGreaterThan(0);
-  await expect(page.locator('track')).toHaveCount(1);
+  // readyState 2 = LOADED: .vtt-filen ble faktisk hentet, ikke bare at elementet finnes.
+  await expect
+    .poll(() => page.locator('track').evaluate((t: HTMLTrackElement) => t.readyState), {
+      timeout: 15_000,
+    })
+    .toBe(2);
 
   expect(violations).toEqual([]);
 });
 
-test('alle inline-skript i det bygde index.html står som hash i script-src', () => {
-  // Inline-skript blokkeres av `script-src 'self'` med mindre innholdet er hash-godkjent. Hashen
-  // avhenger av byte-for-byte-innholdet, så endres skriptet uten at Apache-konfigen oppdateres
-  // brekker appen i produksjon. Testen feiler her i stedet, og med 0 inline-skript er den triviell.
-  const html = readFileSync(
-    path.resolve(import.meta.dirname, '..', 'frontend', 'dist', 'index.html'),
-    'utf8',
-  );
-  const scriptSrc = /(?:^|;\s*)script-src ([^;]+)/.exec(real)?.[1] ?? '';
-  for (const m of html.matchAll(/<script(?![^>]*\ssrc=)([^>]*)>([\s\S]*?)<\/script>/gi)) {
-    const code = m[2] ?? '';
-    const hash = `'sha256-${createHash('sha256').update(code).digest('base64')}'`;
-    expect(
-      scriptSrc,
-      `Inline-skript mangler i script-src i deploy/apache-project2.conf. Legg til ${hash} (erstatt gammel hash). Skript: ${code.slice(0, 80)}`,
-    ).toContain(hash);
-  }
+test.describe('statiske sjekker av dist/index.html', () => {
+  // Uavhengige av nettleser og skjermstørrelse, så de kjøres bare i ett prosjekt.
+  test.skip(({ isMobile }) => isMobile, 'kjøres bare i desktop-prosjektet');
+
+  const html = () =>
+    readFileSync(path.resolve(import.meta.dirname, '..', 'frontend', 'dist', 'index.html'), 'utf8');
+  const directive = (name: string) =>
+    new RegExp(`(?:^|;\\s*)${name} ([^;]+)`).exec(real)?.[1] ?? '';
+
+  test('alle kjørbare inline-skript står som hash i script-src', () => {
+    // Inline-skript blokkeres av `script-src 'self'` med mindre innholdet er hash-godkjent. Hashen
+    // avhenger av byte-for-byte-innholdet, så endres skriptet uten at Apache-konfigen oppdateres
+    // brekker appen i produksjon. Datablokker (f.eks. application/ld+json) kjøres ikke og er unntatt.
+    const scriptSrc = directive('script-src');
+    for (const m of html().matchAll(/<script(?![^>]*\ssrc=)([^>]*)>([\s\S]*?)<\/script>/gi)) {
+      const type = /\stype=["']?([^"'\s>]+)/i.exec(m[1] ?? '')?.[1]?.toLowerCase();
+      if (type && type !== 'module' && type !== 'text/javascript') continue;
+      const code = m[2] ?? '';
+      const hash = `'sha256-${createHash('sha256').update(code).digest('base64')}'`;
+      expect(
+        scriptSrc,
+        `Inline-skript mangler i script-src i deploy/apache-project2.conf. Legg til ${hash} (erstatt gammel hash). Skript: ${code.slice(0, 80)}`,
+      ).toContain(hash);
+    }
+  });
+
+  test('alle inline-stiler (<style>) står som hash i style-src', () => {
+    const styleSrc = directive('style-src');
+    for (const m of html().matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi)) {
+      const css = m[1] ?? '';
+      const hash = `'sha256-${createHash('sha256').update(css).digest('base64')}'`;
+      expect(
+        styleSrc,
+        `Inline <style> mangler i style-src i deploy/apache-project2.conf. Legg til ${hash}. Stil: ${css.slice(0, 80)}`,
+      ).toContain(hash);
+    }
+  });
 });

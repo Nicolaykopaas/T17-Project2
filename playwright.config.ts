@@ -17,8 +17,15 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 1 : 0,
-  // HTML-rapporten lastes opp som CI-artefakt når E2E feiler.
-  reporter: [['list'], ['html', { open: 'never' }]],
+  // Retry gir trace av første feilende forsøk, men en test som bare består på retry skal ikke
+  // skjules: i CI teller den som feil.
+  failOnFlakyTests: !!process.env.CI,
+  // HTML-rapporten og JUnit lastes opp som CI-artefakter; JUnit vises i MR-en.
+  reporter: [
+    ['list'],
+    ['html', { open: 'never' }],
+    ...(process.env.CI ? [['junit', { outputFile: 'test-results/junit.xml' }] as const] : []),
+  ],
   use: {
     baseURL: 'http://localhost:4173/project2/',
     trace: 'retain-on-failure',

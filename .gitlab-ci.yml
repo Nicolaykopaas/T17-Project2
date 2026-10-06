@@ -57,6 +57,8 @@ build:
 # playwright.config.ts), og global-setup.ts migrerer og fyller databasen med syntetiske data.
 e2e:
   stage: e2e
+  # Bygger selv via webServer i playwright.config.ts; dist fra build-jobben trengs ikke.
+  dependencies: []
   image: mcr.microsoft.com/playwright:v1.63.0-noble
   services:
     - name: postgres:16
@@ -69,7 +71,10 @@ e2e:
   script:
     - npm run test:e2e
   artifacts:
-    when: on_failure
+    # always: en flaky test (feiler først, består på retry) gir også trace i test-results/.
+    when: always
+    reports:
+      junit: test-results/junit.xml
     paths:
       - playwright-report/
       - test-results/
