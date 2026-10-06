@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { e2ePolicy, productionPolicy as real } from './csp-policy';
+import { e2ePolicy, productionPolicy as real } from './csp-policy.js';
 
 // Vite preview sender policyen som header (se playwright.config.ts), så hele E2E-suiten kjører
 // under samme CSP som Apache setter i produksjon. Denne filen sjekker i tillegg eksplisitt at

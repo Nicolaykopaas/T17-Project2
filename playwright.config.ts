@@ -1,5 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
-import { e2ePolicy } from './e2e/csp-policy';
+import { e2ePolicy } from './e2e/csp-policy.js';
 
 // E2E-testene kjører mot en egen database slik at anmeldelser og lister de lager ikke
 // blander seg med utviklingsdata. `e2e/global-setup.ts` migrerer og fyller den.

@@ -8,12 +8,9 @@ const conf = readFileSync(
 );
 
 /** Policyen slik den står i Apache-konfigen (produksjon). */
-export const productionPolicy = /Header always set Content-Security-Policy "([^"]+)"/.exec(
-  conf,
-)?.[1];
-if (!productionPolicy) {
-  throw new Error('Fant ikke Content-Security-Policy i deploy/apache-project2.conf');
-}
+const found = /Header always set Content-Security-Policy "([^"]+)"/.exec(conf)?.[1];
+if (!found) throw new Error('Fant ikke Content-Security-Policy i deploy/apache-project2.conf');
+export const productionPolicy: string = found;
 
 /**
  * Samme policy, men med de eksterne vertene byttet mot mock-serverne (TMDB på 3999, Internet
