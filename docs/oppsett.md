@@ -1,6 +1,6 @@
 # Oppsett
 
-Krever Node.js ≥ 20 (testet med 22) og PostgreSQL ≥ 14 med `pg_trgm` (følger med standard
+Krever Node.js ≥ 20 (testet med 22) og PostgreSQL ≥ 14 med `pg_trgm` og `unaccent` (begge følger med standard
 `postgresql-contrib`; i Debian/Ubuntu-pakken `postgresql-contrib`, i Homebrew og offisielle
 Docker-bilder er den med).
 
@@ -20,8 +20,8 @@ sudo -u postgres createdb project2_test
 ```
 
 Bruker du en egen bruker med passord: `sudo -u postgres psql -c "CREATE USER it2810 PASSWORD 'hemmelig' SUPERUSER;"`
-(`SUPERUSER` trengs bare fordi migrasjonen kjører `CREATE EXTENSION pg_trgm`; alternativt kjør
-`CREATE EXTENSION pg_trgm;` selv som superuser i begge databasene og gi vanlig bruker eierskap.)
+(`SUPERUSER` trengs bare fordi migrasjonene kjører `CREATE EXTENSION pg_trgm` og `unaccent`; alternativt kjør
+`CREATE EXTENSION pg_trgm; CREATE EXTENSION unaccent;` selv som superuser i begge databasene og gi vanlig bruker eierskap.)
 
 ## 3. Miljøvariabler
 
@@ -194,7 +194,7 @@ fra scratch og setter inn et lite kontrollert datasett. De nekter å kjøre hvis
 
 ## Feilsøking
 
-- `permission denied to create extension "pg_trgm"`: kjør migrasjonen som superuser, eller kjør
-  `CREATE EXTENSION pg_trgm;` som superuser i databasen først.
+- `permission denied to create extension "pg_trgm"` (eller `"unaccent"`): kjør migrasjonen som superuser, eller kjør
+  `CREATE EXTENSION pg_trgm; CREATE EXTENSION unaccent;` som superuser i databasen først.
 - `Fant ikke datafilene`: gjør steg 5A eller 5B.
 - `password authentication failed`: sett riktig bruker/passord i `DATABASE_URL` / `TEST_DATABASE_URL`.

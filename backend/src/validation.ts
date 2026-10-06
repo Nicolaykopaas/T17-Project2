@@ -123,7 +123,13 @@ export function validateReview(input: ReviewInput): ReviewInput {
   return { titleId: input.titleId, author, rating: input.rating, text };
 }
 
-/** ID-er er tconst («tt0111161»); alt annet kan vi avvise uten databasekall. */
+const TITLE_ID_RE = /^tt\d{7,10}$/;
+
+/**
+ * ID-er er IMDb tconst: «tt» + 7–10 siffer (dagens ID-er har 7–8; 10 gir slingringsmonn når IMDb
+ * går over til flere siffer). Alt annet avvises uten databasekall, og regelen holder også
+ * NUL-byte og vilkårlig lange strenger unna Postgres.
+ */
 export function isPlausibleTitleId(id: string): boolean {
-  return id.length > 0 && id.length <= 30 && !id.includes('\0');
+  return TITLE_ID_RE.test(id);
 }

@@ -75,7 +75,7 @@ export function FilterPanel({ state, onChange }: Props) {
             onChange={() => onChange({ available: !state.available })}
           />
           <span>
-            Kun filmer du kan se
+            Kun filmer som kan strømmes gratis
             <span className="muted">
               {suffix(facetData?.facets.available ?? (facetData ? 0 : undefined))}
             </span>

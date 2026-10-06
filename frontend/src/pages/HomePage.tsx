@@ -1,5 +1,6 @@
 import { useQuery } from '@apollo/client/react';
 import { ActiveFilters } from '../components/ActiveFilters';
+import { CategoryNav } from '../components/CategoryNav';
 import { FilterPanel } from '../components/FilterPanel';
 import { Hero, HeroSkeleton } from '../components/Hero';
 import { LazyRow } from '../components/LazyRow';
@@ -9,7 +10,7 @@ import { TitleRow } from '../components/TitleRow';
 import { FEATURED_QUERY } from '../graphql/operations';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { useSearchState } from '../hooks/useSearchState';
-import { BROWSE_ROWS, rowVariables, seeAllSearch } from '../lib/browseRows';
+import { BROWSE_ROWS, rowAnchorId, rowVariables, seeAllSearch } from '../lib/browseRows';
 import { isBrowseState, type SearchState } from '../lib/searchState';
 
 const [FEATURED_ROW, ...OTHER_ROWS] = BROWSE_ROWS;
@@ -27,15 +28,18 @@ function BrowseView() {
     <>
       <h1 className="sr-only">Søk i filmer og serier</h1>
       {hero ? <Hero title={hero} /> : loading ? <HeroSkeleton /> : null}
+      <CategoryNav rows={BROWSE_ROWS} />
       <div className={hero || loading ? 'rows' : 'rows rows--plain'}>
-        <TitleRow
-          heading={FEATURED_ROW!.heading}
-          seeAllTo={seeAllSearch(FEATURED_ROW!.state)}
-          titles={titles}
-          loading={loading}
-          error={!!error}
-          onRetry={() => void refetch().catch(() => undefined)}
-        />
+        <div id={rowAnchorId(FEATURED_ROW!)} className="row-anchor">
+          <TitleRow
+            heading={FEATURED_ROW!.heading}
+            seeAllTo={seeAllSearch(FEATURED_ROW!.state)}
+            titles={titles}
+            loading={loading}
+            error={!!error}
+            onRetry={() => void refetch().catch(() => undefined)}
+          />
+        </div>
         {OTHER_ROWS.map((row) => (
           <LazyRow key={row.id} row={row} />
         ))}
