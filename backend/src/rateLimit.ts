@@ -17,7 +17,7 @@ export const DEFAULT_RATE_LIMITS: RateLimitOptions = {
   ipFactor: 3,
 };
 
-export type MutationKind = 'review' | 'mutation';
+type MutationKind = 'review' | 'mutation';
 
 interface Bucket {
   tokens: number;
