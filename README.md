@@ -4,7 +4,8 @@ Søk, filtrer, sorter og anmeld over 190 000 filmer og serier fra IMDb, med plak
 lovlige gratisfilmer fra Internet Archive som kan spilles direkte i appen.
 
 **🔗 Kjørende versjon:** <http://it2810-17.idi.ntnu.no/project2/>. Krever NTNU-nett eller VPN.
-Utenfor NTNU-nettet når ikke nettleseren API-et, og appen viser et banner som forklarer dette.
+Får klienten ikke kontakt med API-et (for eksempel når frontend kjøres lokalt uten backend), viser
+appen ett banner som forklarer hvorfor, i stedet for feil i hver rad.
 
 ## Innhold
 
@@ -24,14 +25,16 @@ Utenfor NTNU-nettet når ikke nettleseren API-et, og appen viser et banner som f
 
 ## Arbeidsfordeling
 
-| Navn    | Rolle                                                                |
+| Navn    | Ansvarsområde                                                        |
 | ------- | -------------------------------------------------------------------- |
 | Nicolay | Prosjektleder. Arkitektur, GraphQL-API og React, frontend og backend |
 | Sturla  | Backendansvarlig: database, import og resolvere                      |
 | Brage   | Frontendansvarlig: komponenter, design og tilgjengelighet            |
 | Daniel  | Testansvarlig: enhets-, komponent- og E2E-tester                     |
 
-Den enkeltes bidrag er beskrevet i egen fil i Canvas.
+Mye av koden er skrevet av KI-agenter styrt av gruppa (se [Prosess og bruk av KI](#prosess-og-bruk-av-ki)),
+så git-historikken viser ikke hvem som har vurdert, testet og godkjent hva. Den enkeltes bidrag er
+beskrevet i egen fil i Canvas.
 
 ## Funksjonalitet
 
@@ -115,8 +118,10 @@ Målinger før og etter står i [`docs/ytelse.md`](docs/ytelse.md).
 
 `OFFSET` blir tregere jo lenger ned man scroller, og gir hull eller duplikater hvis data endres.
 Vi bruker radsammenligning på sorteringsnøklene med `id` som siste nøkkel, for eksempel
-`(rating, votes, id) < ($1, $2, $3)`. Det er like raskt på side 1 og side 1000. Cursoren inneholder
-en signatur for sorteringen og avvises hvis den brukes med en annen sortering.
+`(rating, votes, id) < ($1, $2, $3)`. For sorteringene med indeks (rating, år, tittel, popularitet)
+er side 1000 like rask som side 1. Relevanssortering med søketekst må regne likhet for alle treff, men
+det gjelder hver side likt og er ikke avhengig av hvor langt man har scrollet. Cursoren inneholder en
+signatur for sorteringen og avvises hvis den brukes med en annen sortering.
 
 ### Filtrering og fasetter
 
@@ -154,7 +159,32 @@ Klienten henter nøyaktig de feltene hver visning trenger. Listene henter for ek
 - **Anonym bruker-ID** (UUID i `localStorage`) sendes i en header. Vi har valgt bort innlogging for å
   holde prosjektet innenfor rammen, se [Kjente begrensninger](#kjente-begrensninger).
 
-### Komponenter og biblioteker
+### Egne komponenter og hooks
+
+Komponentene er delt etter ansvar, slik at logikk som er vanskelig å få riktig (debounce, fokus,
+lazy-lasting, paginering) ligger ett sted og kan testes isolert:
+
+| Komponent / hook                                    | Ansvar og hvorfor den er skilt ut                                                                                      |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `useSearchState` (+ `lib/searchState.ts`)           | Leser og skriver søk, filtre og sortering i URL-en. Eneste kilde til søketilstand, så alle komponenter er enige        |
+| `SearchBox`, `HeaderSearch`, `useDebouncedCallback` | Søkefelt med 300 ms debounce som hopper over tomme og uendrede søk. Samme logikk i headeren og på søkesiden            |
+| `FilterPanel`, `ActiveFilters`, `SortControls`      | Fasetter med antall treff, aktive filtre som chips og sortering. Endrer bare URL-en; serveren gjør resten              |
+| `SearchResults`, `useInfiniteScroll`                | Resultatliste med uendelig scroll og «Last flere», `aria-live` for antall treff og alle tom-, feil- og lastetilstander |
+| `TitleRow`, `LazyRow`, `useNearViewport`            | Forsiderader som henter data først når de nærmer seg skjermen. Piltaster scroller raden                                |
+| `CategoryNav`                                       | Hopp til kategori på forsiden, med fokus på raden også når den er tom                                                  |
+| `PosterCard`                                        | Plakat med `srcset`. Tittellenken strekkes over hele kortet, så hvert kort er ett tabulatorstopp i stedet for to       |
+| `Layout`                                            | Header, skip-link, fokus til sidens `h1` ved rutebytte, og plassen for API-banneret                                    |
+| `ApiUnavailableBanner` (+ `apollo/apiStatus.ts`)    | Ett globalt banner når API-et ikke kan nås, styrt av en reactive var som Apollo-linken setter                          |
+| `ReviewForm`, `ReviewList`, `DeleteReviewButton`    | Anmeldelser med validering som speiler backenden (tegn telles som kodepunkter) og sletting med bekreftelse på stedet   |
+| `ListToggleButton`                                  | Legg i / fjern fra Min liste, med kunngjøring av utfallet                                                              |
+| `VideoPlayer`                                       | Egen spiller på `<video>` med norske etiketter og tastaturstyring                                                      |
+| `ThemeToggle`, `useTheme`                           | Brukervalgt tema som overstyrer systemet, synkronisert mellom faner                                                    |
+
+GraphQL-typene i frontend (`graphql/types.ts`) er håndskrevne og speiler [`docs/api.md`](docs/api.md).
+Med et lite skjema var det enklere enn å sette opp kodegenerering. En backend-test validerer alle
+frontendens spørringer mot skjemaet, slik at avvik oppdages.
+
+### Biblioteker
 
 Vi har valgt få, veletablerte avhengigheter, og bevisst valgt bort tunge UI-biblioteker:
 
@@ -189,7 +219,8 @@ Målet er WCAG 2.1 AA, og det er verifisert automatisk og med tastatur:
   - Ved rutebytte flyttes fokus til sidens `h1`, så skjermlesere leser ny side.
   - Kategorihopp flytter fokus til raden.
   - Etter sletting flyttes fokus til listeoverskriften.
-  - Fokus går aldri tapt til `<body>`, og det er testet.
+  - I flytene vi tester (rutebytte, kategorihopp, sletting, avbrutt sletting, feilbanner) havner
+    fokus aldri på `<body>`.
 - **Skjermleser:**
   - `aria-live` for antall treff og statusmeldinger
   - ett `role="alert"`-banner ved nedetid i stedet for én feil per rad
@@ -198,7 +229,8 @@ Målet er WCAG 2.1 AA, og det er verifisert automatisk og med tastatur:
 - **Visuelt:** synlig fokusring, AA-kontrast i lys og mørk modus, `prefers-reduced-motion` respekteres,
   og responsivt ned til 320 px uten horisontal scroll.
 - **Verifisering:** axe kjører i Playwright på alle sider i lys og mørk modus, på desktop og mobil.
-  Lighthouse Accessibility er 100 på alle sider.
+  Lighthouse Accessibility var 100 på forside, detaljside og Min liste (målt 30.09.2026, se
+  [`docs/ytelse.md`](docs/ytelse.md)).
 
 ## Bærekraft
 
@@ -218,7 +250,8 @@ Målet er WCAG 2.1 AA, og det er verifisert automatisk og med tastatur:
   ingen video selv.
 - **Mørk modus** er standard i kinodesignet, noe som sparer strøm på OLED-skjermer. Lys modus kan
   velges.
-- **Få avhengigheter:** ingen UI-, spiller- eller ORM-bibliotek. Lighthouse Performance er 94–100.
+- **Få avhengigheter:** ingen UI-, spiller- eller ORM-bibliotek. Lighthouse Performance var 94–100 ved siste måling
+  (30.09.2026).
 
 ## Sikkerhet og robusthet
 
@@ -262,7 +295,9 @@ og se den i lista, legg i og fjern fra Min liste, og spill en gratisfilm med tas
 - E2E kjører mot produksjonsbygget med falske, lokale versjoner av TMDB og Internet Archive, slik at
   testene ikke avhenger av internett.
 
-**CI** (`.gitlab-ci.yml`) kjører lint, typecheck, enhetstester, build og E2E.
+**CI** (`.gitlab-ci.yml`) er satt opp til å kjøre lint, typecheck, enhetstester, build og E2E med
+PostgreSQL, og en ustabil test gjør jobben rød. Repoet ligger på GitHub fram til innlevering, så
+GitLab-jobbene kjøres først når det er flyttet. De samme kommandoene er kjørt lokalt før hver merge.
 
 ## Kjøre lokalt
 
@@ -313,10 +348,25 @@ Ferdigstillingen etter medstudentvurderingen er gjort gjennom issues, pull reque
 | #14   | Presis filteretikett, kategorinavigasjon, ustabil test     | #18          |
 | #15   | API-grenser, slett anmeldelse, aksentuavhengig og kort søk | #20          |
 | #16   | Feilrettinger, tilgjengelighet, tema-bryter, slett i UI    | #21          |
-| #17   | CI (build og E2E), CSP, dokumentasjon                      | PR_17        |
+| #17   | CI (build og E2E), CSP, dokumentasjon                      | #22, PR_DOCS |
 
 Hver PR har review-kommentarer med funn rangert som blokkerende, bør fikses og valgfritt. Funnene er
 rettet med nye commits før merge.
+
+**Grenmodell:**
+
+```
+feat/… · fix/… · chore/… ──PR + review──▶ integrasjonsgren ──PR──▶ main ──▶ VM (oppdater.sh)
+```
+
+1. **Oppgavegrener:** hver oppgave får egen gren. Pre-commit kjører ESLint og Prettier på endrede
+   filer (Husky og lint-staged).
+2. **Integrasjonsgren:** oppgavegrener merges hit via PR når review og alle tester er grønne. Fra
+   oktober er det `claude/adoring-brown-3nct5k`, fordi sky-miljøet KI-agentene kjører i bare kan
+   pushe til én forhåndsbestemt gren.
+3. **`main`:** integrasjonsgrenen merges til `main` av et gruppemedlem. Det er `main` som deployes.
+
+Historikken skrives aldri om (ingen force-push), og merge-commits viser grenene.
 
 ## Kjente begrensninger
 
@@ -324,7 +374,7 @@ rettet med nye commits før merge.
   nettleser eller tømmer lagringen, mister du tilgang til egne anmeldelser.
 - **Korte søk (1–2 tegn)** matcher bare starten av ord. Det er et bevisst valg for ytelsen, og fra 3
   tegn søkes det på delstrenger.
-- **Søk på vanlige ord** som «the» med relevanssortering tar ca. 150–200 ms, fordi det treffer en
+- **Søk på vanlige ord** som «the» med relevanssortering tar ca. 140 ms, fordi det treffer en
   stor del av tabellen. Se [`docs/ytelse.md`](docs/ytelse.md).
 - **Ytelsestallene er målt på syntetiske data** (120 000 titler) i utviklingsmiljøet. VM-en har det
   ekte datasettet.

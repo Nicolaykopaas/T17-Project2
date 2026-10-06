@@ -12,12 +12,22 @@ Den utfyller [`ki-logg.md`](ki-logg.md) (én linje per oppgave) og
 - **Det meste av koden er skrevet av KI-agenter.** Mennesker har bestemt mål, datasett, rammer og
   prioriteringer, godkjent planer før arbeid startet, satt opp og driftet VM-en, og vurdert
   tilbakemeldinger fra medstudenter.
-- **Ingen KI-kode er tatt inn uten kontroll.** Hver endring har gått gjennom automatiske tester
-  (lint, typecheck, komponent-, API- og E2E-tester med axe) og en egen KI-kodegjennomgang før
-  merge. Fra oktober skjer dette synlig i issues og pull requests med review-kommentarer.
+- **Arbeidet har gått i to faser:**
+  - **September (M0–M6):** agentene jobbet autonomt etter `CLAUDE.md` og `PLAN.md`. Leder-agenten
+    kjørte lint, typecheck og testene før hver merge og loggførte det i `ki-logg.md`. E2E-testene
+    kom i M4, og det var ingen separat kodegjennomgang. PR-ene fra denne fasen gikk rett til `main`
+    uten review.
+  - **Oktober (M7, etter medstudentvurderingen):** et menneske godkjente planen. Hver endring fikk et
+    issue og en pull request, og en egen kritiker-agent gjennomgikk koden. Ingen PR ble merget før
+    review-funnene var rettet og alle tester, inkludert E2E med axe, var grønne.
 - Vi har ikke latt KI-en skjule feil: kjente feil, avvik og begrensninger står i
   [Feil KI-en gjorde](#feil-ki-en-gjorde-og-hvordan-de-ble-oppdaget) og
   [Begrensninger](#begrensninger-og-ting-vi-ikke-har-kunnet-verifisere).
+
+## Tidsrom
+
+Commit-historikken går fra 30. september til oktober 2026. M0–M6 ble utviklet i september, og
+ferdigstillingen etter medstudentvurderingen (M7, issue #13–#17) i oktober.
 
 ## Verktøy
 
@@ -34,7 +44,7 @@ Agentenes roller og instrukser ligger i repoet, så de kan inspiseres:
   tilgjengelighet, bærekraft, git-flyt og hva som krever et menneske).
 - [`.claude/agents/`](../.claude/agents/): rollebeskrivelser for `backend-utvikler`,
   `frontend-utvikler`, `tester` og `reviewer`.
-- [`PLAN.md`](../PLAN.md): milepælene (M0–M6) som agentene jobbet mot, krysset av når verifisert.
+- [`PLAN.md`](../PLAN.md): milepælene (M0–M7) som agentene jobbet mot, krysset av når verifisert.
 
 ## Arbeidsflyt
 
@@ -60,8 +70,10 @@ Leder-agent ──▶ issue per oppgave ──▶ utvikler-agent i egen git-work
    bærekraft, testkrav) og valgte datasett og mål. Planer fra KI-en ble lagt fram og **godkjent
    eller avvist** før arbeid startet. Planen for ferdigstilling i oktober ble for eksempel
    underkjent i første runde og justert to ganger før godkjenning.
-2. **Leder-agenten deler opp arbeidet.** Den skriver ikke produksjonskode selv, men lager issues
-   med tydelige ferdigkriterier og delegerer til utvikler-agenter.
+2. **Leder-agenten deler opp arbeidet.** I oktober skrev den ikke produksjonskode selv, bare
+   dokumentasjon og en liten lint-konfigurasjon. Den laget issues med tydelige ferdigkriterier og
+   delegerte til utvikler-agenter. I september skrev leder-agenten selv deler av oppsettet (M0),
+   E2E-testene (M4), deploy-filene (M5) og `randomUUID`-fiksen, se `ki-logg.md`.
 3. **Utvikler-agenter jobber isolert.** Hver oppgave kjøres i en egen git-worktree og gren, slik at
    parallelle oppgaver ikke ødelegger for hverandre.
 4. **Kritiker-agenten gjennomgår hver PR** og poster funn som review-kommentarer, rangert som
@@ -102,6 +114,20 @@ Leder-agent ──▶ issue per oppgave ──▶ utvikler-agent i egen git-work
 
 Den enkeltes bidrag i gruppa dokumenteres i egen fil i Canvas, ikke her, jf. oppgaveteksten.
 
+### `CLAUDE.md` og de to fasene
+
+`CLAUDE.md` ble skrevet for september-fasen. Der står det at agentene skal jobbe autonomt uten å
+stille spørsmål, og at README skrives av gruppa. I oktober ble det gjort annerledes: Nicolay
+godkjente planen før arbeidet startet, ga løpende beskjeder underveis, og ba agentene skrive README.
+`CLAUDE.md` viser altså instruksene agentene fikk i september, mens denne fila beskriver hvordan
+arbeidet faktisk ble styrt i oktober.
+
+### Gruppens egen gjennomgang av koden
+
+_Fylles ut av gruppa: hvem som har satt seg inn i hvilke deler av koden, og hvordan. For eksempel
+søket og pagineringen (`backend/src/search.ts`, `keyset.ts`), tilgjengelighet, testene, eller
+deploy på VM-en._
+
 ## Hvordan vi kontrollerte KI-ens arbeid
 
 - **Automatiske tester er porten.** Ingen endring er merget uten grønn lint, typecheck,
@@ -111,7 +137,10 @@ Den enkeltes bidrag i gruppa dokumenteres i egen fil i Canvas, ikke her, jf. opp
   utvikler-agentene, leste hver diff med eksplisitte sjekkpunkter: SQL-sikkerhet, ytelse,
   tilgjengelighet, testkvalitet og kommentarkvalitet. Reviewene ligger på PR-ene.
 - **Rotårsak, ikke omkjøring.** En ustabil test skal forklares, ikke kjøres på nytt til den blir
-  grønn. Testen i `watch.spec.ts` viste seg å avsløre en ekte feil (se under).
+  grønn. E2E-testen som krysser av filteret «Kun filmer som kan strømmes gratis»
+  (`watch.spec.ts`) var ustabil fra september. I oktober viste den seg å avsløre en ekte feil i
+  avkrysningsboksene (se tabellen under). Etter fiksen besto den 20 av 20 gjentatte kjøringer, og
+  CI er nå satt til å feile på ustabile tester.
 - **Målinger i stedet for påstander.** Ytelsespåstander er dokumentert med `EXPLAIN ANALYZE` i
   [`ytelse.md`](ytelse.md), med åpen merknad om at tallene er fra et syntetisk datasett.
 
