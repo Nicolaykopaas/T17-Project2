@@ -169,3 +169,10 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
 - **Volum og demping huskes i `localStorage`** (`filmsok:player`); ødelagt verdi gir standard.
 - **Tilbake-lenken på spillersiden går alltid til `/title/:id`** (deterministisk, også ved direkte åpning).
 - **Mobil skjuler volumslideren** (maskinvareknapper); demp-knappen finnes.
+
+## Feiltilstand når API-et ikke nås (#13)
+
+- **Ingen mock-data i produksjon; forklarende banner i stedet.** Sensor og brukere skal se ekte data fra databasen eller en ærlig feil. Mock-data ville skjult at serveren er utilgjengelig (typisk: utenfor NTNU-nettet uten VPN) og at appen ikke viser det den utgir seg for. Mock-servere finnes allerede for utvikling og E2E (`tmdb:mock`, `archive:mock`).
+- **Én global tilstand, ikke én feil per rad.** Error-linken i `apollo/client.ts` setter reactive var `apiUnavailable` ved nettverksfeil (fetch feilet, HTTP 502/503/504, ikke-JSON-svar) og nullstiller den ved første svar fra serveren. GraphQL-feil teller ikke: da svarte serveren, og feilen er vår bug eller brukerinput. `ApiUnavailableBanner` i `Layout` kunngjør nedetiden én gang (`role="alert"`, knappen ligger utenfor alert-regionen) og forklarer NTNU VPN. Radene viser stille skjelett mens banneret står; andre feil viser fortsatt per-rad-feil.
+- **`rxjs` er lagt til som direkte avhengighet i `frontend`.** Apollo 4 har den som obligatorisk peer-avhengighet (allerede i bundlen); vi bruker bare `tap` i linkkjeden.
+- **`GET /health` gjør `SELECT 1` med 2 s tidsgrense** (200 `ok`, 503 `db-unavailable`). Yogas egen `/health` (alltid «alive») er flyttet, fordi den ikke sier noe om databasen. Systemd-enheten har `Restart=always` og `Wants=postgresql.service` (+ `After`).
