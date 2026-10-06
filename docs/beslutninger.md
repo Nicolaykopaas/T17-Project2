@@ -176,3 +176,7 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
 - **Én global tilstand, ikke én feil per rad.** Error-linken i `apollo/client.ts` setter reactive var `apiUnavailable` ved nettverksfeil (fetch feilet, HTTP 502/503/504, ikke-JSON-svar) og nullstiller den ved første svar fra serveren. GraphQL-feil teller ikke: da svarte serveren, og feilen er vår bug eller brukerinput. `ApiUnavailableBanner` i `Layout` kunngjør nedetiden én gang (`role="alert"`, knappen ligger utenfor alert-regionen) og forklarer NTNU VPN. Radene viser stille skjelett mens banneret står; andre feil viser fortsatt per-rad-feil.
 - **`rxjs` er lagt til som direkte avhengighet i `frontend`.** Apollo 4 har den som obligatorisk peer-avhengighet (allerede i bundlen); vi bruker bare `tap` i linkkjeden.
 - **`GET /health` gjør `SELECT 1` med 2 s tidsgrense** (200 `ok`, 503 `db-unavailable`). Yogas egen `/health` (alltid «alive») er flyttet, fordi den ikke sier noe om databasen. Systemd-enheten har `Restart=always` og `Wants=postgresql.service` (+ `After`).
+
+## Gjennomgang av frontend (#16)
+
+- **«Legg i min liste»-knappen har dynamisk etikett og ingen `aria-pressed`.** Kombinasjonen ga motstridende opplesning («Fjern fra min liste, trykket»). Et fast navn («Min liste» + `aria-pressed`) ville stridd mot den synlige teksten (WCAG 2.5.3 Label in Name) og gjort det uklart for seende hva et trykk gjør. Dynamisk etikett er handlingsorientert for begge grupper; utfallet kunngjøres i `role="status"`.

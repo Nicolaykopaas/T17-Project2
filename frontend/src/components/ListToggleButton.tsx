@@ -9,6 +9,11 @@ interface Props {
   variant?: 'primary' | 'secondary';
 }
 
+/**
+ * Handlingsetikett som skifter («Legg i» / «Fjern fra min liste»), bevisst uten `aria-pressed`:
+ * en bryter med dynamisk navn leses opp motstridende («Fjern fra min liste, trykket»), og et
+ * fast navn ville stride mot den synlige teksten (WCAG 2.5.3). Resultatet kunngjøres i statusregionen.
+ */
 export function ListToggleButton({ titleId, inMyList, variant = 'primary' }: Props) {
   const [toggleList, { loading }] = useMutation(TOGGLE_LIST_MUTATION);
   const [message, setMessage] = useState('');
@@ -31,7 +36,6 @@ export function ListToggleButton({ titleId, inMyList, variant = 'primary' }: Pro
       <button
         type="button"
         className={`btn ${variant === 'primary' ? 'btn--primary' : 'btn--ghost'}`}
-        aria-pressed={inMyList}
         disabled={loading}
         onClick={() => void onClick()}
       >
