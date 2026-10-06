@@ -3,7 +3,7 @@ import { ApolloLink } from '@apollo/client';
 import { SetContextLink } from '@apollo/client/link/context';
 import { tap } from 'rxjs';
 import { ErrorLink } from '@apollo/client/link/error';
-import { apiUnavailable, isNetworkDown } from './apiStatus';
+import { apiFailureKind, apiUnavailable, classifyApiFailure } from './apiStatus';
 import { createCache } from './cache';
 import { getUserId } from './userId';
 
@@ -18,7 +18,10 @@ const userIdLink = new SetContextLink((prev) => ({
 // GraphQL-feilsvar: da svarte den). I linkkjeden slik at alle queries og mutations dekkes.
 const apiStatusLink = ApolloLink.from([
   new ErrorLink(({ error }) => {
-    if (isNetworkDown(error)) apiUnavailable(true);
+    const kind = classifyApiFailure(error);
+    if (!kind) return;
+    apiFailureKind(kind);
+    apiUnavailable(true);
   }),
   new ApolloLink((operation, forward) =>
     forward(operation).pipe(

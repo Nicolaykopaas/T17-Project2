@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useApolloClient } from '@apollo/client/react';
-import { apiUnavailable, useApiUnavailable } from '../apollo/apiStatus';
+import { useApolloClient, useReactiveVar } from '@apollo/client/react';
+import { apiFailureKind, apiUnavailable, useApiUnavailable } from '../apollo/apiStatus';
 
 /**
  * Ett felles banner i stedet for én feil per rad. Selve meldingen ligger i role="alert" og
@@ -8,6 +8,7 @@ import { apiUnavailable, useApiUnavailable } from '../apollo/apiStatus';
  */
 export function ApiUnavailableBanner() {
   const unavailable = useApiUnavailable();
+  const kind = useReactiveVar(apiFailureKind);
   const client = useApolloClient();
   const [retrying, setRetrying] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -36,11 +37,13 @@ export function ApiUnavailableBanner() {
       <div className="container api-banner__inner">
         <div role="alert" className="api-banner__text">
           <p>
-            <strong>Får ikke kontakt med serveren.</strong>
+            <strong>Får ikke kontakt med serveren akkurat nå.</strong>
           </p>
+          {/* VPN-hintet utelates når backend svarer (databasen er nede): da er nettverket ikke problemet. */}
           <p>
-            Appen kjører på NTNUs nett. Er du utenfor campus, må du koble til NTNU VPN og prøve
-            igjen.
+            {kind === 'service'
+              ? 'Tjenesten er midlertidig nede. Prøv igjen om litt.'
+              : 'Den kan være midlertidig nede, så prøv igjen om litt. Kjører du appen selv, må backend være startet. Åpner du den utenfra, må du være på NTNU-nett eller bruke VPN.'}
           </p>
         </div>
         <button type="button" className="btn" disabled={retrying} onClick={() => void retry()}>
