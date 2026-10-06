@@ -23,10 +23,9 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
   enklere og raskere uten join, og sjangre til en hel resultatside følger med raden (ingen N+1).
   `start_decade` er en generert kolonne slik at tiårfilter er en likhet på en indeksert kolonne.
   Prisen er at importen skriver sjangre to steder (i samme transaksjon).
-- **Søk med `lower(col) LIKE lower('%…%')` og trigram-GIN på `lower(...)`-uttrykk,** ikke `ILIKE`.
-  Indeksuttrykket må være identisk med spørringen for å bli brukt. Brukerens `%`, `_` og `\` escapes
-  slik at de er vanlige tegn. Aksenter foldes ikke (`cafe` finner ikke `Café`); `unaccent`
-  er ikke tatt med for å slippe en ekstra utvidelse.
+- **Søk med `LIKE` mot normaliserte tittelkolonner og trigram-GIN,** ikke `ILIKE`. Kolonnene
+  `primary_title_norm`/`original_title_norm` er `lower(f_unaccent(tittel))` (se «Aksentuavhengig søk»
+  under), og indeksene ligger på dem. Brukerens `%`, `_` og `\` escapes slik at de er vanlige tegn.
 - **Keyset-paginering med radsammenligning.** Alle sorteringsnøkler går i samme retning
   (`(a, b, id) < ($1,$2,$3)`), siste nøkkel er `id` (unik), og nullable kolonner erstattes av
   sentinel via `COALESCE` (rating → -1, år → 0). Det gir stabil paginering uten hull/duplikater og lar
@@ -200,3 +199,22 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
   å evicte `Review:<id>`. Ugyldig id (ikke 1–18 siffer) gir `BAD_USER_INPUT`.
 - **Tittel-id valideres som `^tt\d{7,10}$`** (`isPlausibleTitleId`). Fixture, testdata og
   Archive-mock bruker bare 7 siffer; IMDb har 7–8 i dag, 10 gir slingringsmonn.
+- **Aksentuavhengig søk («Aksentuavhengig søk»).** `unaccent` via en IMMUTABLE innpakning
+  `f_unaccent(text)` (migrering 004). Normalisert tittel lagres som genererte kolonner
+  `primary_title_norm`/`original_title_norm` (`lower(f_unaccent(tittel))`) med trigram-GIN på dem, i
+  stedet for å legge uttrykket i indeksen og i hver spørring. Grunnen er målt: uttrykket kjører
+  `unaccent` på nytt for hver rad i recheck, filter og relevans og ga opptil 2x tregere brede søk
+  (tall i `docs/ytelse.md`). Kolonnene koster ca. 5 MB ekstra på 120 000 titler. Innpakningen peker på
+  ordlisten med fullt kvalifisert navn; endres ordlisten må kolonner og indekser bygges på nytt.
+  `unaccent` følger med `postgresql-contrib` sammen med `pg_trgm` og er «trusted» fra PostgreSQL 13, så
+  `deploy/setup-vm.sh` og `docs/oppsett.md` trenger bare å nevne den ved siden av `pg_trgm`.
+  Konsekvens: «ø», «å» og «æ» foldes til «o», «a» og «ae».
+- **Korte søk (1–2 tegn) er prefiksmatch og rangeres etter popularitet.** Delstrengsøk på 1–2 tegn
+  har ingen trigrammer og traff opptil 70 % av tabellen, og relevansberegningen (`similarity`) på
+  alle treff tok ca. 0,5 s for «a». Prefiksmatch mot de normaliserte kolonnene bruker
+  `text_pattern_ops`-btree (eller stemmeindeksen baklengs), og relevans er stemmer, så id. Det
+  endrer funksjonen: «ar» finner ikke lenger «Dark». Alternativene vi vurderte: (1) beholde delstreng
+  og bare droppe likhetsberegningen (hindrer ikke full skanning), (2) ordprefiks («ar» finner
+  «The Arrival»), som krever tokenisering eller regex uten indeks. Valgte enkel prefiksmatch fordi
+  den er rask, forutsigbar og dekker det brukere gjør når de skriver de første bokstavene av en
+  tittel. Cursoren har en egen signatur for korte søk, siden sorteringsnøklene er annerledes.

@@ -37,7 +37,9 @@ Alle punktene i `PLAN.md` er gjort og verifisert i utviklingsmiljøet.
 
 ## Kjente begrensninger
 
-- Søk folder ikke aksenter: «cafe» finner ikke «Café». Store og små bokstaver er dekket.
-- Søk på 1–2 tegn kan ikke bruke trigram-indeksen og er tregere (se `docs/ytelse.md`).
+- Søk på 1–2 tegn er prefiksmatch på tittelen («th» finner «The Matrix», men ikke «Death»), og
+  rangeres etter popularitet. Fra 3 tegn er det delstrengsøk med likhetsrangering.
+- Aksentfolding følger Postgres' `unaccent`: «ø» blir «o» og «å» blir «a», så «bla» finner også «Blå».
+- `totalCount` for svært vanlige søk («a», «the») tar 20–50 ms fordi alle treff må telles.
 - Anonym bruker-ID ligger i `localStorage`. Anmeldelser og liste følger nettleseren, ikke en
   innlogget bruker.

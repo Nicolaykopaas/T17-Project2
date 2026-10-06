@@ -134,7 +134,8 @@ type DeleteReviewPayload {
 }
 
 type Query {
-  # query: tom/null = alle titler. Case-insensitivt delstrengsøk i primær- og originaltittel.
+  # query: tom/null = alle titler. Case- og aksentuavhengig delstrengsøk («amelie» finner «Amélie»)
+  # i primær- og originaltittel. Søk på 1–2 tegn er prefiksmatch og rangeres etter popularitet.
   search(
     query: String
     filters: SearchFilters
