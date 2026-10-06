@@ -4,7 +4,7 @@ import { complexityLimit } from './complexityLimit.js';
 
 const schema = buildSchema(`
   type Node { id: ID, name: String, child: Node, reviews(first: Int): Node }
-  type Query { root: Node, search(first: Int): Node, myList(first: Int): Node }
+  type Query { root: Node, facets: Node, search(first: Int): Node, myList(first: Int): Node }
 `);
 const check = (q: string, maxRootFields = 3, maxFields = 10, maxCost = 1e9) =>
   validate(schema, parse(q), [complexityLimit({ maxRootFields, maxFields, maxCost })]);
@@ -127,6 +127,19 @@ describe('complexityLimit', () => {
       const errors = check(q, 8, 1000, 2500);
       expect(errors).toHaveLength(1);
       expect(errors[0]?.message).toContain('kostbar');
+    });
+
+    it('gir facets en høy fast vekt slik at aliasede facets stoppes', () => {
+      const facets = (n: number) =>
+        `{ ${Array.from({ length: n }, (_, i) => `f${i}: facets { id }`).join(' ')} }`;
+      // Hver forekomst: 1 + 500 + 1 (id) = 502; grensen 2 500 rommer fire, ikke fem.
+      expect(check(facets(1), 8, 100, 2500)).toHaveLength(0);
+      expect(check(facets(4), 8, 100, 2500)).toHaveLength(0);
+      const errors = check(facets(5), 8, 100, 2500);
+      expect(errors).toHaveLength(1);
+      expect(errors[0]?.message).toContain('kostbar');
+      // 8 aliaser (rotfeltgrensen) ga før 32 parallelle aggregeringer.
+      expect(check(facets(8), 8, 100, 2500)).toHaveLength(1);
     });
 
     it('teller listevekt gjennom fragmenter', () => {
