@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { GraphQLError } from 'graphql';
 import { Route, Routes } from 'react-router';
@@ -102,6 +102,43 @@ describe('TitlePage: slett egen anmeldelse', () => {
     expect(log.TitleDetails).toHaveLength(1);
   });
 
+  it('kunngjør også den andre slettingen (regionen tømmes mellom)', async () => {
+    const second = makeReview(3, { isMine: true, author: 'Meg igjen' });
+    const { user } = setup([], {
+      TitleDetails: () => ({
+        title: makeDetails({
+          userRating: 3,
+          reviewCount: 2,
+          reviews: makeReviewConnection([mine, second]),
+        }),
+      }),
+      DeleteReview: (vars: Vars) => ({
+        deleteReview: {
+          __typename: 'DeleteReviewPayload',
+          deletedId: vars.id,
+          title: { __typename: 'Title', id: 'tt0000001', userRating: 3, reviewCount: 1 },
+        },
+      }),
+    });
+    await screen.findByText('Meg igjen');
+    // Statusregionen rett etter overskriften «Anmeldelser».
+    const status = screen.getByRole('heading', { name: 'Anmeldelser' }).nextElementSibling!;
+    const seen: string[] = [];
+    const observer = new MutationObserver(() => seen.push(status.textContent ?? ''));
+    observer.observe(status, { childList: true, characterData: true, subtree: true });
+
+    for (const name of ['Meg', 'Meg igjen']) {
+      const article = screen.getByText(name).closest('article')!;
+      await user.click(within(article).getByRole('button', { name: /^Slett/ }));
+      await user.click(within(article).getByRole('button', { name: 'Bekreft sletting' }));
+      await waitFor(() => expect(screen.queryByText(name)).not.toBeInTheDocument());
+      await waitFor(() => expect(status).toHaveTextContent('Anmeldelsen er slettet.'));
+    }
+    observer.disconnect();
+    // Tekst, tom, tekst: uten tømmingen ville den andre meldingen vært en uendret verdi.
+    expect(seen.join('|')).toBe('Anmeldelsen er slettet.||Anmeldelsen er slettet.');
+  });
+
   it('«Avbryt» sletter ikke og gir fokus tilbake til «Slett»', async () => {
     const { log, user } = setup();
     await user.click(await screen.findByRole('button', { name: /^Slett/ }));
@@ -130,7 +167,8 @@ describe('TitlePage: slett egen anmeldelse', () => {
     await user.click(screen.getByRole('button', { name: 'Bekreft sletting' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Kunne ikke slette anmeldelsen');
     expect(screen.getByText('Meg')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^Slett/ })).toBeInTheDocument();
+    // Fokus må ikke falle til body når knappene byttes ut.
+    await waitFor(() => expect(screen.getByRole('button', { name: /^Slett/ })).toHaveFocus());
   });
 
   it('viser ventetid ved RATE_LIMITED', async () => {

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation } from '@apollo/client/react';
 import { DELETE_REVIEW_MUTATION } from '../graphql/operations';
 import { rateLimitMessage } from '../lib/apiError';
@@ -18,21 +18,33 @@ export function DeleteReviewButton({ reviewId, titleId, onDeleted }: Props) {
   const [deleteReview, { loading }] = useMutation(DELETE_REVIEW_MUTATION);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState('');
+  // Hvor fokus skal havne etter neste render. Knappene byttes ut, så fokus kan først flyttes når
+  // React har committet den nye knappen (et microtask rekker det ikke).
+  const focusNext = useRef<'start' | 'confirm' | null>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
   const startRef = useRef<HTMLButtonElement>(null);
+
+  // Uten avhengighetsliste: hver endring som bytter knapp gir en render, og da skal fokus flyttes.
+  useEffect(() => {
+    if (!focusNext.current) return;
+    (focusNext.current === 'confirm' ? confirmRef : startRef).current?.focus();
+    focusNext.current = null;
+  });
 
   const ask = () => {
     setError('');
     setConfirming(true);
-    // Knappen som hadde fokus byttes ut; uten dette havner fokus på body.
-    queueMicrotask(() => confirmRef.current?.focus());
+    focusNext.current = 'confirm';
   };
   const cancel = () => {
+    if (loading) return;
     setConfirming(false);
-    queueMicrotask(() => startRef.current?.focus());
+    focusNext.current = 'start';
   };
 
   const confirm = async () => {
+    // aria-disabled i stedet for disabled: en disabled knapp mister fokus i Chrome mens sletting pågår.
+    if (loading) return;
     setError('');
     try {
       await deleteReview({
@@ -61,14 +73,13 @@ export function DeleteReviewButton({ reviewId, titleId, onDeleted }: Props) {
             },
           });
           cache.evict({ id: cache.identify({ __typename: 'Review', id: deletedId }) });
-          cache.gc();
         },
       });
       onDeleted();
     } catch (e) {
       setConfirming(false);
       setError(rateLimitMessage(e) ?? 'Kunne ikke slette anmeldelsen. Prøv igjen.');
-      queueMicrotask(() => startRef.current?.focus());
+      focusNext.current = 'start';
     }
   };
 
@@ -80,12 +91,17 @@ export function DeleteReviewButton({ reviewId, titleId, onDeleted }: Props) {
             ref={confirmRef}
             type="button"
             className="btn btn--danger"
-            disabled={loading}
+            aria-disabled={loading || undefined}
             onClick={() => void confirm()}
           >
             {loading ? 'Sletter …' : 'Bekreft sletting'}
           </button>
-          <button type="button" className="btn btn--ghost" disabled={loading} onClick={cancel}>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            aria-disabled={loading || undefined}
+            onClick={cancel}
+          >
             Avbryt
           </button>
         </>

@@ -1,5 +1,5 @@
 import { MockedProvider } from '@apollo/client/testing/react';
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect, useState } from 'react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
@@ -146,6 +146,23 @@ describe('Layout', () => {
       expect(screen.getByRole('main')).toHaveFocus();
       const h1 = await screen.findByRole('heading', { level: 1, name: 'Ferdig lastet' });
       await waitFor(() => expect(h1).toHaveFocus());
+    });
+
+    it('stjeler ikke fokus etter klikk eller tastetrykk, selv om fokus har falt til body', async () => {
+      for (const interact of [
+        () => fireEvent.pointerDown(document.body),
+        () => fireEvent.keyDown(document.body, { key: 'a' }),
+      ]) {
+        const router = setup('/');
+        await act(() => router.navigate('/sen'));
+        interact();
+        // Fokus faller til body (som når en knapp blir disabled).
+        (document.activeElement as HTMLElement).blur();
+        const h1 = await screen.findByRole('heading', { level: 1, name: 'Ferdig lastet' });
+        expect(h1).not.toHaveFocus();
+        expect(document.body).toHaveFocus();
+        cleanup();
+      }
     });
 
     it('stjeler ikke fokus hvis brukeren har flyttet det før h1 kommer', async () => {

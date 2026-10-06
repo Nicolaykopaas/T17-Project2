@@ -232,7 +232,9 @@ export default function TitlePage() {
           <ReviewList
             reviews={reviews.edges.map((e) => e.node)}
             onDeleted={() => {
-              setDeleted('Anmeldelsen er slettet.');
+              // Regionen tømmes først: identisk tekst som ved forrige sletting leses ellers ikke opp igjen.
+              setDeleted('');
+              window.setTimeout(() => setDeleted('Anmeldelsen er slettet.'), 100);
               // Slett-knappen forsvinner med raden; overskriften er et fast punkt å lande på.
               reviewsHeading.current?.focus();
             }}

@@ -38,13 +38,28 @@ export function Layout() {
       const active = document.activeElement;
       // Fokus er «mistet» (elementet ble fjernet) eller står der vi la det; ellers har brukeren flyttet det.
       if (active === document.body || active === el || active === focused) focusTarget();
-      else observer.disconnect();
+      else stop();
     });
-    observer.observe(el, { childList: true, subtree: true });
-    // Gi opp etter en stund så innhold som dukker opp lenge etter ikke stjeler fokus.
-    const giveUp = window.setTimeout(() => observer.disconnect(), 3000);
-    return () => {
+    // Så snart brukeren selv gjør noe, er fokus hennes. Uten dette ville fokus som faller til body
+    // (f.eks. når en knapp blir disabled) sett ut som «mistet», og vi ville hoppet tilbake til h1.
+    const onFocusIn = (e: FocusEvent) => {
+      const t = e.target as HTMLElement;
+      const ours = t === el || (t.tagName === 'H1' && el.contains(t));
+      if (!ours) stop();
+    };
+    const events = ['pointerdown', 'keydown'] as const;
+    const stop = () => {
       observer.disconnect();
+      document.removeEventListener('focusin', onFocusIn);
+      for (const name of events) document.removeEventListener(name, stop, true);
+    };
+    observer.observe(el, { childList: true, subtree: true });
+    document.addEventListener('focusin', onFocusIn);
+    for (const name of events) document.addEventListener(name, stop, true);
+    // Gi opp etter en stund så innhold som dukker opp lenge etter ikke stjeler fokus.
+    const giveUp = window.setTimeout(stop, 3000);
+    return () => {
+      stop();
       window.clearTimeout(giveUp);
     };
   }, [pathname]);

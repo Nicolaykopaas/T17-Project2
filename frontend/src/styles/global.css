@@ -389,6 +389,7 @@ fieldset {
 .btn:hover:not(:disabled) {
   border-color: var(--accent-text);
 }
+.btn[aria-disabled='true'],
 .btn:disabled {
   cursor: progress;
   opacity: 0.7;
