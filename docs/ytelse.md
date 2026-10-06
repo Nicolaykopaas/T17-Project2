@@ -178,7 +178,7 @@ batcher på 2 000 rader; bare rating-rader over stemmegrensen holdes i minnet.
 
 ## Lighthouse
 
-Målt 2026-09-30 med Lighthouse (Chromium, headless) mot produksjonsbygget servert av `vite preview`
+**Målt 2026-09-30, før M7** (oktober-endringene er ikke målt på nytt; `/watch/:id` er ikke målt). Lighthouse (Chromium, headless) mot produksjonsbygget servert av `vite preview`
 og backend med det syntetiske datasettet (120 000 titler). Format: Performance / Accessibility /
 Best Practices / SEO.
 
@@ -194,5 +194,5 @@ Best Practices / SEO.
 - Før fiksen lå Performance på 72–79. Årsaken var layoutskift: footeren startet midt i
   viewporten og ble skjøvet ned når innholdet kom, og rullefeltet flyttet siden sideveis. Løst med
   `#root` som flex-kolonne med `min-height: 100vh` og `scrollbar-gutter: stable`.
-- Initial JS er ca. 166 kB gzip (React, Apollo Client med rxjs, React Router). Detaljside og
+- Initial JS var ca. 166 kB gzip (2026-09-30; 2026-10-06 målt til ca. 172 kB, se `docs/beslutninger.md`) (React, Apollo Client med rxjs, React Router). Detaljside og
   «Min liste» lazy-lastes. Videre kutt ville krevd å bytte ut Apollo, som er fastsatt i CLAUDE.md.
