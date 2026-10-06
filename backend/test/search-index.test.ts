@@ -77,10 +77,10 @@ describe('indeksbruk', () => {
     },
   );
 
-  it.each(['a', 'da', 'ça'])('kort søk «%s» bruker prefiksindeksene, ikke trigram', async (q) => {
+  it.each(['a', 'da', 'ça'])('kort søk «%s» bruker ordprefiksindeksen, ikke trigram', async (q) => {
     const plan = await planFor(q);
-    expect(plan).toMatch(/titles_primary_title_prefix_idx/);
-    expect(plan).toMatch(/titles_original_title_prefix_idx/);
+    expect(plan).toMatch(/titles_title_words_idx/);
+    expect(plan).not.toMatch(/trgm_idx/);
   });
 
   it('søket regner ikke likhet for korte søk', async () => {

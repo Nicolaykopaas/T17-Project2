@@ -44,11 +44,6 @@ class Params {
   }
 }
 
-/** Gjør om brukerens tekst til et LIKE-mønster der %, _ og \ betyr seg selv. */
-export function escapeLike(text: string): string {
-  return text.replace(/[\\%_]/g, (c) => `\\${c}`);
-}
-
 /**
  * Normalisert tittel (små bokstaver, uten aksenter) ligger som genererte kolonner, med indekser på
  * dem (004_unaccent_search.sql). Søketeksten må normaliseres med nøyaktig samme uttrykk, og det
@@ -61,10 +56,30 @@ const TITLE_NORM = 't.primary_title_norm';
 const ORIGINAL_NORM = 't.original_title_norm';
 
 /**
+ * LIKE-mønster for delstrengsøk der %, _ og \ i søketeksten betyr seg selv. Rekkefølgen er viktig:
+ * normaliser FØRST (unaccent), escape ETTERPÅ. unaccent.rules mapper bl.a. fullbreddetegnene
+ * `％`, `＿` og `＼` til `%`, `_` og `\`; escapet vi før normaliseringen, ble de jokertegn og
+ * traff hele tabellen. Begge trinn gjøres i Postgres. Regex-strengene er vanlige SQL-strenger
+ * (standard_conforming_strings = on): `[\\%_]` er en tegnklasse med `\`, `%` og `_`, og `\\\1` i
+ * erstatningen er en backslash etterfulgt av treffet.
+ */
+const likePattern = (param: string) =>
+  String.raw`'%' || regexp_replace(${norm(`${param}::text`)}, '([\\%_])', '\\\1', 'g') || '%'`;
+
+/**
  * Søk på 1–2 tegn har ingen trigrammer, så GIN-indeksene kan ikke brukes og delstrengsøk ville
  * lest hele tabellen og regnet likhet på nesten alle rader (ca. 0,5 s på 120 000 titler). Slike
- * søk er derfor prefiksmatch med btree-indeks og rangeres etter popularitet (se docs/ytelse.md).
+ * søk er derfor ORDprefiks («ma» finner «The Matrix») mot en generert tsvector med GIN-indeks, og
+ * rangeres etter popularitet (se docs/ytelse.md).
+ *
+ * Søketeksten strippes for tegnsetting, mellomrom og kontrolltegn FØR den settes inn i
+ * tsquery-syntaksen, fordi `& | ! ( ) : * < > ' \` ellers er operatorer eller gir syntaksfeil. Det
+ * som er igjen er bokstaver og sifre, så uttrykket kan ikke kaste feil. Blir ingenting igjen
+ * (f.eks. «%» eller «'») gir NULLIF NULL, og dermed ingen treff.
  */
+const wordPrefixQuery = (param: string) =>
+  `to_tsquery('simple', NULLIF(regexp_replace(${norm(`${param}::text`)}, '[[:punct:][:space:][:cntrl:]]', '', 'g'), '') || ':*')`;
+
 export const SHORT_QUERY_MAX = 2;
 export const isShortQuery = (query: string): boolean => [...query].length <= SHORT_QUERY_MAX;
 
@@ -85,11 +100,12 @@ function filterConditions(
 ): string[] {
   const conds: string[] = [];
   if (query) {
-    // Normaliseringen gjøres i Postgres på begge sider, så samme uttrykk brukes som i indeksen.
-    // Prefiks for korte søk (btree), delstreng ellers (trigram-GIN).
-    const pattern = isShortQuery(query) ? `${escapeLike(query)}%` : `%${escapeLike(query)}%`;
-    const like = norm(p.add(pattern));
-    conds.push(`(${TITLE_NORM} LIKE ${like} OR ${ORIGINAL_NORM} LIKE ${like})`);
+    if (isShortQuery(query)) {
+      conds.push(`t.title_words @@ ${wordPrefixQuery(p.add(query))}`);
+    } else {
+      const like = likePattern(p.add(query));
+      conds.push(`(${TITLE_NORM} LIKE ${like} OR ${ORIGINAL_NORM} LIKE ${like})`);
+    }
   }
   if (skip !== 'genres' && filters.genres.length > 0) {
     // @> = «inneholder alle»; bruker GIN-indeksen på titles.genres.

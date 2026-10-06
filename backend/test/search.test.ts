@@ -146,6 +146,21 @@ describe('search: aksentuavhengig', () => {
     expect((await search({ query: 'Back\\Slash' })).titles).toEqual(['Back\\Slash']);
   });
 
+  // unaccent.rules mapper fullbreddetegn til ASCII. Hvis escaping skjedde FØR normaliseringen,
+  // ble de jokertegn og traff hele tabellen.
+  it.each(['caf％ soc', 'caf＿ soc', '％％％', '＿＿＿', 'ba＼sla%', 'bac＼sl', '＼＼＼'])(
+    'fullbreddetegn i %j blir bokstavelige og gir ikke jokertegn',
+    async (q) => {
+      const r = await search({ query: q });
+      expect(r.res.errors).toBeUndefined();
+      expect(r.total).toBe(0);
+    },
+  );
+
+  it('fullbredde-backslash normaliseres til en vanlig backslash', async () => {
+    expect((await search({ query: 'back＼sl' })).titles).toEqual(['Back\\Slash']);
+  });
+
   it('fasettene og totalCount bruker samme normalisering', async () => {
     const res = await env.gql(
       'query ($q: String) { facets(query: $q) { available types { value count } } }',
@@ -157,14 +172,18 @@ describe('search: aksentuavhengig', () => {
 });
 
 describe('search: korte søk (1–2 tegn)', () => {
-  // Prefiksmatch på normalisert primær- eller originaltittel, rangert etter stemmer og id.
+  // ORDprefiks på normalisert primær- eller originaltittel, rangert etter stemmer og id.
+  const words = (t: (typeof TITLES)[number]) =>
+    titleHaystack(t)
+      .flatMap((h) => h.split(/[^\p{L}\p{N}]+/u))
+      .filter(Boolean);
   const expectedPrefix = (q: string) =>
-    TITLES.filter((t) => titleHaystack(t).some((h) => h.startsWith(fold(q))))
+    TITLES.filter((t) => words(t).some((w) => w.startsWith(fold(q))))
       .sort((a, b) => b.votes - a.votes || (a.id < b.id ? 1 : -1))
       .map((t) => t.id);
 
-  it.each(['u', 'U', 'f', 'un', 'UN', 'ba', 'br', 'ca', 'ÇA', 'am', 'it', 'e'])(
-    'prefiksmatch for %j, sortert etter popularitet',
+  it.each(['u', 'U', 'f', 'un', 'UN', 'ba', 'br', 'ca', 'ÇA', 'am', 'it', 'e', 'ci', 'ni'])(
+    'ordprefiks for %j, sortert etter popularitet',
     async (q) => {
       const r = await search({ query: q });
       expect(r.res.errors).toBeUndefined();
@@ -174,27 +193,51 @@ describe('search: korte søk (1–2 tegn)', () => {
     },
   );
 
-  it('finner ikke midt i tittelen (til forskjell fra søk på 3+ tegn)', async () => {
+  it('finner ord midt i tittelen, men ikke midt i et ord', async () => {
+    // «ba» finner «Breaking Bad» (andre ord), «ci» finner «Dark City».
+    expect((await search({ query: 'ba' })).titles).toContain('Breaking Bad');
+    expect((await search({ query: 'ci' })).titles).toContain('Dark City');
     expect((await search({ query: 'ar' })).titles).not.toContain('Dark');
     expect((await search({ query: 'ark' })).titles).toContain('Dark');
   });
 
-  it.each(['%', '_', '\\', 'u_', '1%', '%%', '\\%', '"', "'", '🎬', '🎬🎬'])(
-    'behandler %j som vanlig tegn og ikke jokertegn',
+  it('finner ord i originaltittelen, også uten aksent', async () => {
+    expect((await search({ query: 'fa' })).titles).toContain('Amélie');
+    expect((await search({ query: 'ça' })).titles).toContain('It');
+  });
+
+  it.each(['%', '_', '\\', '%%', '"', "'", '🎬', '🎬🎬', '％', '＿', '＼', '％％', '＿＿'])(
+    'behandler %j (jokertegn, fullbredde, emoji) uten treff og uten feil',
     async (q) => {
       const r = await search({ query: q });
       expect(r.res.errors).toBeUndefined();
-      expect(r.ids).toEqual(expectedPrefix(q));
-      expect(r.total).toBe(expectedPrefix(q).length);
-      // Ingen titler starter med disse tegnene, så et jokertegn ville gitt mange treff.
       expect(r.total).toBe(0);
     },
   );
 
-  it('teller emoji som ett tegn', async () => {
-    // To emoji = 2 tegn = fortsatt prefiksmatch (4 UTF-16-enheter ville ellers gitt delstrengsøk).
-    expect((await search({ query: 'E🎬' })).total).toBe(0);
-    expect((await search({ query: 'Em' })).titles).toEqual(['Emoji 🎬 Night']);
+  it.each([
+    ':',
+    '&',
+    '|',
+    '!',
+    '(',
+    ')',
+    '<',
+    '>',
+    '*',
+    ':*',
+    'a:',
+    '!a',
+    'a&',
+    '(a',
+    "a'",
+    'a\\',
+    '-a',
+  ])('tsquery-tegn i %j gir ikke feil og ignoreres', async (q) => {
+    const r = await search({ query: q });
+    expect(r.res.errors).toBeUndefined();
+    const letters = q.replace(/[^a-z]/g, '');
+    expect(r.ids).toEqual(letters ? expectedPrefix(letters) : []);
   });
 
   it('pagineres uten hull eller duplikater, og totalCount stemmer', async () => {
