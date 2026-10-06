@@ -78,8 +78,9 @@ if [ -n "${TMDB_API_KEY:-}" ]; then
 fi
 sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname = '$DB_NAME'" | grep -q 1 \
   || sudo -u postgres createdb "$DB_NAME" --owner "$DB_USER"
-# pg_trgm krever superbruker første gang; migreringen bruker IF NOT EXISTS.
-sudo -u postgres psql -d "$DB_NAME" -qc 'CREATE EXTENSION IF NOT EXISTS pg_trgm;'
+# pg_trgm og unaccent krever superbruker første gang (begge følger med postgresql-contrib);
+# migreringene bruker IF NOT EXISTS.
+sudo -u postgres psql -d "$DB_NAME" -qc 'CREATE EXTENSION IF NOT EXISTS pg_trgm; CREATE EXTENSION IF NOT EXISTS unaccent;'
 
 step "Installerer avhengigheter og bygger"
 HUSKY=0 npm ci --no-audit --no-fund

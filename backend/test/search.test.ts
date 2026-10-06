@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { TITLES, TITLE_COUNT } from './fixtures.js';
 import { setupApi } from './helpers.js';
-import { SEARCH } from './queries.js';
+import { collectIds, SEARCH } from './queries.js';
 
 const env = setupApi();
 
@@ -43,7 +43,8 @@ describe('search: tekst', () => {
 
   it('søker i originaltittel', async () => {
     expect((await search({ query: 'fabuleux' })).titles).toEqual(['Amélie']);
-    expect((await search({ query: 'Ça' })).titles).toEqual(['It']);
+    // «Ça» er et kort søk (prefiks, uten aksenter) og treffer derfor også «Café Society».
+    expect((await search({ query: 'Ça' })).titles).toEqual(['It', 'Café Society']);
   });
 
   it.each([null, '', '   ', '\t\n'])('tomt søk %j gir alle titler', async (q) => {
@@ -63,14 +64,13 @@ describe('search: tekst', () => {
   });
 
   it.each([
-    ['%', ['100% Pure']],
-    ['_', ['Under_score Story']],
     ['0% P', ['100% Pure']],
     ['er_sc', ['Under_score Story']],
-    ["'", ['Amélie', "Don't Look Up", "O'Brien's Odyssey"]],
-    ['"', ['Say "Cheese"']],
-    ['\\', ['Back\\Slash']],
-    ['🎬', ['Emoji 🎬 Night']],
+    ["n's O", ["O'Brien's Odyssey"]],
+    ['y "C', ['Say "Cheese"']],
+    ['Back\\', ['Back\\Slash']],
+    ['k\\S', ['Back\\Slash']],
+    ['🎬 N', ['Emoji 🎬 Night']],
     ['amélie', ['Amélie']],
     ['CAFÉ', ['Café Society']],
     ["Don't", ["Don't Look Up"]],
@@ -102,6 +102,139 @@ describe('search: tekst', () => {
   it('avviser NUL-tegn i søketeksten som brukerfeil', async () => {
     const res = await env.gql(SEARCH, { query: 'a\u0000b', first: 5 });
     expect(res.errors?.[0]?.extensions?.code).toBe('BAD_USER_INPUT');
+  });
+});
+
+/** Samme normalisering som i SQL (lower + unaccent), til å utlede forventede treff fra fixturen. */
+const fold = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+const titleHaystack = (t: (typeof TITLES)[number]) =>
+  [t.primary, t.original ?? t.primary].map(fold);
+
+describe('search: aksentuavhengig', () => {
+  it.each([
+    ['amelie', ['Amélie']],
+    ['AMELIE', ['Amélie']],
+    ['amélie', ['Amélie']],
+    ['AMÉLIE', ['Amélie']],
+    ['amèlie', ['Amélie']],
+    ['cafe', ['Café Society']],
+    ['Cafe soc', ['Café Society']],
+    ['café', ['Café Society']],
+    ['fabuleux destin d amelie', []],
+    ["destin d'amelie", ['Amélie']],
+  ])('%j finner %j', async (q, expected) => {
+    const r = await search({ query: q });
+    expect(r.res.errors).toBeUndefined();
+    expect(r.titles).toEqual(expected);
+    expect(r.total).toBe(expected.length);
+  });
+
+  it('rangerer treff uten aksent likt som med (relevans bruker samme normalisering)', async () => {
+    const [plain, accented] = await Promise.all([
+      search({ query: 'amelie', sort: { field: 'RELEVANCE' } }),
+      search({ query: 'amélie', sort: { field: 'RELEVANCE' } }),
+    ]);
+    expect(plain.ids).toEqual(accented.ids);
+    expect(plain.titles[0]).toBe('Amélie');
+  });
+
+  it('escaping av %, _ og \\ virker sammen med aksenter', async () => {
+    expect((await search({ query: 'caf% soc' })).total).toBe(0);
+    expect((await search({ query: 'caf_ soc' })).total).toBe(0);
+    expect((await search({ query: 'back\\sl' })).titles).toEqual(['Back\\Slash']);
+    expect((await search({ query: 'bac\\sl' })).total).toBe(0);
+    expect((await search({ query: 'Back\\Slash' })).titles).toEqual(['Back\\Slash']);
+  });
+
+  it('fasettene og totalCount bruker samme normalisering', async () => {
+    const res = await env.gql(
+      'query ($q: String) { facets(query: $q) { available types { value count } } }',
+      { q: 'cafe' },
+    );
+    expect(res.errors).toBeUndefined();
+    expect(res.data!.facets.types).toEqual([{ value: 'MOVIE', count: 1 }]);
+  });
+});
+
+describe('search: korte søk (1–2 tegn)', () => {
+  // Prefiksmatch på normalisert primær- eller originaltittel, rangert etter stemmer og id.
+  const expectedPrefix = (q: string) =>
+    TITLES.filter((t) => titleHaystack(t).some((h) => h.startsWith(fold(q))))
+      .sort((a, b) => b.votes - a.votes || (a.id < b.id ? 1 : -1))
+      .map((t) => t.id);
+
+  it.each(['u', 'U', 'f', 'un', 'UN', 'ba', 'br', 'ca', 'ÇA', 'am', 'it', 'e'])(
+    'prefiksmatch for %j, sortert etter popularitet',
+    async (q) => {
+      const r = await search({ query: q });
+      expect(r.res.errors).toBeUndefined();
+      expect(expectedPrefix(q).length).toBeGreaterThan(0);
+      expect(r.ids).toEqual(expectedPrefix(q));
+      expect(r.total).toBe(expectedPrefix(q).length);
+    },
+  );
+
+  it('finner ikke midt i tittelen (til forskjell fra søk på 3+ tegn)', async () => {
+    expect((await search({ query: 'ar' })).titles).not.toContain('Dark');
+    expect((await search({ query: 'ark' })).titles).toContain('Dark');
+  });
+
+  it.each(['%', '_', '\\', 'u_', '1%', '%%', '\\%', '"', "'", '🎬', '🎬🎬'])(
+    'behandler %j som vanlig tegn og ikke jokertegn',
+    async (q) => {
+      const r = await search({ query: q });
+      expect(r.res.errors).toBeUndefined();
+      expect(r.ids).toEqual(expectedPrefix(q));
+      expect(r.total).toBe(expectedPrefix(q).length);
+      // Ingen titler starter med disse tegnene, så et jokertegn ville gitt mange treff.
+      expect(r.total).toBe(0);
+    },
+  );
+
+  it('teller emoji som ett tegn', async () => {
+    // To emoji = 2 tegn = fortsatt prefiksmatch (4 UTF-16-enheter ville ellers gitt delstrengsøk).
+    expect((await search({ query: 'E🎬' })).total).toBe(0);
+    expect((await search({ query: 'Em' })).titles).toEqual(['Emoji 🎬 Night']);
+  });
+
+  it('pagineres uten hull eller duplikater, og totalCount stemmer', async () => {
+    const all = await collectIds(env, { query: 'f' }, 5);
+    expect(all.ids).toEqual(expectedPrefix('f'));
+    expect(all.pages).toBeGreaterThan(3);
+    expect(all.total).toBe(all.ids.length);
+  });
+
+  it('kombineres med filtre og alle sorteringer', async () => {
+    const series = await search({ query: 'f', filters: { types: ['SERIES'] } });
+    const want = expectedPrefix('f').filter(
+      (id) => TITLES.find((t) => t.id === id)!.type === 'series',
+    );
+    expect(series.ids).toEqual(want);
+    for (const field of ['RATING', 'YEAR', 'TITLE']) {
+      const r = await collectIds(env, { query: 'f', sort: { field } }, 7);
+      expect([...r.ids].sort()).toEqual([...expectedPrefix('f')].sort());
+    }
+  });
+
+  it('cursor fra et kort søk kan ikke brukes på et langt søk, og omvendt', async () => {
+    const short = await env.gql(SEARCH, { query: 'f', first: 2 });
+    const long = await env.gql(SEARCH, { query: 'fil', first: 2 });
+    const shortCursor = short.data!.search.pageInfo.endCursor;
+    const longCursor = long.data!.search.pageInfo.endCursor;
+    const a = await env.gql(SEARCH, { query: 'fil', first: 2, after: shortCursor });
+    const b = await env.gql(SEARCH, { query: 'f', first: 2, after: longCursor });
+    expect(a.errors?.[0]?.extensions?.code).toBe('BAD_USER_INPUT');
+    expect(b.errors?.[0]?.extensions?.code).toBe('BAD_USER_INPUT');
+  });
+
+  it('grensen går mellom 2 og 3 tegn', async () => {
+    // «da» (prefiks): Dark, Dark City, Dark Waters, Darkman, Dark Knight, Don't? nei.
+    const two = await search({ query: 'da' });
+    expect(two.titles).toEqual(
+      expectedPrefix('da').map((id) => TITLES.find((t) => t.id === id)!.primary),
+    );
+    // «ark» (delstreng): treffer også titler der «ark» står inni.
+    expect((await search({ query: 'ark' })).total).toBeGreaterThan(0);
   });
 });
 

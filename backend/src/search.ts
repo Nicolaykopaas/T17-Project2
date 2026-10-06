@@ -49,6 +49,25 @@ export function escapeLike(text: string): string {
   return text.replace(/[\\%_]/g, (c) => `\\${c}`);
 }
 
+/**
+ * Normalisert tittel (små bokstaver, uten aksenter) ligger som genererte kolonner, med indekser på
+ * dem (004_unaccent_search.sql). Søketeksten må normaliseres med nøyaktig samme uttrykk, og det
+ * gjøres i Postgres (`norm`) for at TypeScript og databasen aldri skal uenes om hva «uten aksent»
+ * betyr. Kolonnene i stedet for et uttrykk i spørringen unngår at unaccent() kjøres på nytt for
+ * hver rad i filter, recheck og relevansberegning.
+ */
+const norm = (expr: string) => `lower(f_unaccent(${expr}))`;
+const TITLE_NORM = 't.primary_title_norm';
+const ORIGINAL_NORM = 't.original_title_norm';
+
+/**
+ * Søk på 1–2 tegn har ingen trigrammer, så GIN-indeksene kan ikke brukes og delstrengsøk ville
+ * lest hele tabellen og regnet likhet på nesten alle rader (ca. 0,5 s på 120 000 titler). Slike
+ * søk er derfor prefiksmatch med btree-indeks og rangeres etter popularitet (se docs/ytelse.md).
+ */
+export const SHORT_QUERY_MAX = 2;
+export const isShortQuery = (query: string): boolean => [...query].length <= SHORT_QUERY_MAX;
+
 export type Dimension = 'genres' | 'decades' | 'types' | 'available';
 
 // Ett PK-oppslag i title_streams per kandidatrad (semi-join), aldri en skanning av tabellen.
@@ -66,11 +85,11 @@ function filterConditions(
 ): string[] {
   const conds: string[] = [];
   if (query) {
-    // lower() gjøres i Postgres på begge sider, så samme funksjon brukes som i indeksen.
-    const like = p.add(`%${escapeLike(query)}%`);
-    conds.push(
-      `(lower(t.primary_title) LIKE lower(${like}) OR lower(t.original_title) LIKE lower(${like}))`,
-    );
+    // Normaliseringen gjøres i Postgres på begge sider, så samme uttrykk brukes som i indeksen.
+    // Prefiks for korte søk (btree), delstreng ellers (trigram-GIN).
+    const pattern = isShortQuery(query) ? `${escapeLike(query)}%` : `%${escapeLike(query)}%`;
+    const like = norm(p.add(pattern));
+    conds.push(`(${TITLE_NORM} LIKE ${like} OR ${ORIGINAL_NORM} LIKE ${like})`);
   }
   if (skip !== 'genres' && filters.genres.length > 0) {
     // @> = «inneholder alle»; bruker GIN-indeksen på titles.genres.
@@ -112,14 +131,16 @@ const ID: KeyDef = { expr: 't.id', cast: 'text', kind: 'text' };
 function sortKeys(field: SortField, query: string | null, p: Params): KeyDef[] {
   switch (field) {
     case 'RELEVANCE': {
-      if (!query) return [VOTES, ID];
-      const q = `lower(${p.add(query)}::text)`;
+      // Korte søk rangeres bare etter popularitet: likhet mot 1–2 tegn er støy, og å regne den ut
+      // for alle prefikstreffene var det dyreste ved søket.
+      if (!query || isShortQuery(query)) return [VOTES, ID];
+      const q = norm(`${p.add(query)}::text`);
       // Likhet alene rangerer obskure titler med identisk navn over klassikerne brukeren som regel
       // mener («Dark Knight», 1 500 stemmer, før «The Dark Knight»). word_similarity gir full score
       // når søkeordene står i tittelen, likhet belønner eksakte treff, og popularitet (log10 av
       // stemmer, mettet ved 10 mill.) skiller resten. Stemmer og id er tiebreak.
-      const wordSim = `GREATEST(word_similarity(${q}, lower(t.primary_title)), word_similarity(${q}, lower(t.original_title)))`;
-      const sim = `GREATEST(similarity(lower(t.primary_title), ${q}), similarity(lower(t.original_title), ${q}))`;
+      const wordSim = `GREATEST(word_similarity(${q}, ${TITLE_NORM}), word_similarity(${q}, ${ORIGINAL_NORM}))`;
+      const sim = `GREATEST(similarity(${TITLE_NORM}, ${q}), similarity(${ORIGINAL_NORM}, ${q}))`;
       const pop = `LEAST(log(GREATEST(t.num_votes, 1)) / 7.0, 1.0)`;
       const rel = `(0.6 * ${wordSim} + 0.2 * ${sim} + 0.2 * ${pop})`;
       return [{ expr: rel, select: `(${rel})::float8`, cast: 'float8', kind: 'float' }, VOTES, ID];
@@ -182,7 +203,10 @@ export async function searchTitles(pool: Pool, args: SearchArgs): Promise<Connec
   const p = new Params();
   const conds = filterConditions(query, filters, p);
   const keys = sortKeys(field, query, p);
-  const signature = `search:${field}:${direction}:${query ? 'q' : '-'}`;
+  // Korte søk har andre sorteringsnøkler enn vanlige (ingen likhetskolonne), så cursorene må
+  // ikke kunne byttes mellom dem.
+  const queryKind = !query ? '-' : isShortQuery(query) ? 's' : 'q';
+  const signature = `search:${field}:${direction}:${queryKind}`;
   const rowConds = [...conds];
   if (after !== null) {
     const values = decodeCursor(after, signature, keys);

@@ -13,11 +13,11 @@ automatisk (genererer også databasepassord i `.env`). Stegene under er det samm
 ## 1. PostgreSQL
 
 ```bash
-sudo apt update && sudo apt install -y postgresql postgresql-contrib   # contrib gir pg_trgm
+sudo apt update && sudo apt install -y postgresql postgresql-contrib   # contrib gir pg_trgm og unaccent
 sudo -u postgres createuser project2 --pwprompt                         # velg et sterkt passord
 sudo -u postgres createdb project2 --owner project2
-# pg_trgm må opprettes av en superbruker første gang (migreringen bruker IF NOT EXISTS):
-sudo -u postgres psql -d project2 -c 'CREATE EXTENSION IF NOT EXISTS pg_trgm;'
+# pg_trgm og unaccent må opprettes av en superbruker første gang (migreringene bruker IF NOT EXISTS):
+sudo -u postgres psql -d project2 -c 'CREATE EXTENSION IF NOT EXISTS pg_trgm; CREATE EXTENSION IF NOT EXISTS unaccent;'
 ```
 
 ## 2. Kode, bygg og data
