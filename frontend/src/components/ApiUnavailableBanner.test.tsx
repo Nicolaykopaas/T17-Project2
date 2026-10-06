@@ -3,7 +3,7 @@ import type { ApolloClient } from '@apollo/client';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { apiUnavailable } from '../apollo/apiStatus';
+import { apiFailureKind, apiUnavailable } from '../apollo/apiStatus';
 import { ApiUnavailableBanner } from './ApiUnavailableBanner';
 
 function setup(refetchQueries: () => Promise<unknown>) {
@@ -17,7 +17,12 @@ function setup(refetchQueries: () => Promise<unknown>) {
   return client;
 }
 
-afterEach(() => act(() => void apiUnavailable(false)));
+afterEach(() =>
+  act(() => {
+    apiUnavailable(false);
+    apiFailureKind('network');
+  }),
+);
 
 describe('ApiUnavailableBanner', () => {
   it('vises ikke når API-et er tilgjengelig', () => {
@@ -26,12 +31,25 @@ describe('ApiUnavailableBanner', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
-  it('forklarer nedetiden og nevner NTNU VPN', () => {
+  it('forklarer nedetiden og nevner backend og VPN ved nettverksfeil', () => {
     apiUnavailable(true);
     setup(async () => []);
-    expect(screen.getByRole('alert')).toHaveTextContent('Får ikke kontakt med serveren');
-    expect(screen.getByRole('alert')).toHaveTextContent('NTNU VPN');
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveTextContent('Får ikke kontakt med serveren akkurat nå.');
+    expect(alert).toHaveTextContent('må backend være startet');
+    expect(alert).toHaveTextContent('VPN');
     expect(screen.getByRole('button', { name: 'Prøv igjen' })).toBeEnabled();
+  });
+
+  it('utelater VPN-hintet når backend svarer, men databasen er nede', () => {
+    apiFailureKind('service');
+    apiUnavailable(true);
+    setup(async () => []);
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveTextContent('Tjenesten er midlertidig utilgjengelig.');
+    expect(alert).not.toHaveTextContent('Får ikke kontakt');
+    expect(alert).toHaveTextContent('databasen er nede');
+    expect(alert).not.toHaveTextContent('VPN');
   });
 
   it('«Prøv igjen» refetcher aktive queries og viser at den jobber', async () => {

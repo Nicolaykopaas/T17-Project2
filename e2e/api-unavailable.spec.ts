@@ -1,7 +1,7 @@
 import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
-// Simulerer en student utenfor NTNU-nettet: fetch mot API-et feiler helt (som uten VPN).
+// Simulerer at API-et ikke nås (backend nede, ikke startet eller VPN mangler): fetch feiler helt.
 const GRAPHQL = '**/project2/graphql';
 
 test('nedetid gir ett banner, og «Prøv igjen» henter data når API-et er tilbake', async ({
@@ -12,8 +12,8 @@ test('nedetid gir ett banner, og «Prøv igjen» henter data når API-et er tilb
 
   const banner = page.getByRole('alert');
   await expect(banner).toHaveCount(1);
-  await expect(banner).toContainText('Får ikke kontakt med serveren');
-  await expect(banner).toContainText('NTNU VPN');
+  await expect(banner).toContainText('Får ikke kontakt med serveren akkurat nå.');
+  await expect(banner).toContainText('VPN');
   // Radene gjentar ikke feilen; det er bare banneret som kunngjør den.
   await expect(page.getByText('Kunne ikke hente denne raden.')).toHaveCount(0);
   await expect(page.getByRole('article')).toHaveCount(0);
@@ -52,7 +52,7 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.emulateMedia({ colorScheme: scheme });
     await page.route(GRAPHQL, (route) => route.abort());
     await page.goto('./');
-    await expect(page.getByRole('alert')).toContainText('NTNU VPN');
+    await expect(page.getByRole('alert')).toContainText('VPN');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
     const results = await new AxeBuilder({ page })

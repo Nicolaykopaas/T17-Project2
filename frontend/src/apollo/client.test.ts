@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GENRES_QUERY } from '../graphql/operations';
-import { apiUnavailable } from './apiStatus';
+import { apiFailureKind, apiUnavailable } from './apiStatus';
 import { createClient } from './client';
 import { getUserId, uuidV4 } from './userId';
 
@@ -87,6 +87,7 @@ describe('API-status fra error-linken', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
     await expect(createClient().query(noCache)).rejects.toThrow();
     expect(apiUnavailable()).toBe(true);
+    expect(apiFailureKind()).toBe('network');
   });
 
   it.each([502, 503, 504])('settes ved HTTP %i fra proxyen', async (status) => {
@@ -127,6 +128,7 @@ describe('API-status fra error-linken', () => {
     );
     await expect(createClient().query(noCache)).rejects.toThrow();
     expect(apiUnavailable()).toBe(true);
+    expect(apiFailureKind()).toBe('service');
   });
 
   it('nullstilles når et kall lykkes', async () => {

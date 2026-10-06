@@ -30,6 +30,29 @@ describe('tema-CSS', () => {
   });
 });
 
+describe('theme-color', () => {
+  const init = readFileSync(resolve(root, 'public/theme-init.js'), 'utf8');
+  const themeTs = readFileSync(resolve(root, 'src/lib/theme.ts'), 'utf8');
+  const bg = (selector: string) => tokens(selector)['--bg'];
+  const dark = bg(':root');
+  const light = bg(":root[data-theme='light']");
+
+  it('har samme farger som --bg i CSS, i theme-init.js og THEME_COLORS', () => {
+    for (const source of [init, themeTs]) {
+      expect(source).toContain(`'${dark}'`);
+      expect(source).toContain(`'${light}'`);
+    }
+  });
+
+  it('har meta-tagger for begge systemtema med riktig farge i index.html', () => {
+    const html = readFileSync(resolve(root, 'index.html'), 'utf8');
+    expect(html).toMatch(
+      new RegExp(`content="${light}" media="\\(prefers-color-scheme: light\\)"`),
+    );
+    expect(html).toMatch(new RegExp(`content="${dark}" media="\\(prefers-color-scheme: dark\\)"`));
+  });
+});
+
 describe('theme-init.js', () => {
   const html = readFileSync(resolve(root, 'index.html'), 'utf8');
   const init = readFileSync(resolve(root, 'public/theme-init.js'), 'utf8');

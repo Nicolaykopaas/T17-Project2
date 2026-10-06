@@ -51,7 +51,7 @@ CREATE TABLE list_items (
 );
 
 -- Tekstsøk: uttrykkene må være identiske med de i søkespørringen (lower(...)) for at
--- planleggeren skal kunne bruke indeksene.
+-- planleggeren skal kunne bruke indeksene (erstattet av 004_unaccent_search.sql).
 CREATE INDEX titles_primary_title_trgm_idx  ON titles USING gin (lower(primary_title)  gin_trgm_ops);
 CREATE INDEX titles_original_title_trgm_idx ON titles USING gin (lower(original_title) gin_trgm_ops);
 

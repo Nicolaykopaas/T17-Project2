@@ -1,7 +1,7 @@
 import { useId, useRef, useState, type FormEvent } from 'react';
 import { useDebouncedCallback } from '../hooks/useDebouncedCallback';
 
-export const SEARCH_DEBOUNCE_MS = 300;
+const SEARCH_DEBOUNCE_MS = 300;
 
 interface Props {
   /** Verdien som er «i kraft» (fra URL). */

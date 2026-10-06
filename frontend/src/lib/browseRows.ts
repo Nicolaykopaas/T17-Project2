@@ -35,7 +35,7 @@ export const BROWSE_ROWS: BrowseRow[] = [
 /** Id på radens ytre element; lenkemål for kategorinavigasjonen på forsiden. */
 export const rowAnchorId = (row: Pick<BrowseRow, 'id'>) => `rad-${row.id}`;
 
-export const ROW_SIZE = 20;
+const ROW_SIZE = 20;
 
 export function rowVariables(state: SearchState) {
   return {
