@@ -32,6 +32,9 @@ export const BROWSE_ROWS: BrowseRow[] = [
   row('scifi', 'Science fiction', { genres: ['Sci-Fi'] }),
 ];
 
+/** Id på radens ytre element; lenkemål for kategorinavigasjonen på forsiden. */
+export const rowAnchorId = (row: Pick<BrowseRow, 'id'>) => `rad-${row.id}`;
+
 export const ROW_SIZE = 20;
 
 export function rowVariables(state: SearchState) {

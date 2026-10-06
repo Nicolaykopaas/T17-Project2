@@ -1073,7 +1073,7 @@ fieldset {
   }
 }
 
-/* «Kun filmer du kan se» står øverst og skilles fra fasettene under. */
+/* «Kun filmer som kan strømmes gratis» står øverst og skilles fra fasettene under. */
 .check--available {
   padding-bottom: 0.75rem;
   margin-bottom: 0.5rem;
@@ -1405,3 +1405,50 @@ fieldset {
   aspect-ratio: auto;
   border-radius: 0;
 }
+
+/* === Kategorinavigasjon på forsiden (#14) – samlet her for enkel merge === */
+.catnav {
+  padding-top: 0.75rem;
+}
+.catnav__list {
+  display: flex;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem 0.25rem 0.5rem;
+  /* Smal skjerm: én rad som scroller sidelengs inni navigasjonen, så siden selv aldri får sidescroll. */
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+.catnav__list li {
+  flex: none;
+}
+@media (min-width: 48rem) {
+  .catnav__list {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+}
+.catnav__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.25rem;
+  padding: 0.2rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.catnav__link:hover {
+  border-color: var(--accent-text);
+}
+/* Rader og overskrifter lander under den faste headeren ved hopp og fokus. */
+.row-anchor {
+  scroll-margin-top: calc(var(--header-h) + 0.5rem);
+}
+.row-anchor h2:focus-visible {
+  outline-offset: 4px;
+}
+/* === Slutt: kategorinavigasjon === */
