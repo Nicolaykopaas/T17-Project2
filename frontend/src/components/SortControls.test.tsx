@@ -19,8 +19,15 @@ describe('SortControls', () => {
     );
   });
 
+  it.each(['a', 'ab', '🎬🎬'])('kaller «%s» (1–2 tegn) også «Popularitet»', (q) => {
+    render(<SortControls state={{ ...EMPTY_STATE, q }} onChange={vi.fn()} />);
+    expect(screen.getByRole('combobox', { name: 'Sorter etter' })).toHaveDisplayValue(
+      'Popularitet',
+    );
+  });
+
   it('kaller valget «Relevans» når det finnes søketekst', () => {
-    render(<SortControls state={{ ...EMPTY_STATE, q: 'matrix' }} onChange={vi.fn()} />);
+    render(<SortControls state={{ ...EMPTY_STATE, q: 'abc' }} onChange={vi.fn()} />);
     expect(screen.getByRole('combobox', { name: 'Sorter etter' })).toHaveDisplayValue('Relevans');
     expect(screen.queryByRole('option', { name: 'Popularitet' })).not.toBeInTheDocument();
   });

@@ -20,7 +20,8 @@ const apiStatusLink = ApolloLink.from([
   new ErrorLink(({ error }) => {
     const kind = classifyApiFailure(error);
     if (!kind) return;
-    apiFailureKind(kind);
+    // Årsaken settes bare når banneret slås på: bytter teksten i role="alert" mens det står, leses det opp på nytt.
+    if (!apiUnavailable()) apiFailureKind(kind);
     apiUnavailable(true);
   }),
   new ApolloLink((operation, forward) =>

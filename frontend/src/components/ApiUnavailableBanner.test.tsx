@@ -46,8 +46,9 @@ describe('ApiUnavailableBanner', () => {
     apiUnavailable(true);
     setup(async () => []);
     const alert = screen.getByRole('alert');
-    expect(alert).toHaveTextContent('Får ikke kontakt med serveren akkurat nå.');
-    expect(alert).toHaveTextContent('midlertidig nede');
+    expect(alert).toHaveTextContent('Tjenesten er midlertidig utilgjengelig.');
+    expect(alert).not.toHaveTextContent('Får ikke kontakt');
+    expect(alert).toHaveTextContent('databasen er nede');
     expect(alert).not.toHaveTextContent('VPN');
   });
 

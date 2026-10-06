@@ -21,7 +21,8 @@ export function SortControls({ state, onChange }: Props) {
   const field = state.sort ?? 'RELEVANCE';
   // Uten søketekst finnes det ingen relevans å rangere etter; serveren faller da tilbake til
   // popularitet (flest stemmer). Samme enum-verdi og URL-verdi, bare en ærligere etikett.
-  const relevanceLabel = state.q.trim() ? 'Relevans' : 'Popularitet';
+  // Backend gjør det samme for 1–2 tegn (SHORT_QUERY_MAX i backend/src/search.ts), målt i kodepunkter.
+  const relevanceLabel = [...state.q.trim()].length > 2 ? 'Relevans' : 'Popularitet';
   const direction = state.dir ?? DEFAULT_DIRECTION[field];
 
   return (

@@ -37,12 +37,16 @@ export function ApiUnavailableBanner() {
       <div className="container api-banner__inner">
         <div role="alert" className="api-banner__text">
           <p>
-            <strong>Får ikke kontakt med serveren akkurat nå.</strong>
+            <strong>
+              {kind === 'service'
+                ? 'Tjenesten er midlertidig utilgjengelig.'
+                : 'Får ikke kontakt med serveren akkurat nå.'}
+            </strong>
           </p>
           {/* VPN-hintet utelates når backend svarer (databasen er nede): da er nettverket ikke problemet. */}
           <p>
             {kind === 'service'
-              ? 'Tjenesten er midlertidig nede. Prøv igjen om litt.'
+              ? 'Serveren svarer, men databasen er nede. Prøv igjen om litt.'
               : 'Den kan være midlertidig nede, så prøv igjen om litt. Kjører du appen selv, må backend være startet. Åpner du den utenfra, må du være på NTNU-nett eller bruke VPN.'}
           </p>
         </div>
