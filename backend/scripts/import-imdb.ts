@@ -61,11 +61,15 @@ async function loadRatings(file: string, minVotes: number, log: (m: string) => v
  * Upsert av én batch. Arrays sendes som én parameter per kolonne og pakkes ut med unnest():
  * få parametere uansett batch-størrelse, og data blir aldri limt inn i SQL-teksten.
  */
-async function upsertBatch(pool: Pool, rows: TitleRow[]): Promise<void> {
+async function upsertBatch(pool: Pool, allRows: TitleRow[]): Promise<void> {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    await client.query(
+    // WHERE ... IS DISTINCT FROM: en omkjøring uten nye data skal ikke skrive en eneste rad. Uten
+    // vilkåret lager Postgres en ny radversjon for hver eksisterende tittel (bloat som må vakuumeres),
+    // regner ut de genererte kolonnene (unaccent, tsvector) på nytt og oppdaterer GIN-indeksene.
+    // Bare rader som faktisk ble satt inn eller endret kommer tilbake fra RETURNING.
+    const { rows: changed } = await client.query<{ id: string }>(
       `INSERT INTO titles (id, title_type, primary_title, original_title, start_year, end_year,
                            runtime_minutes, average_rating, num_votes, genres)
        SELECT id, title_type, primary_title, original_title, start_year, end_year,
@@ -84,24 +88,39 @@ async function upsertBatch(pool: Pool, rows: TitleRow[]): Promise<void> {
          runtime_minutes = EXCLUDED.runtime_minutes,
          average_rating = EXCLUDED.average_rating,
          num_votes = EXCLUDED.num_votes,
-         genres = EXCLUDED.genres`,
+         genres = EXCLUDED.genres
+       WHERE (titles.title_type, titles.primary_title, titles.original_title, titles.start_year,
+              titles.end_year, titles.runtime_minutes, titles.average_rating, titles.num_votes,
+              titles.genres)
+         IS DISTINCT FROM
+             (EXCLUDED.title_type, EXCLUDED.primary_title, EXCLUDED.original_title,
+              EXCLUDED.start_year, EXCLUDED.end_year, EXCLUDED.runtime_minutes,
+              EXCLUDED.average_rating, EXCLUDED.num_votes, EXCLUDED.genres)
+       RETURNING id`,
       [
-        rows.map((r) => r.id),
-        rows.map((r) => r.titleType),
-        rows.map((r) => r.primaryTitle),
-        rows.map((r) => r.originalTitle),
-        rows.map((r) => r.startYear),
-        rows.map((r) => r.endYear),
-        rows.map((r) => r.runtimeMinutes),
-        rows.map((r) => r.averageRating),
-        rows.map((r) => r.numVotes),
+        allRows.map((r) => r.id),
+        allRows.map((r) => r.titleType),
+        allRows.map((r) => r.primaryTitle),
+        allRows.map((r) => r.originalTitle),
+        allRows.map((r) => r.startYear),
+        allRows.map((r) => r.endYear),
+        allRows.map((r) => r.runtimeMinutes),
+        allRows.map((r) => r.averageRating),
+        allRows.map((r) => r.numVotes),
         // Sjangernavn inneholder aldri komma (IMDb skiller dem med komma).
-        rows.map((r) => r.genres.join(',')),
+        allRows.map((r) => r.genres.join(',')),
       ],
     );
 
-    // Normalisert kopi: nye sjangre, og title_genres bygges på nytt for titlene i batchen
-    // slik at en endret sjangerliste ved omkjøring ikke etterlater gamle koblinger.
+    // Normalisert kopi: nye sjangre, og title_genres bygges på nytt for titlene som ble satt inn
+    // eller endret, slik at en endret sjangerliste ved omkjøring ikke etterlater gamle koblinger.
+    // Uendrede titler har allerede riktige koblinger (samme transaksjon som titles-raden).
+    const changedIds = new Set(changed.map((r) => r.id));
+    const rows = allRows.filter((r) => changedIds.has(r.id));
+    if (rows.length === 0) {
+      await client.query('COMMIT');
+      return;
+    }
     const pairsTitle: string[] = [];
     const pairsGenre: string[] = [];
     for (const r of rows) {
