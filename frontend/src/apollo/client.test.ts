@@ -116,6 +116,19 @@ describe('API-status fra error-linken', () => {
     expect(apiUnavailable()).toBe(false);
   });
 
+  it('settes når backenden melder SERVICE_UNAVAILABLE (database nede)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        Response.json({
+          errors: [{ message: 'Nede', extensions: { code: 'SERVICE_UNAVAILABLE' } }],
+        }),
+      ),
+    );
+    await expect(createClient().query(noCache)).rejects.toThrow();
+    expect(apiUnavailable()).toBe(true);
+  });
+
   it('nullstilles når et kall lykkes', async () => {
     const fetchMock = vi.fn().mockRejectedValueOnce(new TypeError('Failed to fetch'));
     fetchMock.mockImplementation(async () => ok());

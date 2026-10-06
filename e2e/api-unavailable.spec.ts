@@ -28,11 +28,21 @@ test('nedetid gir ett banner, og «Prøv igjen» henter data når API-et er tilb
 });
 
 test('banneret blir stående når API-et fortsatt er nede etter «Prøv igjen»', async ({ page }) => {
-  await page.route(GRAPHQL, (route) => route.abort());
+  let aborted = 0;
+  await page.route(GRAPHQL, (route) => {
+    aborted++;
+    return route.abort();
+  });
   await page.goto('./');
   await expect(page.getByRole('alert')).toHaveCount(1);
+  const before = aborted;
 
   await page.getByRole('button', { name: /Prøv igjen|Prøver/ }).click();
+  // Et nytt forsøk skal faktisk gå ut til nettverket, og brukeren får beskjed om at det feilet.
+  await expect.poll(() => aborted).toBeGreaterThan(before);
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Fortsatt ingen kontakt' }),
+  ).toBeVisible();
   await expect(page.getByRole('button', { name: 'Prøv igjen' })).toBeEnabled();
   await expect(page.getByRole('alert')).toHaveCount(1);
 });

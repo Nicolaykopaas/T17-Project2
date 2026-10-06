@@ -1,6 +1,6 @@
 import { ApolloProvider } from '@apollo/client/react';
 import type { ApolloClient } from '@apollo/client';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { apiUnavailable } from '../apollo/apiStatus';
@@ -11,6 +11,7 @@ function setup(refetchQueries: () => Promise<unknown>) {
   render(
     <ApolloProvider client={client}>
       <ApiUnavailableBanner />
+      <main id="innhold" tabIndex={-1} />
     </ApolloProvider>,
   );
   return client;
@@ -52,5 +53,27 @@ describe('ApiUnavailableBanner', () => {
     setup(() => Promise.reject(new TypeError('Failed to fetch')));
     await userEvent.click(screen.getByRole('button', { name: 'Prøv igjen' }));
     expect(await screen.findByRole('button', { name: 'Prøv igjen' })).toBeEnabled();
+  });
+
+  it('gir tilbakemelding i en status-region (ikke alerten) når forsøket mislykkes', async () => {
+    apiUnavailable(true);
+    setup(async () => []);
+    const status = screen.getByRole('status');
+    expect(status).toBeEmptyDOMElement();
+    await userEvent.click(screen.getByRole('button', { name: 'Prøv igjen' }));
+    expect(await screen.findByText('Fortsatt ingen kontakt med serveren.')).toBe(status);
+    expect(screen.getByRole('alert')).not.toContainElement(status);
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+  });
+
+  it('flytter fokus til main når forsøket lykkes og knappen forsvinner', async () => {
+    apiUnavailable(true);
+    setup(async () => {
+      apiUnavailable(false);
+      return [];
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'Prøv igjen' }));
+    await waitFor(() => expect(screen.getByRole('main')).toHaveFocus());
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });

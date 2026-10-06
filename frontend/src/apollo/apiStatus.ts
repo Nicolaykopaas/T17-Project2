@@ -6,6 +6,8 @@ import { CombinedGraphQLErrors, ServerError, ServerParseError } from '@apollo/cl
  * Én felles «API utilgjengelig»-tilstand. Uten den viser hver rad og hvert søk sin egen feil
  * når serveren ikke svarer, og brukeren får aldri vite hvorfor.
  */
+// Banneret følger siste svar: ett vellykket svar beviser at API-et nås og nullstiller det, så en enkelt
+// treg spørring som gir 504 kan blinke banneret kort. Vi aksepterer det i stedet for å skjule ekte nedetid.
 export const apiUnavailable = makeVar(false);
 
 export const useApiUnavailable = () => useReactiveVar(apiUnavailable);
@@ -18,7 +20,10 @@ const GATEWAY_STATUSES = new Set([502, 503, 504]);
  * er vår bug eller brukerens input; da ville et «ingen kontakt»-banner være feil og villedende.
  */
 export function isNetworkDown(error: unknown): boolean {
-  if (CombinedGraphQLErrors.is(error)) return false;
+  if (CombinedGraphQLErrors.is(error)) {
+    // Backenden svarer HTTP 200 med denne koden når Node lever, men databasen ikke gjør det.
+    return error.errors.some((e) => e.extensions?.code === 'SERVICE_UNAVAILABLE');
+  }
   if (ServerError.is(error)) return GATEWAY_STATUSES.has(error.statusCode);
   // Ikke-JSON-svar (f.eks. HTML-feilside fra proxyen eller en innloggingsside) betyr at API-et ikke nås.
   if (ServerParseError.is(error)) return true;

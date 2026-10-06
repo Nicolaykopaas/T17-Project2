@@ -4,6 +4,7 @@ import { ArtworkService } from './artwork.js';
 import { config } from './config.js';
 import { createContext, type Context } from './context.js';
 import type { Pool } from './db.js';
+import { isDatabaseUnavailable, serviceUnavailableError } from './dbErrors.js';
 import { depthLimit } from './depthLimit.js';
 import { schema } from './schema.js';
 
@@ -126,6 +127,7 @@ export function createApp({
         if (http?.status && http.status < 500) {
           return error as GraphQLError;
         }
+        if (isDatabaseUnavailable(error)) return serviceUnavailableError();
         if (process.env.NODE_ENV !== 'test') console.error('Uventet feil:', error);
         return new GraphQLError('Intern feil.', { extensions: { code: 'INTERNAL_SERVER_ERROR' } });
       },

@@ -44,6 +44,20 @@ describe('GET /health', () => {
   });
 });
 
+describe('database nede mens Node kjører', () => {
+  it('gir SERVICE_UNAVAILABLE uten interne detaljer', async () => {
+    const dead = createPool('postgres://postgres:x@127.0.0.1:1/none');
+    try {
+      const res = await post(createApp({ pool: dead }), '{ genres }');
+      const body = await res.json();
+      expect(body.errors[0].extensions.code).toBe('SERVICE_UNAVAILABLE');
+      expect(JSON.stringify(body)).not.toMatch(/127\.0\.0\.1|ECONNREFUSED|postgres/);
+    } finally {
+      await dead.end();
+    }
+  });
+});
+
 describe('servergrenser', () => {
   it('slår av introspeksjon i produksjon, men ikke i utvikling', async () => {
     const dev = createApp({ pool, production: false });

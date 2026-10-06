@@ -5,9 +5,9 @@
 Description=IT2810 gruppe 17 prosjekt 2 – GraphQL-backend
 # Backenden er ubrukelig uten databasen, så vent på at Postgres er oppe.
 After=network.target postgresql.service
-# Requires (ikke bare Wants): stopper Postgres, stoppes backenden også og startes igjen sammen med den,
-# i stedet for å stå oppe og svare 500 på alt.
-Requires=postgresql.service
+# Wants (ikke Requires): Requires propagerer bare stopp, ikke start, og postgresql.service er på Ubuntu en
+# oneshot-wrapper. Restart=always under holder backenden oppe og får den tilbake når databasen er klar.
+Wants=postgresql.service
 
 [Service]
 Type=simple
