@@ -25,7 +25,7 @@ stemmer, deployet 2026-09-30).
   kritiker-agent og ble rettet før merge.
 - **Tester** (siste verifiserte kjøring, ren E2E-database, CI-modus):
   - backend: 414–415 tester (Vitest mot testdatabase)
-  - frontend: 236 komponenttester (Vitest + Testing Library)
+  - frontend: 249 komponenttester (Vitest + Testing Library)
   - E2E: 97 bestått, 3 hoppet over, 0 ustabile (Playwright, desktop og mobil). De tre hoppede
     er statiske CSP-sjekker som bare kjøres på desktop, og én mobil-skip.
 - **Ytelse:** Lighthouse og `EXPLAIN` i `docs/ytelse.md` (målt før M7, på syntetiske data).
