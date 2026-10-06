@@ -3,11 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { complexityLimit } from './complexityLimit.js';
 
 const schema = buildSchema(`
-  type Node { id: ID, name: String, child: Node }
-  type Query { root: Node }
+  type Node { id: ID, name: String, child: Node, reviews(first: Int): Node }
+  type Query { root: Node, search(first: Int): Node, myList(first: Int): Node }
 `);
-const check = (q: string, maxRootFields = 3, maxFields = 10) =>
-  validate(schema, parse(q), [complexityLimit({ maxRootFields, maxFields })]);
+const check = (q: string, maxRootFields = 3, maxFields = 10, maxCost = 1e9) =>
+  validate(schema, parse(q), [complexityLimit({ maxRootFields, maxFields, maxCost })]);
 
 const aliases = (n: number) => Array.from({ length: n }, (_, i) => `a${i}: root { id }`).join(' ');
 
@@ -63,5 +63,66 @@ describe('complexityLimit', () => {
     expect(() =>
       check('{ root { ...A } } fragment A on Node { child { ...B } } fragment B on Node { ...A }'),
     ).not.toThrow();
+  });
+
+  it('tåler eksponentielt voksende fragmentkjeder spredt fra rotnivå (CPU-DoS)', () => {
+    // 636 byte i originalrapporten: 8 nivåer med ti spredninger hver tok ca. 60 s uten memoisering.
+    const levels = 8;
+    let doc = '{ ...F0 }';
+    for (let i = 0; i < levels; i++) {
+      const uses = Array.from({ length: 10 }, () => `...F${i + 1}`).join(' ');
+      doc += ` fragment F${i} on Query { ${uses} }`;
+    }
+    doc += ` fragment F${levels} on Query { root { id } }`;
+    const started = Date.now();
+    const errors = check(doc, 8, 1000);
+    expect(Date.now() - started).toBeLessThan(200);
+    // 10^8 rotfelt: må avvises, og med rotfelt-meldingen.
+    expect(errors).toHaveLength(1);
+    expect(errors[0]?.message).toContain('rotfelt');
+  });
+
+  describe('vektet kostnad (first)', () => {
+    const cost = (q: string, max: number) => check(q, 100, 1000, max);
+
+    it('vekter feltene under en liste med literal first', () => {
+      // search(1) + 50 x (id + name = 2) = 101
+      const q = '{ search(first: 50) { id name } }';
+      expect(cost(q, 101)).toHaveLength(0);
+      const errors = cost(q, 100);
+      expect(errors).toHaveLength(1);
+      expect(errors[0]?.extensions.code).toBe('BAD_USER_INPUT');
+      expect(errors[0]?.message).toContain('first');
+    });
+
+    it('bruker standard sidestørrelse når first utelates (search: 20, reviews: 10)', () => {
+      expect(cost('{ search { id } }', 21)).toHaveLength(0);
+      expect(cost('{ search { id } }', 20)).toHaveLength(1);
+      // search(1) + 20 x (reviews(1) + 10 x id) = 1 + 20 x 11 = 221
+      expect(cost('{ search { reviews { id } } }', 221)).toHaveLength(0);
+      expect(cost('{ search { reviews { id } } }', 220)).toHaveLength(1);
+    });
+
+    it('regner en variabel first som 50, med mindre den har standardverdi', () => {
+      expect(cost('query($n: Int) { search(first: $n) { id } }', 51)).toHaveLength(0);
+      expect(cost('query($n: Int) { search(first: $n) { id } }', 50)).toHaveLength(1);
+      expect(cost('query($n: Int = 5) { search(first: $n) { id } }', 6)).toHaveLength(0);
+    });
+
+    it('multipliserer nøstede lister og avviser 8 x search(first: 50) med reviews(first: 50)', () => {
+      const one = 'search(first: 50) { id reviews(first: 50) { id name } }';
+      const q = `{ ${Array.from({ length: 8 }, (_, i) => `s${i}: ${one}`).join(' ')} }`;
+      // Under rotfelt- og totalgrensene, men 8 x 50 x 50 x ... er enormt.
+      const errors = check(q, 8, 1000, 2500);
+      expect(errors).toHaveLength(1);
+      expect(errors[0]?.message).toContain('kostbar');
+    });
+
+    it('teller listevekt gjennom fragmenter', () => {
+      const q = '{ search(first: 10) { ...F } } fragment F on Node { id name }';
+      // 1 + 10 x 2 = 21
+      expect(cost(q, 21)).toHaveLength(0);
+      expect(cost(q, 20)).toHaveLength(1);
+    });
   });
 });

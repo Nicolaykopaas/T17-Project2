@@ -10,11 +10,20 @@ import { depthLimit } from './depthLimit.js';
 import { DEFAULT_RATE_LIMITS, MutationLimiter, type RateLimitOptions } from './rateLimit.js';
 import { schema } from './schema.js';
 
+/** Serverkonteksten Yoga får fra node:http; fravær av `req` betyr kall via yoga.fetch (tester). */
+interface NodeServerContext {
+  req?: { socket?: { remoteAddress?: string } };
+}
+
 export const MAX_QUERY_DEPTH = 6;
 // Frontendens største spørring (Title-detaljene) har ca. 45 felt og ett rotfelt. Grensene gir rundt
 // tre ganger slingringsmonn, men stopper hundrevis av aliasede søk eller TMDB-oppslag i ett dokument.
 export const MAX_ROOT_FIELDS = 8;
 export const MAX_FIELDS = 150;
+// Vektet kostnad (felt under en liste teller `first` ganger, variabel `first` = 50). Frontendens
+// største spørring (forsiden/Featured) ligger på ca. 1 100; 2 500 slipper den gjennom to ganger,
+// men stopper f.eks. 8 x search(first: 50) med nøstede anmeldelser.
+export const MAX_COST = 2500;
 
 /**
  * Egen regel i stedet for graphqls NoSchemaIntrospectionCustomRule: den bruker instanceof-sjekker
@@ -90,7 +99,13 @@ export function createApp({
   const limits: Plugin = {
     onValidate({ addValidationRule }) {
       addValidationRule(depthLimit(MAX_QUERY_DEPTH));
-      addValidationRule(complexityLimit({ maxRootFields: MAX_ROOT_FIELDS, maxFields: MAX_FIELDS }));
+      addValidationRule(
+        complexityLimit({
+          maxRootFields: MAX_ROOT_FIELDS,
+          maxFields: MAX_FIELDS,
+          maxCost: MAX_COST,
+        }),
+      );
       if (isProd) addValidationRule(noIntrospection);
     },
   };
@@ -110,13 +125,21 @@ export function createApp({
     },
   };
 
-  return createYoga<object, Context>({
+  return createYoga<NodeServerContext, Context>({
     schema,
     graphqlEndpoint: '/graphql',
     healthCheckEndpoint: '/__yoga-health',
     plugins: [health, limits],
-    context: ({ request }) =>
-      createContext(pool, request, artworkService, archiveUrl ?? config.archiveUrl, limiter),
+    // `req` finnes bare når Yoga kjører under node:http (ikke i yoga.fetch i tester).
+    context: ({ request, req }) =>
+      createContext(
+        pool,
+        request,
+        artworkService,
+        archiveUrl ?? config.archiveUrl,
+        limiter,
+        req?.socket?.remoteAddress,
+      ),
     logging: process.env.NODE_ENV !== 'test',
     graphiql: !isProd,
     landingPage: !isProd,

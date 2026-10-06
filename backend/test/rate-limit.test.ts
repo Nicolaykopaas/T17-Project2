@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../src/app.js';
 import { config } from '../src/config.js';
 import { createPool, type Pool } from '../src/db.js';
-import { MutationLimiter, TokenBuckets, clientIp } from '../src/rateLimit.js';
+import { MutationLimiter, TokenBuckets, clientIp, isLoopback } from '../src/rateLimit.js';
 import { resetData } from './fixtures.js';
 import { USER_A, USER_B } from './helpers.js';
 
@@ -29,6 +29,26 @@ describe('TokenBuckets', () => {
     expect(b.take('b')).toBe(0);
     now += 10 * 60_000;
     expect([b.take('a'), b.take('a'), b.take('a')].map((w) => w > 0)).toEqual([false, false, true]);
+  });
+});
+
+describe('clientIp med forbindelsesadresse', () => {
+  const req = (h: string) => new Request('http://x/', { headers: { 'x-forwarded-for': h } });
+  it('stoler på X-Forwarded-For bare når forbindelsen kommer fra loopback (proxyen)', () => {
+    for (const proxy of ['127.0.0.1', '127.1.2.3', '::1', '::ffff:127.0.0.1']) {
+      expect(clientIp(req('6.6.6.6, 203.0.113.9'), proxy)).toBe('203.0.113.9');
+    }
+  });
+  it('bruker forbindelsens adresse og ignorerer headeren ellers (port 3001 nådd direkte)', () => {
+    expect(clientIp(req('1.2.3.4'), '203.0.113.50')).toBe('203.0.113.50');
+    expect(clientIp(req('1.2.3.4'), '2001:db8::1')).toBe('2001:db8::1');
+    // Uten header og fra utsiden: forbindelsen er likevel kjent.
+    expect(clientIp(new Request('http://x/'), '203.0.113.50')).toBe('203.0.113.50');
+  });
+  it('isLoopback gjenkjenner ikke tilsvarende utenfor 127/8', () => {
+    expect(isLoopback('128.0.0.1')).toBe(false);
+    expect(isLoopback('10.0.0.1')).toBe(false);
+    expect(isLoopback('::2')).toBe(false);
   });
 });
 
@@ -78,12 +98,18 @@ describe('begrensning av mutations via API-et', () => {
     query: string,
     user: string,
     headers: Record<string, string> = {},
+    remoteAddress?: string,
   ) => {
-    const res = await yoga.fetch('http://localhost/graphql', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-user-id': user, ...headers },
-      body: JSON.stringify({ query }),
-    });
+    const res = await yoga.fetch(
+      'http://localhost/graphql',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-user-id': user, ...headers },
+        body: JSON.stringify({ query }),
+      },
+      // Det node:http gir Yoga som `req`; uten det (som i yoga.fetch) finnes ingen forbindelse.
+      remoteAddress ? { req: { socket: { remoteAddress } } } : {},
+    );
     return (await res.json()) as { data?: any; errors?: { message: string; extensions: any }[] };
   };
   const add = (rating = 4) =>
@@ -147,6 +173,31 @@ describe('begrensning av mutations via API-et', () => {
     // En annen IP er upåvirket.
     const other = await call(yoga, add(), uuid(3), { 'x-forwarded-for': '203.0.113.8' });
     expect(other.errors).toBeUndefined();
+  });
+
+  it('IP-grensen kan ikke omgås med falsk X-Forwarded-For når forbindelsen er direkte', async () => {
+    const yoga = createApp({ pool, rateLimits: { reviewsPerMinute: 1, ipFactor: 2 } });
+    const uuid = (n: number) => `00000000-0000-4000-8000-0000000001${n}0`;
+    const outside = '203.0.113.50';
+    // Ny falsk IP og ny bruker for hver forespørsel: tredje skal likevel avvises.
+    const r = [];
+    for (let i = 1; i <= 3; i++) {
+      r.push(await call(yoga, add(), uuid(i), { 'x-forwarded-for': `9.9.9.${i}` }, outside));
+    }
+    expect(r[0]!.errors).toBeUndefined();
+    expect(r[1]!.errors).toBeUndefined();
+    expect(r[2]!.errors![0]!.extensions.code).toBe('RATE_LIMITED');
+    // Fra proxyen (loopback) er headeren derimot gyldig, og ulike klienter er uavhengige.
+    for (let i = 4; i <= 6; i++) {
+      const res = await call(
+        yoga,
+        add(),
+        uuid(i),
+        { 'x-forwarded-for': `8.8.8.${i}` },
+        '127.0.0.1',
+      );
+      expect(res.errors).toBeUndefined();
+    }
   });
 
   it('standardgrensene tillater en rask runde på noen få anmeldelser og listeklikk', async () => {

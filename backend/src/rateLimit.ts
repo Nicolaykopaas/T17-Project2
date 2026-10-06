@@ -96,7 +96,10 @@ export class MutationLimiter {
 
   /** Kaster RATE_LIMITED når brukeren (eller IP-adressen) har brukt opp kvoten for denne typen. */
   check(kind: MutationKind, userId: string, ip: string | null): void {
-    // IP sjekkes først: en avvist forespørsel skal ikke også spise brukerens egen kvote.
+    // Rekkefølge: IP først, og `||` stopper ved første avvisning. Avvises IP-en, rører vi ikke
+    // brukerkvoten. Omvendt har et IP-token allerede blitt brukt når brukerkvoten avviser. Det er
+    // bevisst og greit: forespørselen kom fra den IP-en uansett, så en bruker som spammer skal
+    // også telle mot IP-ens kvote (og dermed til slutt stoppes på IP selv om hun bytter bruker-id).
     const wait = (ip ? this.ip[kind].take(ip) : 0) || this.user[kind].take(userId);
     if (wait > 0) {
       throw rateLimited(`For mange forsøk. Vent ${wait} sekunder og prøv igjen.`, wait);
@@ -104,12 +107,23 @@ export class MutationLimiter {
   }
 }
 
+/** 127.0.0.0/8, ::1 og IPv4-mappede varianter (::ffff:127.0.0.1). */
+export function isLoopback(address: string): boolean {
+  return /^(::ffff:)?127\./i.test(address) || address === '::1';
+}
+
 /**
  * Klientens IP bak Apache: mod_proxy legger den til sist i X-Forwarded-For, så siste ledd er
- * ikke noe klienten kan forfalske (tidligere ledd kan). Uten proxy (utvikling/tester) er det ingen
- * header, og da begrenses bare per bruker.
+ * ikke noe klienten kan forfalske (tidligere ledd kan). Headeren stoles BARE på når selve
+ * TCP-forbindelsen kommer fra loopback, dvs. fra proxyen på samme maskin. Kommer forbindelsen fra
+ * en annen adresse (noen har nådd port 3001 direkte), brukes den adressen og headeren ignoreres,
+ * ellers kunne klienten satt en ny falsk IP i hver forespørsel og omgått IP-grensen.
+ *
+ * `remoteAddress` er undefined når appen kalles uten node:http (tester via yoga.fetch); da finnes
+ * ingen forbindelse å sjekke, og headeren brukes som den er. Uten header begrenses bare per bruker.
  */
-export function clientIp(request: Request): string | null {
+export function clientIp(request: Request, remoteAddress?: string): string | null {
+  if (remoteAddress && !isLoopback(remoteAddress)) return remoteAddress.slice(0, 64);
   const header = request.headers.get('x-forwarded-for');
   if (!header) return null;
   const last = header.split(',').at(-1)?.trim();

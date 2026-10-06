@@ -126,7 +126,7 @@ export const typeDefs = /* GraphQL */ `
 
   type Query {
     # query: tom/null = alle titler. Case- og aksentuavhengig delstrengsøk («amelie» finner «Amélie»)
-    # i primær- og originaltittel. Søk på 1–2 tegn er prefiksmatch og rangeres etter popularitet.
+    # i primær- og originaltittel. Søk på 1–2 tegn er ordprefiks («ma» finner «The Matrix») og rangeres etter popularitet.
     search(
       query: String
       filters: SearchFilters

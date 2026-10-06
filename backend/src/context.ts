@@ -34,12 +34,13 @@ export function createContext(
   artwork: ArtworkService,
   archiveUrl: string = config.archiveUrl,
   limiter: MutationLimiter = new MutationLimiter(),
+  remoteAddress?: string,
 ): Context {
   const userId = parseUserId(request.headers.get('x-user-id'));
   return {
     pool,
     userId,
-    ip: clientIp(request),
+    ip: clientIp(request, remoteAddress),
     limiter,
     artwork,
     loaders: {
