@@ -51,7 +51,10 @@ type Outcome =
   | { kind: 'found'; artwork: Artwork }
   | { kind: 'missing' }
   | { kind: 'error' }
-  | { kind: 'disabled' };
+  | { kind: 'disabled' }
+  // Køen var full: tittelen ble ikke forsøkt. Verken lagret eller negativt cachet, slik at den
+  // slås opp som vanlig neste gang det er plass.
+  | { kind: 'busy' };
 
 export interface ArtworkOptions {
   pool: Pool;
@@ -60,6 +63,8 @@ export interface ArtworkOptions {
   imageUrl?: string;
   /** Maks samtidige TMDB-kall totalt i prosessen. */
   concurrency?: number;
+  /** Maks ventende oppslag utover de samtidige; flere avvises uten å kalle TMDB. */
+  maxQueue?: number;
   /** Tidsgrense per TMDB-kall. */
   callTimeoutMs?: number;
   /** Hvor lenge én request maksimalt venter på bilder. */
@@ -90,6 +95,7 @@ export class ArtworkService {
   private readonly apiKey: string | undefined;
   private readonly apiUrl: string;
   private readonly concurrency: number;
+  private readonly maxQueue: number;
   private readonly callTimeoutMs: number;
   private readonly batchDeadlineMs: number;
   private readonly negativeTtlMs: number;
@@ -110,6 +116,7 @@ export class ArtworkService {
     this.apiUrl = (opts.apiUrl ?? config.tmdbApiUrl).replace(/\/+$/, '');
     this.imageUrl = (opts.imageUrl ?? config.tmdbImageUrl).replace(/\/+$/, '');
     this.concurrency = opts.concurrency ?? 8;
+    this.maxQueue = opts.maxQueue ?? 200;
     this.callTimeoutMs = opts.callTimeoutMs ?? 4000;
     this.batchDeadlineMs = opts.batchDeadlineMs ?? 2500;
     this.negativeTtlMs = opts.negativeTtlMs ?? 5 * 60_000;
@@ -195,6 +202,13 @@ export class ArtworkService {
 
   private async doLookup(id: string, kind: TitleKind): Promise<Outcome> {
     if (!this.enabled) return { kind: 'disabled' };
+    // Uten tak kan scraping av søk og detaljsider fylle køen med titusenvis av ventende oppslag
+    // (hver holder en lukning og en forespørsel som allerede har gitt opp etter batchDeadlineMs).
+    // De ville sultet vanlige brukere, siden køen er delt og FIFO. Avvisning er trygt: bildet
+    // er valgfritt og hentes ved neste visning.
+    if (this.active >= this.concurrency && this.waiting.length >= this.maxQueue) {
+      return { kind: 'busy' };
+    }
     await this.acquire();
     let outcome: Outcome;
     try {
