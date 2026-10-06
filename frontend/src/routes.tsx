@@ -6,7 +6,7 @@ import HomePage from './pages/HomePage';
 import NotFoundPage from './pages/NotFoundPage';
 import RouteError from './pages/RouteError';
 
-// Detalj- og listesiden er ikke nødvendige for første visning, så de lastes ved behov.
+// Detalj-, spiller- og listesiden er ikke nødvendige for første visning, så de lastes ved behov.
 const TitlePage = lazy(() => import('./pages/TitlePage'));
 const WatchPage = lazy(() => import('./pages/WatchPage'));
 const MyListPage = lazy(() => import('./pages/MyListPage'));

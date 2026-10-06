@@ -51,7 +51,7 @@ describe('forsiden når API-et ikke kan nås', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
     setup();
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('NTNU VPN');
+    expect(alert).toHaveTextContent('Får ikke kontakt med serveren akkurat nå.');
     expect(screen.getAllByRole('alert')).toHaveLength(1);
     expect(screen.queryByText('Kunne ikke hente denne raden.')).not.toBeInTheDocument();
     // Raden finnes fortsatt, men som stille skjelett.
@@ -92,7 +92,7 @@ describe('forsiden når API-et ikke kan nås', () => {
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('Kunne ikke hente denne raden.');
     expect(screen.getAllByRole('alert')).toHaveLength(1);
-    expect(screen.queryByText(/NTNU VPN/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Får ikke kontakt med serveren/)).not.toBeInTheDocument();
     expect(within(alert).getByRole('button', { name: 'Prøv igjen' })).toBeInTheDocument();
   });
 });

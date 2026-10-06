@@ -5,7 +5,6 @@ import { rateLimitMessage } from '../lib/apiError';
 
 interface Props {
   reviewId: string;
-  titleId: string;
   /** Kalles etter vellykket sletting, mens raden fortsatt er i DOM-en. Forelderen eier fokus og kunngjøring. */
   onDeleted: () => void;
 }
@@ -14,7 +13,7 @@ interface Props {
  * To-trinns sletting inline («Slett» → «Bekreft sletting»/«Avbryt») i stedet for window.confirm,
  * som ikke kan stiles, er stygg på mobil og blokkerer tråden.
  */
-export function DeleteReviewButton({ reviewId, titleId, onDeleted }: Props) {
+export function DeleteReviewButton({ reviewId, onDeleted }: Props) {
   const [deleteReview, { loading }] = useMutation(DELETE_REVIEW_MUTATION);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState('');
@@ -43,7 +42,6 @@ export function DeleteReviewButton({ reviewId, titleId, onDeleted }: Props) {
   };
 
   const confirm = async () => {
-    // aria-disabled i stedet for disabled: en disabled knapp mister fokus i Chrome mens sletting pågår.
     if (loading) return;
     setError('');
     try {
@@ -84,13 +82,14 @@ export function DeleteReviewButton({ reviewId, titleId, onDeleted }: Props) {
   };
 
   return (
-    <div className="review__actions" data-title={titleId}>
+    <div className="review__actions">
       {confirming ? (
         <>
           <button
             ref={confirmRef}
             type="button"
             className="btn btn--danger"
+            // aria-disabled i stedet for disabled: en disabled knapp mister fokus i Chrome mens sletting pågår.
             aria-disabled={loading || undefined}
             onClick={() => void confirm()}
           >

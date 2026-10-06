@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
+  applyTheme,
   LIGHT_QUERY,
   THEME_KEY,
   loadTheme,
@@ -29,8 +30,7 @@ export function useTheme() {
     const onStorage = (e: StorageEvent) => {
       if (e.key !== null && e.key !== THEME_KEY) return;
       const next = loadTheme();
-      if (next) document.documentElement.dataset.theme = next;
-      else delete document.documentElement.dataset.theme;
+      applyTheme(next);
       setChosen(next);
     };
     window.addEventListener('storage', onStorage);
@@ -41,7 +41,7 @@ export function useTheme() {
 
   const toggle = useCallback(() => {
     const next: Theme = theme === 'dark' ? 'light' : 'dark';
-    document.documentElement.dataset.theme = next;
+    applyTheme(next);
     saveTheme(next);
     setChosen(next);
   }, [theme]);

@@ -28,13 +28,7 @@ export function ReviewList({
               </time>
             </header>
             {r.text && <p className="review__text">{r.text}</p>}
-            {r.isMine && (
-              <DeleteReviewButton
-                reviewId={r.id}
-                titleId={r.titleId}
-                onDeleted={() => onDeleted?.()}
-              />
-            )}
+            {r.isMine && <DeleteReviewButton reviewId={r.id} onDeleted={() => onDeleted?.()} />}
           </article>
         </li>
       ))}

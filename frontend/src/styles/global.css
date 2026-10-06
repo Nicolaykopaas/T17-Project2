@@ -1468,7 +1468,7 @@ fieldset {
   border-radius: 0;
 }
 
-/* === Kategorinavigasjon på forsiden (#14) === */
+/* Kategorinavigasjon på forsiden. */
 .catnav {
   padding-top: 0.75rem;
 }
@@ -1516,7 +1516,6 @@ fieldset {
 .row-anchor:focus-visible {
   outline-offset: -3px;
 }
-/* === Slutt: kategorinavigasjon === */
 
 /* Globalt banner når API-et ikke kan nås. Bruker temaets tokens (--danger har AA-kontrast mot --surface i begge moduser). */
 .api-banner {

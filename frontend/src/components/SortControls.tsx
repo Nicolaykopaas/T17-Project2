@@ -3,6 +3,7 @@ import type { SortDirection, SortField } from '../graphql/types';
 import { DEFAULT_DIRECTION, type SearchState } from '../lib/searchState';
 
 const FIELDS: { value: SortField; label: string }[] = [
+  // Etiketten til RELEVANCE overstyres i komponenten, siden den avhenger av om det finnes søketekst.
   { value: 'RELEVANCE', label: 'Relevans' },
   { value: 'RATING', label: 'Rating' },
   { value: 'YEAR', label: 'År' },
@@ -18,6 +19,9 @@ export function SortControls({ state, onChange }: Props) {
   const fieldId = useId();
   const dirId = useId();
   const field = state.sort ?? 'RELEVANCE';
+  // Uten søketekst finnes det ingen relevans å rangere etter; serveren faller da tilbake til
+  // popularitet (flest stemmer). Samme enum-verdi og URL-verdi, bare en ærligere etikett.
+  const relevanceLabel = state.q.trim() ? 'Relevans' : 'Popularitet';
   const direction = state.dir ?? DEFAULT_DIRECTION[field];
 
   return (
@@ -32,7 +36,7 @@ export function SortControls({ state, onChange }: Props) {
         >
           {FIELDS.map((f) => (
             <option key={f.value} value={f.value}>
-              {f.label}
+              {f.value === 'RELEVANCE' ? relevanceLabel : f.label}
             </option>
           ))}
         </select>

@@ -70,8 +70,9 @@ export const SEARCH_QUERY: TypedDocumentNode<SearchData, SearchVars> = gql`
 
 // Forsideradene viser aldri antall treff. `totalCount` er en egen `count(*)` over hele treffmengden
 // i databasen, så uten det sparer hver forsidevisning åtte slike spørringer. Samme `search`-felt og
-// cache-nøkkel som SEARCH_QUERY: «Se alle» henter `totalCount` i en egen request, og cachen beholder
-// øvrige felt (relayStylePagination bevarer ekstrafeltene) uten at raden må hentes på nytt.
+// cache-nøkkel som SEARCH_QUERY, og titlene normaliseres på id, så kort som er hentet er delt. «Se alle»
+// får likevel ikke antallet fra cachen: raden mangler `totalCount`, så SEARCH_QUERY gir cache-miss og
+// henter første side på nytt, nå med antall.
 export const ROW_QUERY: TypedDocumentNode<RowData, SearchVars> = gql`
   query Row(
     $query: String

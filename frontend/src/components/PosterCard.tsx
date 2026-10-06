@@ -14,7 +14,7 @@ interface Props {
 }
 
 // Kortene står i to sammenhenger: rader (fast bredde) og rutenett (flytende).
-export const ROW_SIZES = '(min-width: 48rem) 11rem, 9rem';
+const ROW_SIZES = '(min-width: 48rem) 11rem, 9rem';
 export const GRID_SIZES = '(min-width: 64rem) 12rem, (min-width: 40rem) 30vw, 45vw';
 
 /**
