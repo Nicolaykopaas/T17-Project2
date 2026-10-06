@@ -164,21 +164,21 @@ Klienten henter nøyaktig de feltene hver visning trenger. Listene henter for ek
 Komponentene er delt etter ansvar, slik at logikk som er vanskelig å få riktig (debounce, fokus,
 lazy-lasting, paginering) ligger ett sted og kan testes isolert:
 
-| Komponent / hook                                    | Ansvar og hvorfor den er skilt ut                                                                                      |
-| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `useSearchState` (+ `lib/searchState.ts`)           | Leser og skriver søk, filtre og sortering i URL-en. Eneste kilde til søketilstand, så alle komponenter er enige        |
-| `SearchBox`, `HeaderSearch`, `useDebouncedCallback` | Søkefelt med 300 ms debounce som hopper over tomme og uendrede søk. Samme logikk i headeren og på søkesiden            |
-| `FilterPanel`, `ActiveFilters`, `SortControls`      | Fasetter med antall treff, aktive filtre som chips og sortering. Endrer bare URL-en; serveren gjør resten              |
-| `SearchResults`, `useInfiniteScroll`                | Resultatliste med uendelig scroll og «Last flere», `aria-live` for antall treff og alle tom-, feil- og lastetilstander |
-| `TitleRow`, `LazyRow`, `useNearViewport`            | Forsiderader som henter data først når de nærmer seg skjermen. Piltaster scroller raden                                |
-| `CategoryNav`                                       | Hopp til kategori på forsiden, med fokus på raden også når den er tom                                                  |
-| `PosterCard`                                        | Plakat med `srcset`. Tittellenken strekkes over hele kortet, så hvert kort er ett tabulatorstopp i stedet for to       |
-| `Layout`                                            | Header, skip-link, fokus til sidens `h1` ved rutebytte, og plassen for API-banneret                                    |
-| `ApiUnavailableBanner` (+ `apollo/apiStatus.ts`)    | Ett globalt banner når API-et ikke kan nås, styrt av en reactive var som Apollo-linken setter                          |
-| `ReviewForm`, `ReviewList`, `DeleteReviewButton`    | Anmeldelser med validering som speiler backenden (tegn telles som kodepunkter) og sletting med bekreftelse på stedet   |
-| `ListToggleButton`                                  | Legg i / fjern fra Min liste, med kunngjøring av utfallet                                                              |
-| `VideoPlayer`                                       | Egen spiller på `<video>` med norske etiketter og tastaturstyring                                                      |
-| `ThemeToggle`, `useTheme`                           | Brukervalgt tema som overstyrer systemet, synkronisert mellom faner                                                    |
+| Komponent / hook                                    | Ansvar og hvorfor den er skilt ut                                                                                                                                                              |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `useSearchState` (+ `lib/searchState.ts`)           | Leser og skriver søk, filtre og sortering i URL-en. Eneste kilde til søketilstand, så alle komponenter er enige                                                                                |
+| `SearchBox`, `HeaderSearch`, `useDebouncedCallback` | `SearchBox` debouncer (300 ms) og hopper over tomme og uendrede søk. `HeaderSearch` kobler den til URL-en: på forsiden endres bare `q`, fra andre sider sendes brukeren til forsiden med søket |
+| `FilterPanel`, `ActiveFilters`, `SortControls`      | Fasetter med antall treff, aktive filtre som chips og sortering. Endrer bare URL-en; serveren gjør resten                                                                                      |
+| `SearchResults`, `useInfiniteScroll`                | Resultatliste med uendelig scroll og «Last flere», `aria-live` for antall treff og alle tom-, feil- og lastetilstander                                                                         |
+| `TitleRow`, `LazyRow`, `useNearViewport`            | Forsiderader som henter data først når de nærmer seg skjermen. Piltaster flytter fokus mellom kortene i raden                                                                                  |
+| `CategoryNav`                                       | Hopp til kategori på forsiden, med fokus på raden også når den er tom                                                                                                                          |
+| `PosterCard`                                        | Plakat med `srcset`. Tittellenken strekkes over hele kortet, så hvert kort er ett tabulatorstopp i stedet for to                                                                               |
+| `Layout`                                            | Header, skip-link, fokus til sidens `h1` ved rutebytte, og plassen for API-banneret                                                                                                            |
+| `ApiUnavailableBanner` (+ `apollo/apiStatus.ts`)    | Ett globalt banner når API-et ikke kan nås, styrt av en reactive var som Apollo-linken setter                                                                                                  |
+| `ReviewForm`, `ReviewList`, `DeleteReviewButton`    | Anmeldelser med validering som speiler backenden (tegn telles som kodepunkter) og sletting med bekreftelse på stedet                                                                           |
+| `ListToggleButton`                                  | Legg i / fjern fra Min liste, med kunngjøring av utfallet                                                                                                                                      |
+| `VideoPlayer`                                       | Egen spiller på `<video>` med norske etiketter og tastaturstyring                                                                                                                              |
+| `ThemeToggle`, `useTheme`                           | Brukervalgt tema som overstyrer systemet, synkronisert mellom faner                                                                                                                            |
 
 GraphQL-typene i frontend (`graphql/types.ts`) er håndskrevne og speiler [`docs/api.md`](docs/api.md).
 Med et lite skjema var det enklere enn å sette opp kodegenerering. En backend-test validerer alle
@@ -212,7 +212,7 @@ Målet er WCAG 2.1 AA, og det er verifisert automatisk og med tastatur:
 - **Semantisk HTML:** landemerker, overskriftshierarki, `<nav>` for kategorier, ekte knapper og
   lenker. Skip-link til hovedinnholdet.
 - **Tastatur overalt:**
-  - rader kan scrolles med piltaster
+  - piltaster flytter fokus mellom kortene i en rad
   - videospilleren styres med mellomrom, piler, M og F
   - sletting bekreftes på stedet, ikke i `window.confirm`
 - **Fokushåndtering:**
@@ -229,7 +229,8 @@ Målet er WCAG 2.1 AA, og det er verifisert automatisk og med tastatur:
 - **Visuelt:** synlig fokusring, AA-kontrast i lys og mørk modus, `prefers-reduced-motion` respekteres,
   og responsivt ned til 320 px uten horisontal scroll.
 - **Verifisering:** axe kjører i Playwright på alle sider i lys og mørk modus, på desktop og mobil.
-  Lighthouse Accessibility var 100 på forside, detaljside og Min liste (målt 30.09.2026, se
+  Lighthouse Accessibility var 100 på forside, detaljside og Min liste. Det er målt lokalt
+  30.09.2026 mot produksjonsbygget med syntetiske data, før endringene i oktober (se
   [`docs/ytelse.md`](docs/ytelse.md)).
 
 ## Bærekraft
@@ -250,8 +251,8 @@ Målet er WCAG 2.1 AA, og det er verifisert automatisk og med tastatur:
   ingen video selv.
 - **Mørk modus** er standard i kinodesignet, noe som sparer strøm på OLED-skjermer. Lys modus kan
   velges.
-- **Få avhengigheter:** ingen UI-, spiller- eller ORM-bibliotek. Lighthouse Performance var 94–100 ved siste måling
-  (30.09.2026).
+- **Få avhengigheter:** ingen UI-, spiller- eller ORM-bibliotek. Lighthouse Performance var 94–100 ved
+  siste lokale måling (30.09.2026, før endringene i oktober).
 
 ## Sikkerhet og robusthet
 
