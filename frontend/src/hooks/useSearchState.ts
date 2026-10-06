@@ -14,6 +14,10 @@ export function useSearchState() {
     (patch: Partial<SearchState>) => {
       setParams((prev) => serializeSearchState({ ...parseSearchState(prev), ...patch }), {
         replace: true,
+        // React Router pakker ellers URL-endringen i en transition. Avkrysningsboksene er kontrollert
+        // av URL-en, så React tilbakestiller dem til gammel verdi helt til transitionen er ferdig,
+        // og brukeren (og hjelpemidler) ser en boks som «hopper tilbake» i et øyeblikk etter klikket.
+        flushSync: true,
       });
     },
     [setParams],
