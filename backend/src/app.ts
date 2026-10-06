@@ -4,10 +4,15 @@ import { ArtworkService } from './artwork.js';
 import { config } from './config.js';
 import { createContext, type Context } from './context.js';
 import type { Pool } from './db.js';
+import { complexityLimit } from './complexityLimit.js';
 import { depthLimit } from './depthLimit.js';
 import { schema } from './schema.js';
 
 export const MAX_QUERY_DEPTH = 6;
+// Frontendens største spørring (Title-detaljene) har ca. 45 felt og ett rotfelt. Grensene gir rundt
+// tre ganger slingringsmonn, men stopper hundrevis av aliasede søk eller TMDB-oppslag i ett dokument.
+export const MAX_ROOT_FIELDS = 8;
+export const MAX_FIELDS = 150;
 
 /**
  * Egen regel i stedet for graphqls NoSchemaIntrospectionCustomRule: den bruker instanceof-sjekker
@@ -56,6 +61,7 @@ export function createApp({
   const limits: Plugin = {
     onValidate({ addValidationRule }) {
       addValidationRule(depthLimit(MAX_QUERY_DEPTH));
+      addValidationRule(complexityLimit({ maxRootFields: MAX_ROOT_FIELDS, maxFields: MAX_FIELDS }));
       if (isProd) addValidationRule(noIntrospection);
     },
   };

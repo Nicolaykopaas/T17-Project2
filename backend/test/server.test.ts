@@ -65,6 +65,58 @@ describe('servergrenser', () => {
     expect((await preflight(without)).headers.get('access-control-allow-origin')).toBeNull();
   });
 
+  describe('kompleksitetsgrense', () => {
+    const run = async (query: string) =>
+      (await post(createApp({ pool }), query, {})).json() as Promise<{
+        data?: unknown;
+        errors?: { message: string; extensions?: { code?: string } }[];
+      }>;
+
+    // Kopier av frontendens største spørringer (frontend/src/graphql/operations.ts). Hvis disse
+    // begynner å feile, har grensene blitt for stramme for den faktiske klienten.
+    const SUMMARY = `id primaryTitle type startYear genres averageRating numVotes
+      poster185: posterUrl(width: 185) poster342: posterUrl(width: 342) stream { url }`;
+    const HERO = `overview backdrop780: backdropUrl(width: 780) backdrop1280: backdropUrl(width: 1280)`;
+    const FEATURED = `query { search(first: 20) { totalCount pageInfo { hasNextPage endCursor }
+      edges { cursor node { ${SUMMARY} ${HERO} inMyList } } } }`;
+    const TITLE = `query { title(id: "tt0000001") { ${SUMMARY} ${HERO}
+      poster500: posterUrl(width: 500) originalTitle endYear runtimeMinutes userRating reviewCount
+      inMyList stream { url archiveUrl license licenseUrl durationSeconds subtitlesUrl }
+      reviews(first: 10) { totalCount pageInfo { hasNextPage endCursor }
+        edges { cursor node { id titleId author rating text createdAt isMine } } } } }`;
+
+    it('slipper gjennom frontendens største spørringer', async () => {
+      for (const q of [FEATURED, TITLE]) {
+        const res = await run(q);
+        expect(res.errors, q.slice(0, 40)).toBeUndefined();
+      }
+    });
+
+    it('avviser hundrevis av aliasede søk i ett dokument', async () => {
+      const q = `{ ${Array.from({ length: 300 }, (_, i) => `s${i}: search(query: "a") { totalCount }`).join(' ')} }`;
+      const res = await run(q);
+      expect(res.data).toBeUndefined();
+      expect(res.errors).toHaveLength(1);
+      expect(res.errors![0]!.extensions?.code).toBe('BAD_USER_INPUT');
+      expect(res.errors![0]!.message).toMatch(/rotfelt/);
+    });
+
+    it('avviser mange aliasede TMDB-felt på én tittel', async () => {
+      const q = `{ title(id: "tt0000001") { ${Array.from({ length: 200 }, (_, i) => `p${i}: posterUrl(width: 92)`).join(' ')} } }`;
+      const res = await run(q);
+      expect(res.data).toBeUndefined();
+      expect(res.errors![0]!.extensions?.code).toBe('BAD_USER_INPUT');
+      expect(res.errors![0]!.message).toMatch(/felt/);
+    });
+
+    it('godtar akkurat grensen for rotfelt (8) og avviser 9', async () => {
+      const roots = (n: number) =>
+        `{ ${Array.from({ length: n }, (_, i) => `g${i}: genres`).join(' ')} }`;
+      expect((await run(roots(8))).errors).toBeUndefined();
+      expect((await run(roots(9))).errors?.[0]?.extensions?.code).toBe('BAD_USER_INPUT');
+    });
+  });
+
   it('tåler ugyldig JSON-body og manglende query', async () => {
     const yoga = createApp({ pool });
     const bad = await yoga.fetch('http://localhost/graphql', {
