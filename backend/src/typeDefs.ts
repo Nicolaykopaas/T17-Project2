@@ -119,6 +119,11 @@ export const typeDefs = /* GraphQL */ `
     text: String!
   }
 
+  type DeleteReviewPayload {
+    deletedId: ID! # id-en som ble slettet; frontend fjerner Review:<id> fra cachen
+    title: Title! # tittelen med oppdaterte userRating og reviewCount
+  }
+
   type Query {
     # query: tom/null = alle titler. Case-insensitivt delstrengsøk i primær- og originaltittel.
     search(
@@ -139,5 +144,7 @@ export const typeDefs = /* GraphQL */ `
   type Mutation {
     addReview(input: AddReviewInput!): Review!
     toggleList(titleId: ID!): Title! # returnerer tittelen med oppdatert inMyList
+    # Sletter bare brukerens egne anmeldelser. Andres og ukjente id-er gir begge NOT_FOUND.
+    deleteReview(id: ID!): DeleteReviewPayload!
   }
 `;

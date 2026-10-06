@@ -174,3 +174,29 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
 - **Volum og demping huskes i `localStorage`** (`filmsok:player`); ødelagt verdi gir standard.
 - **Tilbake-lenken på spillersiden går alltid til `/title/:id`** (deterministisk, også ved direkte åpning).
 - **Mobil skjuler volumslideren** (maskinvareknapper); demp-knappen finnes.
+
+## Herding av backend (issue #15)
+
+- **Feltgrense i tillegg til dybdegrensen.** `complexityLimit` (`backend/src/complexityLimit.ts`) avviser
+  operasjoner med mer enn 8 rotfelt eller 150 felt totalt (aliaser og ekspanderte fragmenter telt
+  hver for seg). Dybdegrensen stoppet bare nøsting, så ett flatt dokument med hundrevis av aliasede
+  `search` (én SQL-spørring hver) eller `posterUrl` (TMDB) slapp gjennom. Frontendens største spørring
+  (Title-detaljer) har ca. 45 felt og ett rotfelt, så grensene har rundt tre ganger slingringsmonn;
+  `server.test.ts` har kopier av de to største spørringene som vaktbikkje. Fragmenttellingen er
+  memoisert, slik at en fragmentkjede med eksponentiell utvidelse ikke kan brukes til å låse CPU-en
+  under selve valideringen.
+- **Begrensning av mutations: token bucket i prosessminnet** (`backend/src/rateLimit.ts`), per
+  `x-user-id` og i tillegg per IP (siste ledd i `X-Forwarded-For`, som Apache legger til; uten
+  proxy hoppes IP-grensen over). Én bøtte for `addReview` (10/min) og én for `toggleList` og
+  `deleteReview` (60/min); IP-grensen er 3 ganger brukergrensen. Per-IP trengs fordi `x-user-id` er
+  anonym og trivielt å rotere. Overskridelse gir `RATE_LIMITED` med `retryAfterSeconds`.
+  Begrensning: tilstanden er per prosess og nullstilles ved restart. Det er greit for én
+  systemd-tjeneste på VM-en; flere instanser ville krevd delt lager (Redis/tabell), som er overkill her.
+  Grensene er romslige nok for E2E-testene og vanlig bruk. Minnet er avgrenset (50 000 nøkler per bøtte).
+- **`deleteReview(id)` returnerer `{ deletedId, title }`.** Eierskapet sjekkes i selve
+  `DELETE ... WHERE id AND user_id`, og både «andres» og «finnes ikke» gir `NOT_FOUND` med lik melding
+  slik at mutationen ikke kan brukes til å lete etter anmeldelser. `title` gir ferdig oppdaterte
+  `userRating`/`reviewCount` som Apollo skriver inn i `Title:<id>` uten refetch; `deletedId` brukes til
+  å evicte `Review:<id>`. Ugyldig id (ikke 1–18 siffer) gir `BAD_USER_INPUT`.
+- **Tittel-id valideres som `^tt\d{7,10}$`** (`isPlausibleTitleId`). Fixture, testdata og
+  Archive-mock bruker bare 7 siffer; IMDb har 7–8 i dag, 10 gir slingringsmonn.

@@ -6,6 +6,7 @@ import { createContext, type Context } from './context.js';
 import type { Pool } from './db.js';
 import { complexityLimit } from './complexityLimit.js';
 import { depthLimit } from './depthLimit.js';
+import { DEFAULT_RATE_LIMITS, MutationLimiter, type RateLimitOptions } from './rateLimit.js';
 import { schema } from './schema.js';
 
 export const MAX_QUERY_DEPTH = 6;
@@ -41,6 +42,8 @@ export interface AppOptions {
   artwork?: ArtworkService;
   /** Base-URL for Internet Archive i stream-URL-ene. Standard: ARCHIVE_URL. */
   archiveUrl?: string;
+  /** Overstyrer grensene for mutations (se rateLimit.ts). Standard: DEFAULT_RATE_LIMITS. */
+  rateLimits?: Partial<RateLimitOptions>;
 }
 
 /**
@@ -53,7 +56,10 @@ export function createApp({
   corsOrigin = false,
   artwork,
   archiveUrl,
+  rateLimits,
 }: AppOptions) {
+  // Én begrenser per app: tilstanden må overleve mellom requests, i motsetning til konteksten.
+  const limiter = new MutationLimiter({ ...DEFAULT_RATE_LIMITS, ...rateLimits });
   const artworkService = artwork ?? new ArtworkService({ pool, apiKey: config.tmdbApiKey });
   const isProd = production ?? process.env.NODE_ENV === 'production';
 
@@ -71,7 +77,7 @@ export function createApp({
     graphqlEndpoint: '/graphql',
     plugins: [limits],
     context: ({ request }) =>
-      createContext(pool, request, artworkService, archiveUrl ?? config.archiveUrl),
+      createContext(pool, request, artworkService, archiveUrl ?? config.archiveUrl, limiter),
     logging: process.env.NODE_ENV !== 'test',
     graphiql: !isProd,
     landingPage: !isProd,

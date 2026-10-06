@@ -128,6 +128,11 @@ input AddReviewInput {
   text: String!
 }
 
+type DeleteReviewPayload {
+  deletedId: ID! # id-en som ble slettet; frontend fjerner Review:<id> fra cachen
+  title: Title! # tittelen med oppdaterte userRating og reviewCount
+}
+
 type Query {
   # query: tom/null = alle titler. Case-insensitivt delstrengsøk i primær- og originaltittel.
   search(
@@ -148,6 +153,8 @@ type Query {
 type Mutation {
   addReview(input: AddReviewInput!): Review!
   toggleList(titleId: ID!): Title! # returnerer tittelen med oppdatert inMyList
+  # Sletter bare brukerens egne anmeldelser. Andres og ukjente id-er gir begge NOT_FOUND.
+  deleteReview(id: ID!): DeleteReviewPayload!
 }
 ```
 
@@ -156,7 +163,18 @@ type Mutation {
 - `first` må være 1–50, ellers `BAD_USER_INPUT`. `query` maks 200 tegn. Spørredybde maks 6.
 - Cursorer er ugjennomsiktige strenger (base64). Ugyldig cursor gir `BAD_USER_INPUT`.
 - Feil returneres som GraphQL-feil med `extensions.code`: `BAD_USER_INPUT`, `NOT_FOUND`,
-  `UNAUTHENTICATED` (mangler `x-user-id` på mutation), `INTERNAL_SERVER_ERROR` (uten detaljer).
+  `UNAUTHENTICATED` (mangler `x-user-id` på mutation), `RATE_LIMITED` (se under),
+  `INTERNAL_SERVER_ERROR` (uten detaljer).
+- Maks 8 rotfelt (aliaser telles hver for seg) og 150 felt totalt per operasjon (fragmenter
+  ekspandert), ellers `BAD_USER_INPUT`. Frontendens største spørring har ca. 45 felt.
+- `deleteReview(id)`: `id` må være heltallsstrengen fra `Review.id` (ellers `BAD_USER_INPUT`).
+  Hører anmeldelsen til en annen `x-user-id`, eller finnes den ikke, er svaret likt: `NOT_FOUND`
+  («Fant ikke anmeldelsen.»). Svaret har `deletedId` (fjern `Review:<id>` fra Apollo-cachen) og
+  `title` med nye `userRating`/`reviewCount`, som oppdaterer `Title:<id>` i cachen automatisk.
+- Begrensning av mutations (token bucket i prosessminnet, per `x-user-id` og per IP, se
+  `docs/beslutninger.md`): `addReview` maks 10 per minutt per bruker, `toggleList` og `deleteReview`
+  maks 60 per minutt per bruker; IP-grensen er tre ganger så høy. Over grensen gir `RATE_LIMITED`
+  med `extensions.retryAfterSeconds` og meldingen «For mange forsøk. Vent N sekunder og prøv igjen.»
 - All søk, filtrering, sortering og paginering skjer i SQL.
 
 ## Bilder (TMDB)
