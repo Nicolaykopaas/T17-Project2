@@ -15,6 +15,10 @@ export default defineConfig({
       },
     },
   },
+  preview: {
+    // Bare satt av E2E (playwright.config.ts) for å kjøre testene under produksjonens CSP.
+    headers: process.env.PREVIEW_CSP ? { 'Content-Security-Policy': process.env.PREVIEW_CSP } : {},
+  },
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
