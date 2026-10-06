@@ -24,6 +24,26 @@ afterAll(async () => {
   await pool.end();
 });
 
+describe('GET /health', () => {
+  it('svarer 200 {status:"ok"} når databasen svarer', async () => {
+    const res = await createApp({ pool }).fetch('http://localhost/health');
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ status: 'ok' });
+  });
+
+  it('svarer 503 {status:"db-unavailable"} når databasen ikke svarer', async () => {
+    // Port 1 avviser tilkoblinger umiddelbart, som en nedlagt Postgres.
+    const dead = createPool('postgres://postgres:x@127.0.0.1:1/none');
+    try {
+      const res = await createApp({ pool: dead }).fetch('http://localhost/health');
+      expect(res.status).toBe(503);
+      expect(await res.json()).toEqual({ status: 'db-unavailable' });
+    } finally {
+      await dead.end();
+    }
+  });
+});
+
 describe('servergrenser', () => {
   it('slår av introspeksjon i produksjon, men ikke i utvikling', async () => {
     const dev = createApp({ pool, production: false });

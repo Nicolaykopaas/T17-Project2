@@ -1,6 +1,7 @@
 import { Suspense, useEffect, useRef, type MouseEvent } from 'react';
 import { Link, NavLink, Outlet, ScrollRestoration, useLocation } from 'react-router';
 import { useScrolled } from '../hooks/useScrolled';
+import { ApiUnavailableBanner } from './ApiUnavailableBanner';
 import { HeaderSearch } from './HeaderSearch';
 
 export function Layout() {
@@ -50,6 +51,7 @@ export function Layout() {
           <HeaderSearch />
         </div>
       </header>
+      <ApiUnavailableBanner />
       <main id="innhold" ref={main} tabIndex={-1}>
         <Suspense fallback={<p role="status">Laster …</p>}>
           <Outlet />

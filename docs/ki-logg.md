@@ -15,3 +15,4 @@
 - 2026-09-30 – TMDB-plakater (backend) og kinoaktig UI (frontend) – backend-utvikler + frontend-utvikler – 209 backend-, 111 komponent- og 48 E2E-tester grønne mot ekte backend og falsk TMDB.
 - 2026-09-30 – README.md med funksjonalitet, arkitektur, testing, a11y, bærekraft, KI-bruk og VM-lenke – leder – på forespørsel fra Nicolay.
 - 2026-09-30 – M6 lovlig strømming fra Internet Archive: import, filter, «Se gratis nå», videospiller – backend-utvikler + frontend-utvikler – 259 backend-, 167 komponent- og 69 E2E-tester grønne (én E2E-test var ustabil én gang og besto ved omkjøring, reproduserte ikke i to nye kjøringer).
+- 2026-10-06 – #13 Tydelig feiltilstand når API-et ikke nås: global banner, error link, `/health`, deploy-oppdateringer – frontend-utvikler – komponent- og backend-tester grønne.

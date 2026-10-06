@@ -26,6 +26,28 @@ const noIntrospection: ValidationRule = (context) => ({
   },
 });
 
+const HEALTH_TIMEOUT_MS = 2000;
+
+/**
+ * Kort tidsgrense utenom poolens egen: en database bak en brannmur svarer ikke i det hele tatt,
+ * og helsesjekken skal da svare 503 raskt i stedet for å henge til Apache gir opp.
+ */
+async function databaseResponds(pool: Pool, timeoutMs = HEALTH_TIMEOUT_MS): Promise<boolean> {
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<false>((resolve) => {
+    timer = setTimeout(() => resolve(false), timeoutMs);
+  });
+  const query = pool.query('SELECT 1').then(
+    () => true,
+    () => false,
+  );
+  try {
+    return await Promise.race([query, timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export interface AppOptions {
   pool: Pool;
   /** Slår av introspeksjon og GraphiQL. Standard: NODE_ENV === 'production'. */
@@ -60,10 +82,26 @@ export function createApp({
     },
   };
 
+  // Yogas innebygde /health svarer «alive» uten å se på databasen. Vi trenger det motsatte: frontend
+  // og sjekk.sh skal få vite om API-et faktisk kan svare, så Yogas flyttes og vår tar over stien.
+  const health: Plugin = {
+    async onRequest({ request, url, endResponse }) {
+      if (url.pathname !== '/health' || request.method !== 'GET') return;
+      const ok = await databaseResponds(pool);
+      endResponse(
+        Response.json(
+          { status: ok ? 'ok' : 'db-unavailable' },
+          { status: ok ? 200 : 503, headers: { 'cache-control': 'no-store' } },
+        ),
+      );
+    },
+  };
+
   return createYoga<object, Context>({
     schema,
     graphqlEndpoint: '/graphql',
-    plugins: [limits],
+    healthCheckEndpoint: '/__yoga-health',
+    plugins: [health, limits],
     context: ({ request }) =>
       createContext(pool, request, artworkService, archiveUrl ?? config.archiveUrl),
     logging: process.env.NODE_ENV !== 'test',

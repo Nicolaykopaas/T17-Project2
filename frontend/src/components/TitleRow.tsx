@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import { Link } from 'react-router';
+import { useApiUnavailable } from '../apollo/apiStatus';
 import type { TitleSummary } from '../graphql/types';
 import { ErrorMessage } from './ErrorMessage';
 import { PosterCard } from './PosterCard';
@@ -22,6 +23,7 @@ const prefersReducedMotion = () =>
 /** Horisontal rad med plakater: scroll-snap, pil-knapper og piltaster mellom kortene. */
 export function TitleRow({ heading, seeAllTo, titles, loading, error, onRetry }: Props) {
   const headingId = useId();
+  const apiDown = useApiUnavailable();
   const list = useRef<HTMLUListElement>(null);
   const [canPrev, setCanPrev] = useState(false);
   const [canNext, setCanNext] = useState(false);
@@ -80,12 +82,13 @@ export function TitleRow({ heading, seeAllTo, titles, loading, error, onRetry }:
         </Link>
       </div>
 
-      {error && !titles && (
+      {/* Ved nedetid kunngjør det globale banneret feilen; hver rad skal ikke gjenta den. */}
+      {error && !titles && !apiDown && (
         <div className="container">
           <ErrorMessage message="Kunne ikke hente denne raden." onRetry={onRetry} />
         </div>
       )}
-      {!titles && !error && <PosterSkeleton />}
+      {!titles && (!error || apiDown) && <PosterSkeleton />}
 
       {titles && (
         <div className="row__viewport">
