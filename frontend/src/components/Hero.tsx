@@ -65,7 +65,7 @@ export function Hero({ title }: { title: FeaturedTitle }) {
           >
             Se detaljer<span className="sr-only">: {title.primaryTitle}</span>
           </Link>
-          <ListToggleButton titleId={title.id} inMyList={false} variant="secondary" />
+          <ListToggleButton titleId={title.id} inMyList={title.inMyList} variant="secondary" />
         </div>
       </div>
     </section>

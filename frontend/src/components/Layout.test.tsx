@@ -1,10 +1,21 @@
 import { MockedProvider } from '@apollo/client/testing/react';
-import { act, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useEffect, useState } from 'react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createCache } from '../apollo/cache';
 import { Layout } from './Layout';
+
+/** Som en lazy-lastet side: h1 kommer først etter «Laster …», og byttes ut når data er hentet. */
+function LatePage() {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setReady(true), 20);
+    return () => clearTimeout(t);
+  }, []);
+  return ready ? <h1>Ferdig lastet</h1> : <p>Laster …</p>;
+}
 
 // ScrollRestoration i Layout krever en data-router, så vi bruker createMemoryRouter her.
 function setup(route = '/') {
@@ -15,6 +26,17 @@ function setup(route = '/') {
         children: [
           { index: true, element: <h1>Forside</h1> },
           { path: 'title/:id', element: <h1>Detalj</h1> },
+          {
+            path: 'sr',
+            element: (
+              <>
+                <h1 className="sr-only">Skjult overskrift</h1>
+                <h2>Synlig</h2>
+              </>
+            ),
+          },
+          { path: 'uten-h1', element: <p>Bare tekst</p> },
+          { path: 'sen', element: <LatePage /> },
         ],
       },
     ],
@@ -35,7 +57,12 @@ const scrollTo = (y: number) => {
   });
 };
 
-afterEach(() => scrollTo(0));
+// jsdom implementerer ikke scrollTo; ScrollRestoration kaller den ved hvert rutebytte.
+beforeEach(() => void vi.stubGlobal('scrollTo', vi.fn()));
+afterEach(() => {
+  vi.unstubAllGlobals();
+  scrollTo(0);
+});
 
 describe('Layout', () => {
   it('har skip-link, hovedmeny med Min liste og søkefelt i headeren', () => {
@@ -89,5 +116,63 @@ describe('Layout', () => {
     expect(router.state.location.pathname + router.state.location.search).toBe('/?q=heat');
     // Fokus blir i søkefeltet slik at brukeren kan fortsette å skrive.
     expect(input).toHaveFocus();
+  });
+
+  describe('fokus ved rutebytte', () => {
+    it('flytter fokus til sidens h1, ikke til main', async () => {
+      const router = setup('/');
+      await act(() => router.navigate('/title/tt1'));
+      const h1 = await screen.findByRole('heading', { level: 1, name: 'Detalj' });
+      expect(h1).toHaveFocus();
+      expect(h1).toHaveAttribute('tabindex', '-1');
+    });
+
+    it('fungerer med en sr-only h1 og velger den første h1', async () => {
+      const router = setup('/');
+      await act(() => router.navigate('/sr'));
+      expect(await screen.findByRole('heading', { level: 1 })).toHaveFocus();
+    });
+
+    it('faller tilbake til main når siden ikke har h1', async () => {
+      const router = setup('/');
+      await act(() => router.navigate('/uten-h1'));
+      await screen.findByText('Bare tekst');
+      expect(screen.getByRole('main')).toHaveFocus();
+    });
+
+    it('flytter fokus til h1 som først kommer etter «Laster …»', async () => {
+      const router = setup('/');
+      await act(() => router.navigate('/sen'));
+      expect(screen.getByRole('main')).toHaveFocus();
+      const h1 = await screen.findByRole('heading', { level: 1, name: 'Ferdig lastet' });
+      await waitFor(() => expect(h1).toHaveFocus());
+    });
+
+    it('stjeler ikke fokus etter klikk eller tastetrykk, selv om fokus har falt til body', async () => {
+      for (const interact of [
+        () => fireEvent.pointerDown(document.body),
+        () => fireEvent.keyDown(document.body, { key: 'a' }),
+      ]) {
+        const router = setup('/');
+        await act(() => router.navigate('/sen'));
+        interact();
+        // Fokus faller til body (som når en knapp blir disabled).
+        (document.activeElement as HTMLElement).blur();
+        const h1 = await screen.findByRole('heading', { level: 1, name: 'Ferdig lastet' });
+        expect(h1).not.toHaveFocus();
+        expect(document.body).toHaveFocus();
+        cleanup();
+      }
+    });
+
+    it('stjeler ikke fokus hvis brukeren har flyttet det før h1 kommer', async () => {
+      const router = setup('/');
+      await act(() => router.navigate('/sen'));
+      const search = screen.getByLabelText('Søk etter tittel');
+      search.focus();
+      // Søkefeltet står utenfor main; endringen i innholdet skal ikke dra fokus tilbake.
+      await screen.findByRole('heading', { level: 1, name: 'Ferdig lastet' });
+      expect(search).toHaveFocus();
+    });
   });
 });
