@@ -178,7 +178,9 @@ export async function runImport(pool: Pool, opts: ImportOptions): Promise<{ impo
 }
 
 async function main() {
-  const pool = createPool(config.databaseUrl);
+  // Én batch på 2 000 rader oppdaterer tre GIN-indekser og kan ta flere sekunder på trege disker;
+  // API-ets 15 s-grense er for stram for en førstegangsinnlasting.
+  const pool = createPool(config.databaseUrl, { statementTimeoutMs: 10 * 60_000 });
   try {
     await migrate(pool, console.log);
     await runImport(pool, {
