@@ -137,9 +137,11 @@ describe('servergrenser', () => {
     }));
 
     it('finner alle frontendens operasjoner', () => {
-      // Hvis formatet i operations.ts endres slik at regexene ikke treffer, skal testen feile
-      // høylytt i stedet for å validere ingenting.
-      expect(documents.length).toBeGreaterThanOrEqual(11);
+      // Hver `gql`-mal i fila må bli funnet. Et fast minimum ville latt en ny operasjon i et format
+      // regexen ikke kjenner, gli forbi uten å bli validert. Alle operasjoner skal ligge i
+      // operations.ts.
+      expect(documents.length).toBeGreaterThan(0);
+      expect(documents.length).toBe([...operationsSource.matchAll(/gql`/g)].length);
       for (const d of documents) expect(d.source, d.name).not.toContain('${');
     });
 
