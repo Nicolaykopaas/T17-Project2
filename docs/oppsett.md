@@ -32,18 +32,28 @@ cp .env.example .env
 Rediger `DATABASE_URL` og `TEST_DATABASE_URL` hvis du ikke bruker `postgres` uten passord på
 `localhost:5432`. Uten `.env` gjelder disse standardverdiene:
 
-| Variabel            | Standard                                           |
-| ------------------- | -------------------------------------------------- |
-| `PORT`              | `3001`                                             |
-| `DATABASE_URL`      | `postgres://postgres@localhost:5432/project2`      |
-| `TEST_DATABASE_URL` | `postgres://postgres@localhost:5432/project2_test` |
-| `CORS_ORIGIN`       | `http://localhost:5173` (bare utenfor produksjon)  |
-| `IMDB_DATA_DIR`     | `./data` (relativt til repo-roten)                 |
-| `IMDB_MIN_VOTES`    | `100`                                              |
-| `NODE_ENV`          | `production` slår av introspeksjon og GraphiQL     |
-| `TMDB_API_KEY`      | (tom: ingen bilder fra TMDB)                       |
-| `TMDB_API_URL`      | `https://api.themoviedb.org/3`                     |
-| `TMDB_IMAGE_URL`    | `https://image.tmdb.org/t/p`                       |
+| Variabel             | Standard                                           | Brukes av                                   |
+| -------------------- | -------------------------------------------------- | ------------------------------------------- |
+| `PORT`               | `3001`                                             | backend                                     |
+| `HOST`               | `127.0.0.1` i produksjon, ellers alle grensesnitt  | backend (hvilket grensesnitt den lytter på) |
+| `DATABASE_URL`       | `postgres://postgres@localhost:5432/project2`      | backend, importskript                       |
+| `TEST_DATABASE_URL`  | `postgres://postgres@localhost:5432/project2_test` | backend-tester                              |
+| `E2E_DATABASE_URL`   | `postgres://postgres@localhost:5432/project2_e2e`  | E2E (se «E2E-tester»)                       |
+| `CORS_ORIGIN`        | `http://localhost:5173` (bare utenfor produksjon)  | backend                                     |
+| `IMDB_DATA_DIR`      | `./data` (relativt til repo-roten)                 | importskript                                |
+| `IMDB_MIN_VOTES`     | `100`                                              | importskript                                |
+| `NODE_ENV`           | `production` slår av introspeksjon og GraphiQL     | backend                                     |
+| `TMDB_API_KEY`       | (tom: ingen bilder fra TMDB)                       | backend                                     |
+| `TMDB_API_URL`       | `https://api.themoviedb.org/3`                     | backend                                     |
+| `TMDB_IMAGE_URL`     | `https://image.tmdb.org/t/p`                       | backend                                     |
+| `TMDB_MOCK_PORT`     | `3999`                                             | `tmdb:mock`                                 |
+| `TMDB_MOCK_DELAY_MS` | `0`                                                | `tmdb:mock` (kunstig forsinkelse)           |
+| `ARCHIVE_URL`        | `https://archive.org`                              | backend og `db:archive`                     |
+| `ARCHIVE_MOCK_PORT`  | `3998`                                             | `archive:mock`                              |
+| `ARCHIVE_LIMIT`      | (ingen grense)                                     | `db:archive` (som `--limit`)                |
+| `FIXTURE_SIZE`       | `120000`                                           | `db:fixture` (antall syntetiske titler)     |
+| `VITE_GRAPHQL_URL`   | `<base>/graphql`, i praksis `/project2/graphql`    | frontend (leses ved bygging og i dev)       |
+| `PW_CHROMIUM_PATH`   | (tom: Playwrights egen Chromium)                   | E2E, sti til forhåndsinstallert Chromium    |
 
 `.env` leses fra repo-roten uansett hvilken mappe kommandoene kjøres fra. Variabler som allerede er
 satt i skallet (eller i CI) går foran `.env`.
@@ -106,6 +116,9 @@ Mangler filene, gir skriptet en feilmelding som peker hit.
 npm run dev -w backend      # API på http://localhost:3001/graphql (GraphiQL i nettleseren)
 npm run dev                 # backend + frontend sammen (fra roten)
 ```
+
+Frontend kjører da på <http://localhost:5173/project2/> (Vite bruker `base: '/project2/'`, også i
+utvikling). Vite proxyer `/project2/graphql` til backend på port 3001, så `VITE_GRAPHQL_URL` trengs ikke.
 
 Prøv API-et:
 
@@ -192,9 +205,36 @@ fra scratch og setter inn et lite kontrollert datasett. De nekter å kjøre hvis
 `TEST_DATABASE_URL` er lik `DATABASE_URL`. I GitLab CI peker `TEST_DATABASE_URL` på en tom
 `postgres:16`-tjeneste (se `.gitlab-ci.yml`); ingen forberedelser trengs.
 
+## 8. E2E-tester (Playwright)
+
+Fra en ren klon, etter `npm ci`:
+
+```bash
+npx playwright install chromium             # på Linux evt. `--with-deps` (trenger sudo for systempakker)
+npm run test:e2e
+```
+
+`npm run test:e2e` starter alt selv (se `playwright.config.ts`): falsk TMDB (port 3999), falsk
+Internet Archive (3998), backend (3001, bygges først) og `vite preview` av produksjonsbygget (4173,
+med samme CSP som Apache). Alle fire porter må være ledige når kjøringen starter. Utenfor CI gjenbrukes
+tjenester som allerede kjører på portene; i CI (`CI=1`) starter Playwright alltid nye.
+
+- **Database:** `e2e/global-setup.ts` oppretter databasen `project2_e2e` hvis den ikke finnes,
+  migrerer den, fyller den med 20 000 syntetiske titler første gang, tømmer `reviews` og
+  `list_items` hver kjøring og kjører `db:archive` mot den falske Archive. Postgres-brukeren må derfor
+  ha `CREATEDB`, og trenger superbruker (eller ferdig installerte extensions) for `pg_trgm` og
+  `unaccent`. Standard er `postgres://postgres@localhost:5432/project2_e2e`; overstyr med
+  `E2E_DATABASE_URL`. Utviklings- og testdatabasen røres ikke.
+- **Nettleser:** `PW_CHROMIUM_PATH` kan peke på en forhåndsinstallert Chromium (nyttig i CI-bilder
+  og containere); uten den brukes Playwrights egen.
+- **CI-modus:** `CI=1 npm run test:e2e` gir én retry, og en test som bare består på retry
+  regnes som feil (`failOnFlakyTests`). Rapport i `playwright-report/`, JUnit i `test-results/`.
+
 ## Feilsøking
 
 - `permission denied to create extension "pg_trgm"` (eller `"unaccent"`): kjør migrasjonen som superuser, eller kjør
   `CREATE EXTENSION pg_trgm; CREATE EXTENSION unaccent;` som superuser i databasen først.
 - `Fant ikke datafilene`: gjør steg 5A eller 5B.
+- `permission denied to create database` i E2E: gi brukeren `CREATEDB` eller opprett `project2_e2e` selv.
+- `port … already in use` i E2E: frigjør portene 3001, 3998, 3999 og 4173.
 - `password authentication failed`: sett riktig bruker/passord i `DATABASE_URL` / `TEST_DATABASE_URL`.
