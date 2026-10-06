@@ -4,6 +4,7 @@ import { ADD_REVIEW_MUTATION } from '../graphql/operations';
 import {
   MAX_AUTHOR,
   MAX_TEXT,
+  charLength,
   validateReview,
   type ReviewDraft,
   type ReviewErrors,
@@ -86,7 +87,7 @@ export function ReviewForm({ titleId, onSubmitted }: Props) {
     }
   };
 
-  const textLength = draft.text.length;
+  const textLength = charLength(draft.text.trim());
 
   return (
     <form className="review-form" onSubmit={(e) => void onSubmit(e)} noValidate>
