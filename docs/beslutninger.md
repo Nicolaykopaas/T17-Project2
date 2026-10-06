@@ -35,8 +35,13 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
   Cursoren inneholder en signatur (sortering/retning/om det finnes søketekst) og avvises
   (`BAD_USER_INPUT`) hvis den brukes med en annen sortering. Tidsstempler i cursorer går som tekst
   (mikrosekund-presisjon; JS `Date` har bare millisekunder).
-- **Relevans = `GREATEST(similarity(primær), similarity(original))`,** tiebreak `num_votes`, så `id`.
-  Uten søketekst betyr «relevans» flest stemmer først.
+- **Relevans = `0,6 * word_similarity + 0,2 * similarity + 0,2 * popularitet`,** tiebreak `num_votes`,
+  så `id`. Begge likhetsmålene tas som `GREATEST` over primær- og originaltittel. Ren likhet rangerte
+  obskure titler med identisk navn («Dark Knight», 1 500 stemmer) over klassikeren brukeren mener
+  («The Dark Knight»). `word_similarity` gir full score når søkeordene står i tittelen, `similarity`
+  belønner eksakte treff, og popularitet (`log10(stemmer) / 7`, mettet ved 10 mill.) skiller resten.
+  Uten søketekst betyr «relevans» flest stemmer først. Formelen står i `sortKeys` i
+  `backend/src/search.ts`.
 - **`totalCount` er lazy** (beregnes bare hvis feltet etterspørres) og kjøres som egen `count(*)`.
   `userRating`/`reviewCount`/`inMyList` hentes med en liten per-request batch-loader (`loaders.ts`),
   så en side med 20 titler koster 1 spørring per felttype i stedet for 20.
