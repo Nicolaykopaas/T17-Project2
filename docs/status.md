@@ -44,8 +44,8 @@ stemmer, deployet 2026-09-30).
 4. **Fylle ut «Gruppens egen gjennomgang»** i `docs/ki-deklarasjon.md`.
 5. **Bidragsfil i Canvas.**
 
-README.md skrives av gruppa. Fakta og installasjonssteg ligger i `docs/oppsett.md` og
-`docs/deploy.md`.
+README.md er skrevet av leder-agenten på forespørsel fra Nicolay i oktober (se
+`docs/ki-deklarasjon.md`). Installasjonssteg ligger i `docs/oppsett.md` og `docs/deploy.md`.
 
 ## Kjente begrensninger
 
