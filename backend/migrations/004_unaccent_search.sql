@@ -19,7 +19,7 @@ CREATE FUNCTION f_unaccent(text) RETURNS text
 --
 -- Alle tre kolonnene legges til i ÉN ALTER TABLE, fordi hver slik kolonne skriver om hele tabellen
 -- mens den holder ACCESS EXCLUSIVE-lås (ingen lesing eller skriving på titles under migreringen).
--- ca. 4 s lokalt på 120 000 titler (regn med 10–20 s på VM); stopp gjerne backend under migreringen (se docs/deploy.md).
+-- Det tar ca. 4 s lokalt på 120 000 titler (regn med 10–20 s på VM); stopp gjerne backend under migreringen (se docs/deploy.md).
 -- title_words er en tsvector av begge titlene til ordprefikssøk (se lenger ned).
 ALTER TABLE titles
   ADD COLUMN primary_title_norm  text GENERATED ALWAYS AS (lower(f_unaccent(primary_title)))  STORED,
@@ -36,7 +36,7 @@ CREATE INDEX titles_primary_title_trgm_idx
 CREATE INDEX titles_original_title_trgm_idx
   ON titles USING gin (original_title_norm gin_trgm_ops);
 
--- Søk på 1–2 tegn har ingen trigrammer. De gjøres om til ORDprefiks («ma» finner «The Matrix»)
+-- Søk på 1–2 tegn har ingen trigrammer. De gjøres om til ordprefiks («ma» finner «The Matrix»)
 -- mot en lagret tsvector av begge titlene, med GIN. 'simple' (ingen stemming eller stoppord) fordi
 -- titler ikke er prosa og «the» skal kunne søkes på. Dette erstatter prefiksindekser på hele
 -- tittelen, som bare fant titler som BEGYNTE med søketeksten.

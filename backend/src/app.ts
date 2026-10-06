@@ -64,7 +64,7 @@ async function databaseResponds(pool: Pool, timeoutMs = HEALTH_TIMEOUT_MS): Prom
   }
 }
 
-export interface AppOptions {
+interface AppOptions {
   pool: Pool;
   /** Slår av introspeksjon og GraphiQL. Standard: NODE_ENV === 'production'. */
   production?: boolean;
@@ -110,8 +110,8 @@ export function createApp({
     },
   };
 
-  // Yogas innebygde /health svarer «alive» uten å se på databasen. Vi trenger det motsatte: frontend
-  // og sjekk.sh skal få vite om API-et faktisk kan svare, så Yogas flyttes og vår tar over stien.
+  // Yogas innebygde /health svarer «alive» uten å se på databasen. Vi trenger det motsatte: sjekk.sh,
+  // Apache og drift skal få vite om API-et faktisk kan svare, så Yogas flyttes og vår tar over stien.
   const health: Plugin = {
     async onRequest({ request, url, endResponse }) {
       if (url.pathname !== '/health' || request.method !== 'GET') return;

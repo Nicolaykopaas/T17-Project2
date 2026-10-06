@@ -172,7 +172,7 @@ describe('search: aksentuavhengig', () => {
 });
 
 describe('search: korte søk (1–2 tegn)', () => {
-  // ORDprefiks på normalisert primær- eller originaltittel, rangert etter stemmer og id.
+  // ordprefiks på normalisert primær- eller originaltittel, rangert etter stemmer og id.
   const words = (t: (typeof TITLES)[number]) =>
     titleHaystack(t)
       .flatMap((h) => h.split(/[^\p{L}\p{N}]+/u))
