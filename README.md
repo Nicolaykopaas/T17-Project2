@@ -268,11 +268,11 @@ Målet er WCAG 2.1 AA, og det er verifisert automatisk og med tastatur:
 
 ## Testing
 
-| Type                                            |        Antall | Kommando           |
-| ----------------------------------------------- | ------------: | ------------------ |
-| API og database (Vitest mot ekte PostgreSQL)    |  TALL_BACKEND | `npm test`         |
-| Komponenter og hooks (Vitest + Testing Library) | TALL_FRONTEND | `npm test`         |
-| E2E med axe (Playwright, desktop og mobil)      |      TALL_E2E | `npm run test:e2e` |
+| Type                                            | Antall | Kommando           |
+| ----------------------------------------------- | -----: | ------------------ |
+| API og database (Vitest mot ekte PostgreSQL)    |    415 | `npm test`         |
+| Komponenter og hooks (Vitest + Testing Library) |    249 | `npm test`         |
+| E2E med axe (Playwright, desktop og mobil)      |     97 | `npm run test:e2e` |
 
 **Typisk bruk** testes med hele flyten: søk, filtrer, sorter, scroll, åpne detalj, skriv anmeldelse
 og se den i lista, legg i og fjern fra Min liste, og spill en gratisfilm med tastatur.
@@ -349,7 +349,7 @@ Ferdigstillingen etter medstudentvurderingen er gjort gjennom issues, pull reque
 | #14   | Presis filteretikett, kategorinavigasjon, ustabil test     | #18          |
 | #15   | API-grenser, slett anmeldelse, aksentuavhengig og kort søk | #20          |
 | #16   | Feilrettinger, tilgjengelighet, tema-bryter, slett i UI    | #21          |
-| #17   | CI (build og E2E), CSP, dokumentasjon                      | #22, PR_DOCS |
+| #17   | CI (build og E2E), CSP, dokumentasjon                      | #22, #24–#27 |
 
 Hver PR har review-kommentarer med funn rangert som blokkerende, bør fikses og valgfritt. Funnene er
 rettet med nye commits før merge.
