@@ -85,6 +85,10 @@ sudo -u postgres psql -d "$DB_NAME" -qc 'CREATE EXTENSION IF NOT EXISTS pg_trgm;
 step "Installerer avhengigheter og bygger"
 HUSKY=0 npm ci --no-audit --no-fund
 npm run build
+# Migrering 004 skriver om titles og holder en lås som blokkerer all lesing og skriving i noen sekunder (ca. 4 s lokalt, 10–20 s på VM).
+# Stopper backend først (ved første kjøring finnes den ikke ennå), så brukere får en ryddig 503 fra
+# Apache i stedet for forespørsler som henger på låsen. Den startes igjen lenger ned.
+sudo systemctl stop project2-backend 2>/dev/null || true
 npm run db:migrate
 
 step "Laster ned IMDb-data og importerer (tar noen minutter)"

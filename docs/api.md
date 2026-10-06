@@ -135,7 +135,7 @@ type DeleteReviewPayload {
 
 type Query {
   # query: tom/null = alle titler. Case- og aksentuavhengig delstrengsøk («amelie» finner «Amélie»)
-  # i primær- og originaltittel. Søk på 1–2 tegn er prefiksmatch og rangeres etter popularitet.
+  # i primær- og originaltittel. Søk på 1–2 tegn er ordprefiks («ma» finner «The Matrix») og rangeres etter popularitet.
   search(
     query: String
     filters: SearchFilters
@@ -167,7 +167,7 @@ type Mutation {
   `UNAUTHENTICATED` (mangler `x-user-id` på mutation), `RATE_LIMITED` (se under),
   `INTERNAL_SERVER_ERROR` (uten detaljer).
 - Maks 8 rotfelt (aliaser telles hver for seg) og 150 felt totalt per operasjon (fragmenter
-  ekspandert), ellers `BAD_USER_INPUT`. Frontendens største spørring har ca. 45 felt.
+  ekspandert), ellers `BAD_USER_INPUT`. Dessuten en vektet kostnad maks 2 500, der feltene under `search`, `myList` og `reviews` teller `first` ganger (standard 20/20/10; variabel `first` regnes som 50). Frontendens største spørring har ca. 45 felt og kostnad ca. 1 100.
 - `deleteReview(id)`: `id` må være heltallsstrengen fra `Review.id` (ellers `BAD_USER_INPUT`).
   Hører anmeldelsen til en annen `x-user-id`, eller finnes den ikke, er svaret likt: `NOT_FOUND`
   («Fant ikke anmeldelsen.»). Svaret har `deletedId` (fjern `Review:<id>` fra Apollo-cachen) og

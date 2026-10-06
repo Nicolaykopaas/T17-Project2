@@ -209,15 +209,31 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
   `unaccent` følger med `postgresql-contrib` sammen med `pg_trgm` og er «trusted» fra PostgreSQL 13, så
   `deploy/setup-vm.sh` og `docs/oppsett.md` trenger bare å nevne den ved siden av `pg_trgm`.
   Konsekvens: «ø», «å» og «æ» foldes til «o», «a» og «ae».
-- **Korte søk (1–2 tegn) er prefiksmatch og rangeres etter popularitet.** Delstrengsøk på 1–2 tegn
+- **Korte søk (1–2 tegn) er ORDprefiks og rangeres etter popularitet.** Delstrengsøk på 1–2 tegn
   har ingen trigrammer og traff opptil 70 % av tabellen, og relevansberegningen (`similarity`) på
-  alle treff tok ca. 0,5 s for «a». Prefiksmatch mot de normaliserte kolonnene bruker
-  `text_pattern_ops`-btree (eller stemmeindeksen baklengs), og relevans er stemmer, så id. Det
-  endrer funksjonen: «ar» finner ikke lenger «Dark». Alternativene vi vurderte: (1) beholde delstreng
-  og bare droppe likhetsberegningen (hindrer ikke full skanning), (2) ordprefiks («ar» finner
-  «The Arrival»), som krever tokenisering eller regex uten indeks. Valgte enkel prefiksmatch fordi
-  den er rask, forutsigbar og dekker det brukere gjør når de skriver de første bokstavene av en
-  tittel. Cursoren har en egen signatur for korte søk, siden sorteringsnøklene er annerledes.
+  alle treff tok ca. 0,3 s for «a». Nå brukes en generert `tsvector` (`title_words`, `'simple'`) med
+  GIN og `to_tsquery('simple', '<tekst>:*')`; relevans er stemmer, så id. «ma» finner «The Matrix»,
+  men «ar» finner ikke «Dark». Søketeksten strippes for tegnsetting før den settes inn i
+  tsquery-syntaksen, så operatortegn ikke kan gi syntaksfeil, og blir ingenting igjen gir det null
+  treff. Alternativene vi vurderte: (1) beholde delstreng og bare droppe likhetsberegningen (hindrer
+  ikke full skanning), (2) prefiks av hele tittelen med `text_pattern_ops`-btree, som vi først
+  implementerte og målte (like rask) men som ikke fant «The Matrix» på «ma». Den tidligere påstanden
+  om at ordprefiks krever regex uten indeks var feil: tsvector med GIN gir ordprefiks med indeks.
+  Cursoren har en egen signatur for korte søk, siden sorteringsnøklene er annerledes.
+- **Søketeksten normaliseres før den escapes, begge deler i SQL.** `unaccent` mapper fullbreddetegn
+  (`％`, `＿`, `＼`) til `%`, `_` og `\`; escapet vi i JavaScript først, ble de jokertegn i LIKE og
+  traff hele tabellen. Mønsteret bygges derfor som `'%' || regexp_replace(lower(f_unaccent($1)),
+'([\\%_])', '\\\1', 'g') || '%'`.
+- **Kompleksitetsgrensen veier lister med `first`.** I tillegg til rotfelt og totalt antall felt har
+  `complexityLimit` en vektet kostnad: feltene under `search`, `myList` og `reviews` teller `first`
+  ganger (standard 20/20/10 når `first` utelates, 50 når `first` er en variabel uten
+  standardverdi). 8 x `search(first: 50) { reviews(first: 50) }` er under feltgrensene, men koster
+  millioner og avvises. Grensen er 2 500; frontendens største spørring koster ca. 1 100.
+  Regelen er memoisert per fragment (også `depthLimit`), siden en kjede av fragmenter som hver
+  spres ti ganger i det neste ellers tok minutter CPU under validering.
+- **Backend lytter på `127.0.0.1` i produksjon, og `X-Forwarded-For` stoles bare på fra loopback.**
+  Uten det kunne noen nå port 3001 direkte og sette en ny falsk IP per forespørsel og dermed omgå
+  IP-grensen. `HOST` kan overstyre. Apache og `deploy/` bruker allerede `127.0.0.1`.
 
 ## Feiltilstand når API-et ikke nås (#13)
 

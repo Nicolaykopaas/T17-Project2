@@ -69,7 +69,22 @@ sudo apachectl configtest && sudo systemctl reload apache2
 ## Oppdatering senere
 
 ```bash
-cd /opt/project2 && git pull && npm ci && npm run build && npm run db:migrate
+cd /opt/project2 && git pull && npm ci && npm run build
+sudo systemctl stop project2-backend          # se «Låsvindu» under
+npm run db:migrate
 sudo cp -r frontend/dist/* /var/www/html/project2/
-sudo systemctl restart project2-backend
+sudo systemctl start project2-backend
 ```
+
+**Låsvindu for migrering 004.** Migreringen legger til tre genererte (`STORED`) kolonner på `titles`
+(`primary_title_norm`, `original_title_norm`, `title_words`) i én `ALTER TABLE`, og bygger deretter
+tre GIN-indekser på dem. `ALTER TABLE ... ADD COLUMN ... STORED` skriver om hele tabellen mens den
+holder `ACCESS EXCLUSIVE`-lås, så alle spørringer mot `titles` står i kø til den er ferdig (ca. 4 s lokalt, regn med 10–20 s
+for 120 000 titler på VM-en; indeksbyggingen kommer i tillegg). Kjør derfor migreringen med backend
+stoppet, slik `deploy/setup-vm.sh` og kommandoene over gjør. Senere migreringer som ikke skriver om
+tabellen trenger ikke dette.
+
+**Nettverk.** Med `NODE_ENV=production` (satt i `deploy/project2-backend.service`) lytter backend bare
+på `127.0.0.1:3001`, så port 3001 ikke kan nås utenfra uten om Apache. `HOST` overstyrer ved behov.
+Apache-konfigen og `deploy/sjekk.sh` bruker allerede `127.0.0.1`. Begrensningen av mutations stoler på
+`X-Forwarded-For` bare når forbindelsen kommer fra loopback.

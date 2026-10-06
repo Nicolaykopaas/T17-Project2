@@ -37,7 +37,7 @@ Alle punktene i `PLAN.md` er gjort og verifisert i utviklingsmiljøet.
 
 ## Kjente begrensninger
 
-- Søk på 1–2 tegn er prefiksmatch på tittelen («th» finner «The Matrix», men ikke «Death»), og
+- Søk på 1–2 tegn er ordprefiks («th» finner «The Matrix», men ikke «Death»; tegnsetting ignoreres), og
   rangeres etter popularitet. Fra 3 tegn er det delstrengsøk med likhetsrangering.
 - Aksentfolding følger Postgres' `unaccent`: «ø» blir «o» og «å» blir «a», så «bla» finner også «Blå».
 - `totalCount` for svært vanlige søk («a», «the») tar 20–50 ms fordi alle treff må telles.
