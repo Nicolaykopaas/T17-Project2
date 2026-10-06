@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { print } from 'graphql';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -364,6 +364,31 @@ describe('HomePage: bla-modus', () => {
       sort: { field: 'RATING', direction: 'DESC' },
       first: 20,
     });
+  });
+
+  it('«Se alle» henter antallet i ett Search-kall, og tilbake gir ingen nye Row-kall', async () => {
+    const io = stubIntersectionObserver();
+    // Serveren svarer med de samme titlene overalt, som den ekte ville gjort for samme søk.
+    const { log, user, router } = setup('/', () => ({ search: makeConnection(featured, 1234) }));
+    await screen.findByRole('region', { name: 'Med bilde' });
+    // Last én rad under folden slik at vi kan se at den kommer fra cachen etterpå.
+    io.reveal(document.getElementById('rad-free')!);
+    await waitFor(() => expect(log.Row).toHaveLength(1));
+
+    await user.click(screen.getByRole('link', { name: /Se alle i Mest populære/ }));
+    await waitFor(() => expect(log.Search).toHaveLength(1));
+    // Antall treff (aria-live) kommer fra Search-kallet, ikke fra radene.
+    const count = await screen.findByText(/1\s?234 treff/);
+    expect(count).toHaveAttribute('aria-live', 'polite');
+
+    await act(() => router.navigate(-1));
+    await screen.findByRole('region', { name: 'Med bilde' });
+    io.reveal(document.getElementById('rad-free')!);
+    const free = await screen.findByRole('region', { name: 'Se gratis nå' });
+    expect((await within(free).findAllByRole('article')).length).toBeGreaterThan(0);
+    expect(log.Row).toHaveLength(1);
+    expect(log.Featured).toHaveLength(1);
+    expect(log.Search).toHaveLength(1);
   });
 
   it('viser faktisk Min liste-tilstand på hero-tittelen', async () => {

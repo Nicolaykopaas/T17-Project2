@@ -114,11 +114,13 @@ export function renderApp(
     ],
     { initialEntries: [route] },
   );
-  return render(
+  const result = render(
     <MockedProvider mocks={mocks} cache={createCache()}>
       <RouterProvider router={router} />
     </MockedProvider>,
   );
+  // Routeren gir testene tilgang til «tilbake» og navigasjon uten å klikke.
+  return { ...result, router };
 }
 
 /** Gjeldende URL slik routeren ser den (sti + query). */
