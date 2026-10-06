@@ -10,6 +10,7 @@ import { RouterProvider } from 'react-router/dom';
 import { createCache } from '../apollo/cache';
 import {
   ADD_REVIEW_MUTATION,
+  DELETE_REVIEW_MUTATION,
   FACETS_QUERY,
   FEATURED_QUERY,
   GENRES_QUERY,
@@ -43,6 +44,7 @@ const OPERATIONS = {
   MyList: MY_LIST_QUERY,
   AddReview: ADD_REVIEW_MUTATION,
   ToggleList: TOGGLE_LIST_MUTATION,
+  DeleteReview: DELETE_REVIEW_MUTATION,
 } as const;
 export type OperationName = keyof typeof OPERATIONS;
 
@@ -61,6 +63,7 @@ export function emptyLog(): CallLog {
     MyList: [],
     AddReview: [],
     ToggleList: [],
+    DeleteReview: [],
   };
 }
 

@@ -147,7 +147,8 @@ a {
   outline-offset: 2px;
 }
 main:focus,
-main h1:focus {
+main h1:focus,
+#reviews-heading:focus {
   /* Programmatisk fokus etter rutebytte er ikke et interaktivt element; ring ville bare se ut som en feil. */
   outline: none;
 }
@@ -406,6 +407,18 @@ fieldset {
   background: rgb(38 40 46 / 0.9);
   border-color: rgb(255 255 255 / 0.35);
   color: #ffffff;
+}
+.btn--danger {
+  background: transparent;
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.review__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
 }
 .btn--link {
   background: none;

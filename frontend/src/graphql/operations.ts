@@ -2,6 +2,8 @@ import { gql, type TypedDocumentNode } from '@apollo/client';
 import type {
   AddReviewData,
   AddReviewVars,
+  DeleteReviewData,
+  DeleteReviewVars,
   FacetsData,
   FeaturedData,
   FacetsVars,
@@ -247,6 +249,20 @@ export const TOGGLE_LIST_MUTATION: TypedDocumentNode<ToggleListData, ToggleListV
     toggleList(titleId: $titleId) {
       id
       inMyList
+    }
+  }
+`;
+
+// Payloaden bærer tittelens nye snitt og antall, så `Title:<id>` i cachen oppdateres uten ny henting.
+export const DELETE_REVIEW_MUTATION: TypedDocumentNode<DeleteReviewData, DeleteReviewVars> = gql`
+  mutation DeleteReview($id: ID!) {
+    deleteReview(id: $id) {
+      deletedId
+      title {
+        id
+        userRating
+        reviewCount
+      }
     }
   }
 `;

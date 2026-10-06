@@ -6,6 +6,7 @@ import { GRID_SIZES, PosterCard } from '../components/PosterCard';
 import { PosterSkeleton } from '../components/PosterSkeleton';
 import { MY_LIST_QUERY, TOGGLE_LIST_MUTATION } from '../graphql/operations';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { rateLimitMessage } from '../lib/apiError';
 import { formatNumber } from '../lib/format';
 
 const PAGE_SIZE = 20;
@@ -19,7 +20,7 @@ export default function MyListPage() {
   });
   const [toggleList, { loading: removing }] = useMutation(TOGGLE_LIST_MUTATION);
   const [message, setMessage] = useState('');
-  const [removeFailed, setRemoveFailed] = useState(false);
+  const [removeError, setRemoveError] = useState('');
   const [moreFailed, setMoreFailed] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -27,7 +28,7 @@ export default function MyListPage() {
   const list = data?.myList;
 
   const remove = async (id: string, name: string) => {
-    setRemoveFailed(false);
+    setRemoveError('');
     try {
       await toggleList({
         variables: { titleId: id },
@@ -55,8 +56,8 @@ export default function MyListPage() {
       setMessage(`Fjernet «${name}» fra listen.`);
       // Knappen som hadde fokus forsvinner; flytt fokus til overskriften så tastaturbrukere ikke mister plassen.
       heading.current?.focus();
-    } catch {
-      setRemoveFailed(true);
+    } catch (e) {
+      setRemoveError(rateLimitMessage(e) ?? 'Kunne ikke fjerne tittelen. Prøv igjen.');
     }
   };
 
@@ -68,9 +69,9 @@ export default function MyListPage() {
       <p className="count" role="status" aria-live="polite">
         {message || (list ? `${formatNumber(list.totalCount)} titler` : '')}
       </p>
-      {removeFailed && (
+      {removeError && (
         <p className="error-text" role="alert">
-          Kunne ikke fjerne tittelen. Prøv igjen.
+          {removeError}
         </p>
       )}
 

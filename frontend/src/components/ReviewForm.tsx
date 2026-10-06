@@ -1,6 +1,7 @@
 import { useId, useRef, useState, type FormEvent } from 'react';
 import { useMutation } from '@apollo/client/react';
 import { ADD_REVIEW_MUTATION } from '../graphql/operations';
+import { rateLimitMessage } from '../lib/apiError';
 import {
   MAX_AUTHOR,
   MAX_TEXT,
@@ -72,8 +73,10 @@ export function ReviewForm({ titleId, onSubmitted }: Props) {
           },
         },
       });
-    } catch {
-      setServerError('Kunne ikke sende anmeldelsen. Sjekk nettverket og prøv igjen.');
+    } catch (error) {
+      setServerError(
+        rateLimitMessage(error) ?? 'Kunne ikke sende anmeldelsen. Sjekk nettverket og prøv igjen.',
+      );
       return;
     }
     setDraft({ author: draft.author, rating: null, text: '' });

@@ -178,6 +178,16 @@ export interface AddReviewVars {
   input: { titleId: string; author: string; rating: number; text: string };
 }
 
+export interface DeleteReviewData {
+  deleteReview: {
+    deletedId: string;
+    title: { __typename?: 'Title'; id: string; userRating: number | null; reviewCount: number };
+  };
+}
+export interface DeleteReviewVars {
+  id: string;
+}
+
 export interface ToggleListData {
   toggleList: { __typename?: 'Title'; id: string; inMyList: boolean };
 }
