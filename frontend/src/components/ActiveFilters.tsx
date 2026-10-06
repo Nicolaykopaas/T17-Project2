@@ -30,7 +30,7 @@ export function ActiveFilters({ state, onChange, onReset }: Props) {
   if (state.available) {
     chips.unshift({
       key: 'available',
-      label: 'Kun filmer du kan se',
+      label: 'Kun filmer som kan strømmes gratis',
       remove: () => onChange({ available: false }),
     });
   }

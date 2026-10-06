@@ -14,6 +14,7 @@ import {
   renderApp,
   type Vars,
 } from '../test/utils';
+import { BROWSE_ROWS } from '../lib/browseRows';
 import { HeaderSearch } from '../components/HeaderSearch';
 import HomePage from './HomePage';
 
@@ -187,14 +188,16 @@ describe('HomePage: filtre', () => {
     await waitFor(() => expect(log.Search.at(-1)).toEqual({ query: 'alien', first: 20 }));
   });
 
-  it('«Kun filmer du kan se» står først, viser antall og oppdaterer URL, variabler og chip', async () => {
+  it('«Kun filmer som kan strømmes gratis» står først, viser antall og oppdaterer URL, variabler og chip', async () => {
     const { log, user } = setup();
-    const box = await screen.findByRole('checkbox', { name: /^Kun filmer du kan se/ });
+    const box = await screen.findByRole('checkbox', {
+      name: /^Kun filmer som kan strømmes gratis/,
+    });
     const checkboxes = screen.getAllByRole('checkbox');
     expect(checkboxes[0]).toBe(box);
     await waitFor(() =>
       expect(box.closest('label')!.textContent!.replace(/\s/g, ' ')).toBe(
-        'Kun filmer du kan se (3)',
+        'Kun filmer som kan strømmes gratis (3)',
       ),
     );
     expect(box).not.toBeChecked();
@@ -209,16 +212,38 @@ describe('HomePage: filtre', () => {
       expect(log.Facets.at(-1)).toMatchObject({ filters: { availableOnly: true } }),
     );
     const chips = screen.getByRole('list', { name: 'Aktive filtre' });
-    const chip = within(chips).getByRole('button', { name: /Kun filmer du kan se/ });
+    const chip = within(chips).getByRole('button', { name: /Kun filmer som kan strømmes gratis/ });
 
     await user.click(chip);
     await waitFor(() => expect(currentUrl().searchParams.has('available')).toBe(false));
-    expect(screen.getByRole('checkbox', { name: /^Kun filmer du kan se/ })).not.toBeChecked();
+    expect(
+      screen.getByRole('checkbox', { name: /^Kun filmer som kan strømmes gratis/ }),
+    ).not.toBeChecked();
+  });
+
+  it('avkrysningsboksen er avkrysset umiddelbart etter klikk, uten å vente på routeren', async () => {
+    // Regresjon: uten flushSync tilbakestilte React den kontrollerte boksen til forrige verdi til
+    // router-transitionen var ferdig, og den hoppet synlig tilbake.
+    setup();
+    const box = await screen.findByRole('checkbox', {
+      name: /^Kun filmer som kan strømmes gratis/,
+    });
+    // Rå DOM-klikk utenfor act(): Testing Librarys hjelpere ville ellers flushet transitionen og
+    // skjult feilen.
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = false;
+    try {
+      box.click();
+      expect(box).toBeChecked();
+    } finally {
+      (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    }
   });
 
   it('leser available=1 fra URL, og «Nullstill alle» fjerner den', async () => {
     const { user, log } = setup('/?q=alien&available=1');
-    expect(await screen.findByRole('checkbox', { name: /^Kun filmer du kan se/ })).toBeChecked();
+    expect(
+      await screen.findByRole('checkbox', { name: /^Kun filmer som kan strømmes gratis/ }),
+    ).toBeChecked();
     await waitFor(() =>
       expect(log.Search.at(-1)).toMatchObject({
         query: 'alien',
@@ -359,7 +384,9 @@ describe('HomePage: bla-modus', () => {
     expect(link.getAttribute('href')).toMatch(/^\/\?available=1/);
     await user.click(link);
     await waitFor(() => expect(currentUrl().searchParams.get('available')).toBe('1'));
-    expect(await screen.findByRole('checkbox', { name: /^Kun filmer du kan se/ })).toBeChecked();
+    expect(
+      await screen.findByRole('checkbox', { name: /^Kun filmer som kan strømmes gratis/ }),
+    ).toBeChecked();
   });
 
   it('skjuler «Se gratis nå» når ingen filmer kan sees', async () => {
@@ -375,6 +402,28 @@ describe('HomePage: bla-modus', () => {
     await waitFor(() =>
       expect(screen.queryByRole('heading', { name: 'Se gratis nå' })).not.toBeInTheDocument(),
     );
+  });
+
+  it('hopp til en tom rad gir fokus på raden, ikke på body', async () => {
+    const io = stubIntersectionObserver();
+    const { user } = setup('/', (vars) => ({
+      search: makeConnection(
+        (vars.filters as { availableOnly?: boolean })?.availableOnly ? [] : titles,
+      ),
+    }));
+    await screen.findByRole('region', { name: 'Med bilde' });
+    const nav = screen.getByRole('navigation', { name: 'Kategorier' });
+    await user.click(within(nav).getByRole('link', { name: 'Se gratis nå' }));
+    const row = screen.getByRole('group', { name: 'Se gratis nå' });
+    expect(row).toHaveFocus();
+
+    // Raden laster og viser seg tom; overskriften forsvinner, men fokus blir på raden.
+    io.reveal(document.getElementById('rad-free')!);
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { name: 'Se gratis nå' })).not.toBeInTheDocument(),
+    );
+    expect(row).toHaveFocus();
+    expect(document.body).not.toHaveFocus();
   });
 
   it('viser «Se filmen» i hero når hero-tittelen har stream', async () => {
@@ -431,5 +480,53 @@ describe('HomePage: bla-modus', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Kunne ikke hente');
     expect(screen.getByRole('button', { name: 'Prøv igjen' })).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Med bilde' })).not.toBeInTheDocument();
+  });
+
+  it('har kategorinavigasjon med én lenke per rad, etter heltebanneret og før radene', async () => {
+    stubIntersectionObserver();
+    setup('/');
+    const hero = await screen.findByRole('region', { name: 'Med bilde' });
+    const nav = screen.getByRole('navigation', { name: 'Kategorier' });
+    const links = within(nav).getAllByRole('link');
+    expect(links.map((a) => a.textContent)).toEqual(BROWSE_ROWS.map((r) => r.heading));
+    expect(links[0]).toHaveAttribute('href', '#rad-popular');
+    // Hero, så nav, så første rad i dokumentrekkefølge.
+    const firstRow = screen.getByRole('heading', { name: 'Mest populære' });
+    expect(hero.compareDocumentPosition(nav) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(nav.compareDocumentPosition(firstRow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('flytter fokus til raden ved klikk og Enter, uten å endre URL', async () => {
+    stubIntersectionObserver();
+    const { user } = setup('/');
+    await screen.findByRole('region', { name: 'Med bilde' });
+    const nav = screen.getByRole('navigation', { name: 'Kategorier' });
+    const before = currentUrl().href;
+
+    await user.click(within(nav).getByRole('link', { name: 'Drama' }));
+    const drama = screen.getByRole('group', { name: 'Drama' });
+    expect(drama).toHaveFocus();
+    expect(drama).toHaveAttribute('tabindex', '-1');
+
+    within(nav).getByRole('link', { name: 'Komedie' }).focus();
+    await user.keyboard('{Enter}');
+    expect(screen.getByRole('group', { name: 'Komedie' })).toHaveFocus();
+    expect(currentUrl().href).toBe(before);
+  });
+
+  it('hopp til en rad under folden starter hentingen når raden kommer i viewport', async () => {
+    const io = stubIntersectionObserver();
+    const { log, user } = setup('/');
+    await screen.findByRole('region', { name: 'Med bilde' });
+    expect(log.Search).toHaveLength(0);
+    await user.click(
+      within(screen.getByRole('navigation', { name: 'Kategorier' })).getByRole('link', {
+        name: 'Science fiction',
+      }),
+    );
+    // Nettleseren melder raden som synlig etter scrollingen.
+    io.reveal(document.getElementById('rad-scifi')!);
+    await waitFor(() => expect(log.Search).toHaveLength(1));
+    expect(log.Search[0]).toMatchObject({ filters: { genres: ['Sci-Fi'] } });
   });
 });

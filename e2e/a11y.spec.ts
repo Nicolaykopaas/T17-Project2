@@ -4,7 +4,11 @@ import { expect, test } from '@playwright/test';
 // WCAG 2.1 AA er kravet i CLAUDE.md; axe sjekker det som kan sjekkes automatisk.
 const pages = [
   { name: 'forside (bla-modus)', path: './', ready: 'Søk i filmer og serier', scrollAll: true },
-  { name: 'søk med kun filmer du kan se', path: './?available=1', ready: 'Søk i filmer og serier' },
+  {
+    name: 'søk med kun filmer som kan strømmes gratis',
+    path: './?available=1',
+    ready: 'Søk i filmer og serier',
+  },
   { name: 'søk uten tekst', path: './?sort=relevans', ready: 'Søk i filmer og serier' },
   {
     name: 'søk med treff og filter',

@@ -62,7 +62,7 @@ lenker til og strømmer fra archive.org og lagrer ingen video selv.
 - [x] Backend: tabell `title_streams` (title_id, archive_id, fil, lisens, varighet) + migrering
 - [x] Importskript `db:archive`: hent filmer fra Internet Archive-samlinger med fri lisens, koble til IMDb-titler via IMDb-ID i metadata (ellers tittel + år), velg en MP4-fil som nettlesere kan spille. Idempotent, testet mot falsk Archive-server
 - [x] API: `Title.stream { url, license, archiveUrl }` og filter `availableOnly` (+ fasettantall)
-- [x] Frontend: filter «Kun filmer du kan se», rad «Se gratis nå» på forsiden, merke på plakater
+- [x] Frontend: filter «Kun filmer som kan strømmes gratis», rad «Se gratis nå» på forsiden, merke på plakater
 - [x] Videospiller på `/watch/:id`: spill/pause, spoling (tidslinje og ±10 s), volum og demping, fullskjerm, tastatur (mellomrom, piler, M, F), undertekster når de finnes, lisens og kilde under spilleren
 - [x] Tester: import og kobling, API, spillerkontroller (komponent), E2E med liten testvideo, axe
 - [x] Deploy: `setup-vm.sh` kjører `db:archive` etter importen
