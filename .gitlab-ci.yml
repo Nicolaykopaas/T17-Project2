@@ -13,6 +13,7 @@ default:
 stages:
   - check
   - test
+  - e2e
 
 variables:
   HUSKY: '0'
@@ -39,3 +40,37 @@ unit-tests:
     TEST_DATABASE_URL: postgres://postgres@postgres:5432/project2_test
   script:
     - npm test
+
+# Bygger begge pakkene slik at en ødelagt produksjonsbygging oppdages før deploy.
+build:
+  stage: test
+  script:
+    - npm run build
+  artifacts:
+    paths:
+      - frontend/dist/
+    expire_in: 1 week
+
+# E2E mot ekte backend og database. Playwright-bildet har nettleserne ferdig installert, så
+# `playwright install` trengs ikke. Versjonen må følge @playwright/test i package-lock.json.
+# Playwright starter selv falsk TMDB, falsk Internet Archive, backend og frontend (se
+# playwright.config.ts), og global-setup.ts migrerer og fyller databasen med syntetiske data.
+e2e:
+  stage: e2e
+  image: mcr.microsoft.com/playwright:v1.63.0-noble
+  services:
+    - name: postgres:16
+      alias: postgres
+  variables:
+    POSTGRES_DB: project2_e2e
+    POSTGRES_USER: postgres
+    POSTGRES_HOST_AUTH_METHOD: trust
+    E2E_DATABASE_URL: postgres://postgres@postgres:5432/project2_e2e
+  script:
+    - npm run test:e2e
+  artifacts:
+    when: on_failure
+    paths:
+      - playwright-report/
+      - test-results/
+    expire_in: 1 week
