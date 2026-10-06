@@ -15,7 +15,7 @@ enum TitleType {
 }
 
 enum SortField {
-  RELEVANCE # likhet med søketeksten; uten søketekst: flest stemmer først
+  RELEVANCE # vektet word_similarity/similarity på tittel + popularitet; 1–2 tegn og uten søketekst: popularitet
   RATING
   YEAR
   TITLE
@@ -165,6 +165,7 @@ type Mutation {
 - Cursorer er ugjennomsiktige strenger (base64). Ugyldig cursor gir `BAD_USER_INPUT`.
 - Feil returneres som GraphQL-feil med `extensions.code`: `BAD_USER_INPUT`, `NOT_FOUND`,
   `UNAUTHENTICATED` (mangler `x-user-id` på mutation), `RATE_LIMITED` (se under),
+  `SERVICE_UNAVAILABLE` (databasen kan ikke nås; generisk melding uten detaljer),
   `INTERNAL_SERVER_ERROR` (uten detaljer).
 - Maks 8 rotfelt (aliaser telles hver for seg) og 150 felt totalt per operasjon (fragmenter
   ekspandert), ellers `BAD_USER_INPUT`. Dessuten en vektet kostnad maks 2 500, der feltene under `search`, `myList` og `reviews` teller `first` ganger (standard 20/20/10; variabel `first` regnes som 50). Frontendens største spørring har ca. 45 felt og kostnad ca. 1 100.
@@ -177,6 +178,9 @@ type Mutation {
   maks 60 per minutt per bruker; IP-grensen er tre ganger så høy. Over grensen gir `RATE_LIMITED`
   med `extensions.retryAfterSeconds` og meldingen «For mange forsøk. Vent N sekunder og prøv igjen.»
 - All søk, filtrering, sortering og paginering skjer i SQL.
+- `GET /health` (utenfor GraphQL) gjør `SELECT 1` mot databasen: 200 `{"status":"ok"}` eller 503
+  `{"status":"db-unavailable"}`, alltid med `cache-control: no-store`. Brukes av `deploy/sjekk.sh`,
+  Apache og drift; frontend kaller den ikke.
 
 ## Bilder (TMDB)
 

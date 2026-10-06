@@ -81,7 +81,7 @@ Execution Time: 8.949 ms
 ## Aksentfolding og korte søk (issue #15)
 
 Migrering `004_unaccent_search.sql` gjør søket aksentuavhengig og endrer 1–2 tegns søk til
-ORDprefiks («ma» finner «The Matrix»). Målt på samme syntetiske datasett (120 000 titler,
+ordprefiks («ma» finner «The Matrix»). Målt på samme syntetiske datasett (120 000 titler,
 PostgreSQL 16.15, lokal maskin, `jit = off`, `VACUUM ANALYZE` før måling). Hver tid er median av 7
 kjøringer av `EXPLAIN (ANALYZE)` på spørringene `searchTitles` faktisk bygger (`LIMIT 21`), én gang
 for siden og én for `totalCount`, og tabellen er gjennomsnittet av to hele måleomganger. «Før» er
@@ -121,7 +121,7 @@ søket 0 treff før, fordi aksenten ikke ble foldet; tallene er derfor ikke samm
   da på nytt for hver rad som leses i recheck, filter og relevansberegning. Mot 120 000 titler ga det
   en tydelig regresjon på brede søk: «the» (relevans) 237 → ca. 400 ms og «dark» (rating) 1,9 → 6,5 ms.
   Med genererte kolonner er alle tallene på høyde med eller bedre enn før.
-- **Korte søk (1–2 tegn):** ORDprefiks mot en generert `tsvector` (`title_words`, `'simple'`-konfig
+- **Korte søk (1–2 tegn):** ordprefiks mot en generert `tsvector` (`title_words`, `'simple'`-konfig
   over normalisert primær- og originaltittel) med GIN-indeks. Søket er
   `title_words @@ to_tsquery('simple', '<søketekst>:*')`, og relevans = popularitet (stemmer, så id) i
   stedet for likhet. Før lå kostnaden i å regne `similarity`/`word_similarity` på nesten alle rader

@@ -185,8 +185,9 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
   memoisert, slik at en fragmentkjede med eksponentiell utvidelse ikke kan brukes til å låse CPU-en
   under selve valideringen.
 - **Begrensning av mutations: token bucket i prosessminnet** (`backend/src/rateLimit.ts`), per
-  `x-user-id` og i tillegg per IP (siste ledd i `X-Forwarded-For`, som Apache legger til; uten
-  proxy hoppes IP-grensen over). Én bøtte for `addReview` (10/min) og én for `toggleList` og
+  `x-user-id` og i tillegg per IP (siste ledd i `X-Forwarded-For`, som Apache legger til; for
+  tilkoblinger som ikke kommer fra loopback brukes i stedet `remoteAddress`, og IP-grensen hoppes bare
+  over for loopback uten header). Én bøtte for `addReview` (10/min) og én for `toggleList` og
   `deleteReview` (60/min); IP-grensen er 3 ganger brukergrensen. Per-IP trengs fordi `x-user-id` er
   anonym og trivielt å rotere. Overskridelse gir `RATE_LIMITED` med `retryAfterSeconds`.
   Begrensning: tilstanden er per prosess og nullstilles ved restart. Det er greit for én
@@ -209,7 +210,7 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
   `unaccent` følger med `postgresql-contrib` sammen med `pg_trgm` og er «trusted» fra PostgreSQL 13, så
   `deploy/setup-vm.sh` og `docs/oppsett.md` trenger bare å nevne den ved siden av `pg_trgm`.
   Konsekvens: «ø», «å» og «æ» foldes til «o», «a» og «ae».
-- **Korte søk (1–2 tegn) er ORDprefiks og rangeres etter popularitet.** Delstrengsøk på 1–2 tegn
+- **Korte søk (1–2 tegn) er ordprefiks og rangeres etter popularitet.** Delstrengsøk på 1–2 tegn
   har ingen trigrammer og traff opptil 70 % av tabellen, og relevansberegningen (`similarity`) på
   alle treff tok ca. 0,3 s for «a». Nå brukes en generert `tsvector` (`title_words`, `'simple'`) med
   GIN og `to_tsquery('simple', '<tekst>:*')`; relevans er stemmer, så id. «ma» finner «The Matrix»,

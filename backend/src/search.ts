@@ -25,7 +25,7 @@ export interface TitleRow {
   genres: string[];
 }
 
-export const TITLE_COLUMNS = `t.id, t.title_type, t.primary_title, t.original_title, t.start_year,
+const TITLE_COLUMNS = `t.id, t.title_type, t.primary_title, t.original_title, t.start_year,
   t.end_year, t.runtime_minutes, t.average_rating, t.num_votes, t.genres`;
 
 export interface Connection<T> {
@@ -68,8 +68,8 @@ const likePattern = (param: string) =>
 
 /**
  * Søk på 1–2 tegn har ingen trigrammer, så GIN-indeksene kan ikke brukes og delstrengsøk ville
- * lest hele tabellen og regnet likhet på nesten alle rader (ca. 0,5 s på 120 000 titler). Slike
- * søk er derfor ORDprefiks («ma» finner «The Matrix») mot en generert tsvector med GIN-indeks, og
+ * lest hele tabellen og regnet likhet på nesten alle rader (ca. 0,3 s på 120 000 titler). Slike
+ * søk er derfor ordprefiks («ma» finner «The Matrix») mot en generert tsvector med GIN-indeks, og
  * rangeres etter popularitet (se docs/ytelse.md).
  *
  * Søketeksten strippes for tegnsetting, mellomrom og kontrolltegn FØR den settes inn i
@@ -80,10 +80,10 @@ const likePattern = (param: string) =>
 const wordPrefixQuery = (param: string) =>
   `to_tsquery('simple', NULLIF(regexp_replace(${norm(`${param}::text`)}, '[[:punct:][:space:][:cntrl:]]', '', 'g'), '') || ':*')`;
 
-export const SHORT_QUERY_MAX = 2;
-export const isShortQuery = (query: string): boolean => [...query].length <= SHORT_QUERY_MAX;
+const SHORT_QUERY_MAX = 2;
+const isShortQuery = (query: string): boolean => [...query].length <= SHORT_QUERY_MAX;
 
-export type Dimension = 'genres' | 'decades' | 'types' | 'available';
+type Dimension = 'genres' | 'decades' | 'types' | 'available';
 
 // Ett PK-oppslag i title_streams per kandidatrad (semi-join), aldri en skanning av tabellen.
 const HAS_STREAM = 'EXISTS (SELECT 1 FROM title_streams s WHERE s.title_id = t.id)';
@@ -141,8 +141,9 @@ const ID: KeyDef = { expr: 't.id', cast: 'text', kind: 'text' };
 /**
  * Sorteringsnøkler per felt. Manglende verdier erstattes med en sentinel (COALESCE) slik at
  * radsammenligningen i cursoren aldri møter NULL (NULL < x er ukjent, og rader ville forsvunnet).
- * Konsekvens: titler uten rating/år havner sist i DESC og først i ASC. Uttrykkene må være
- * identiske med indeksene i 001_init.sql.
+ * Konsekvens: titler uten rating/år havner sist i DESC og først i ASC. For RATING, YEAR og TITLE
+ * må uttrykkene være identiske med indeksene (001_init.sql) for at planleggeren skal kunne bruke
+ * dem; RELEVANCE har ingen indeks og beregnes for radene filteret slipper gjennom.
  */
 function sortKeys(field: SortField, query: string | null, p: Params): KeyDef[] {
   switch (field) {
@@ -259,7 +260,7 @@ export interface FacetCount {
   count: number;
 }
 
-export interface FacetsResult {
+interface FacetsResult {
   genres: FacetCount[];
   decades: FacetCount[];
   types: FacetCount[];
