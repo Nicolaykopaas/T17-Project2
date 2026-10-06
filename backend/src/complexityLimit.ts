@@ -4,7 +4,6 @@ import {
   type ArgumentNode,
   type FieldNode,
   type FragmentDefinitionNode,
-  type OperationDefinitionNode,
   type SelectionSetNode,
   type ValidationRule,
 } from 'graphql';
@@ -82,7 +81,7 @@ export function complexityLimit({
             // Introspeksjon har egen regel (slått av i produksjon) og er stor av natur.
             if (sel.name.value === '__schema' || sel.name.value === '__type') continue;
             const sub = sel.selectionSet ? count(sel.selectionSet, visiting) : null;
-            const mult = sub ? multiplier(sel, operation) : 1;
+            const mult = sub ? multiplier(sel) : 1;
             total.roots += 1;
             total.fields += 1 + (sub?.fields ?? 0);
             total.cost += 1 + mult * (sub?.cost ?? 0);
@@ -129,21 +128,14 @@ export function complexityLimit({
 }
 
 /** Hvor mange ganger feltene under et listefelt kan gjentas. 1 for alt som ikke er en liste. */
-function multiplier(field: FieldNode, operation: OperationDefinitionNode): number {
+function multiplier(field: FieldNode): number {
   const fallback = LIST_FIELDS[field.name.value];
   if (fallback === undefined) return 1;
   const first = field.arguments?.find((a: ArgumentNode) => a.name.value === 'first');
   if (!first) return fallback;
   if (first.value.kind === Kind.INT) return Math.max(1, Number.parseInt(first.value.value, 10));
-  if (first.value.kind === Kind.VARIABLE) {
-    // Bruk variabelens standardverdi hvis den har en; ellers verste tilfelle.
-    const def = operation.variableDefinitions?.find(
-      (v) => v.variable.name.value === (first.value as { name: { value: string } }).name.value,
-    );
-    if (def?.defaultValue?.kind === Kind.INT) {
-      return Math.max(1, Number.parseInt(def.defaultValue.value, 10));
-    }
-    return MAX_FIRST_ASSUMED;
-  }
+  // En variabel regnes alltid som verste tilfelle, også når den har standardverdi: klienten kan
+  // overstyre standardverdien i `variables`, så `query($n: Int = 1) { search(first: $n) }` sendt med
+  // n = 50 ville ellers blitt vektet som first = 1 og omgått kostnadsgrensen.
   return MAX_FIRST_ASSUMED;
 }

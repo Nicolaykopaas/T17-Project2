@@ -103,10 +103,21 @@ describe('complexityLimit', () => {
       expect(cost('{ search { reviews { id } } }', 220)).toHaveLength(1);
     });
 
-    it('regner en variabel first som 50, med mindre den har standardverdi', () => {
+    it('regner en variabel first som 50, også når den har en lav standardverdi', () => {
       expect(cost('query($n: Int) { search(first: $n) { id } }', 51)).toHaveLength(0);
       expect(cost('query($n: Int) { search(first: $n) { id } }', 50)).toHaveLength(1);
-      expect(cost('query($n: Int = 5) { search(first: $n) { id } }', 6)).toHaveLength(0);
+      // Standardverdien kan overstyres av klienten, så den skal ikke gi rabatt.
+      expect(cost('query($n: Int = 5) { search(first: $n) { id } }', 51)).toHaveLength(0);
+      expect(cost('query($n: Int = 5) { search(first: $n) { id } }', 50)).toHaveLength(1);
+    });
+
+    it('stopper omgåelsen via standardverdi på variabel (default 1, sendt som 50)', () => {
+      const q =
+        'query($n: Int = 1) { a: search(first: $n) { id name } b: search(first: $n) { id name } }';
+      // Regnet som first = 1 ville dette kostet 2 x (1 + 2) = 6; riktig er 2 x (1 + 50 x 2) = 202.
+      const errors = cost(q, 100);
+      expect(errors).toHaveLength(1);
+      expect(errors[0]?.message).toContain('kostbar');
     });
 
     it('multipliserer nøstede lister og avviser 8 x search(first: 50) med reviews(first: 50)', () => {
