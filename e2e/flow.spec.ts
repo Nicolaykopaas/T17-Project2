@@ -80,10 +80,8 @@ test('min liste: legg til fra detaljsiden og fjern igjen', async ({ page }) => {
   await page.goto('./title/tt0468569');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('The Dark Knight');
   await page.getByRole('button', { name: 'Legg i min liste' }).click();
-  await expect(page.getByRole('button', { name: 'Fjern fra min liste' })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
+  // Dynamisk etikett uten aria-pressed (se docs/beslutninger.md).
+  await expect(page.getByRole('button', { name: 'Fjern fra min liste' })).toBeVisible();
 
   await page
     .getByRole('navigation', { name: 'Hovedmeny' })

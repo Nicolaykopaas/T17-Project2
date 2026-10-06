@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, ScrollRestoration, useLocation } from 'react-rou
 import { useScrolled } from '../hooks/useScrolled';
 import { ApiUnavailableBanner } from './ApiUnavailableBanner';
 import { HeaderSearch } from './HeaderSearch';
+import { ThemeToggle } from './ThemeToggle';
 
 export function Layout() {
   const main = useRef<HTMLElement>(null);
@@ -76,6 +77,7 @@ export function Layout() {
             </ul>
           </nav>
           <HeaderSearch />
+          <ThemeToggle />
         </div>
       </header>
       <ApiUnavailableBanner />
