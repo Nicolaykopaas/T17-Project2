@@ -60,3 +60,45 @@ test('ingen horisontal scroll ved 320 px', async ({ page }) => {
     expect(overflow, path).toBeLessThanOrEqual(0);
   }
 });
+
+// Brukervalgt tema skal overstyre systemets og være tilgjengelig i begge tilstander.
+for (const system of ['light', 'dark'] as const) {
+  test(`tema: bryteren overstyrer systemet (${system}), huskes og består axe`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: system });
+    await page.goto('./title/tt0468569');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('The Dark Knight');
+    const toggle = page.getByRole('button', { name: 'Mørkt tema' });
+    await expect(toggle).toHaveAttribute('aria-pressed', system === 'dark' ? 'true' : 'false');
+    await expect(page.locator('html')).not.toHaveAttribute('data-theme');
+
+    const other = system === 'dark' ? 'light' : 'dark';
+    for (const theme of [other, system]) {
+      await toggle.click();
+      await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+      await expect(toggle).toHaveAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+      // Bakgrunnen følger valget, ikke systemet.
+      const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+      expect(bg).toBe(theme === 'dark' ? 'rgb(10, 10, 12)' : 'rgb(245, 244, 241)');
+      const results = await new AxeBuilder({ page })
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+        .analyze();
+      expect(results.violations.map((v) => `${v.id}: ${v.nodes.length} noder`)).toEqual([]);
+    }
+
+    // Valget overlever en omlasting og er på plass før React starter (ingen blink).
+    await toggle.click();
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', other);
+  });
+}
+
+test('tema: bryteren er nåbar med tastatur og har synlig fokus', async ({ page }) => {
+  await page.goto('./');
+  const toggle = page.getByRole('button', { name: 'Mørkt tema' });
+  await toggle.focus();
+  await expect(toggle).toBeFocused();
+  const outline = await toggle.evaluate((el) => getComputedStyle(el).outlineStyle);
+  expect(outline).not.toBe('none');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', /light|dark/);
+});

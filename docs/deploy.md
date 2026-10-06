@@ -76,6 +76,26 @@ sudo cp -r frontend/dist/* /var/www/html/project2/
 sudo systemctl start project2-backend
 ```
 
+## Sikkerhetsheadere og Content-Security-Policy
+
+`deploy/apache-project2.conf` setter CSP, `Permissions-Policy`, `Referrer-Policy`,
+`X-Content-Type-Options` og `X-Frame-Options` for `/project2`. CSP-en er satt så streng som appen tåler:
+alt kommer fra samme opphav (`'self'`, ingen inline skript/stiler, GraphQL går via samme domene) bortsett
+fra to passive medieopphav: plakater fra `https://image.tmdb.org` og film/undertekster fra
+`https://archive.org` og `https://*.archive.org` (Archive videresender nedlastinger til verter som
+`ia800000.us.archive.org`). Legger appen til et nytt eksternt opphav, må det inn i policyen, ellers blokkerer
+nettleseren det. `e2e/csp.spec.ts` leser policyen rett fra Apache-konfigen (med mock-vertene byttet inn) og
+sjekker at forside, detalj og spiller laster uten brudd, og feiler hvis `frontend/dist/index.html` har et inline-skript som ikke står som `'sha256-…'` i `script-src`. Hele E2E-suiten kjører dessuten under denne policyen (Vite preview får den som header). Husk `sudo a2enmod headers`.
+
+## CI (`.gitlab-ci.yml`)
+
+- `lint`, `typecheck`: kodekvalitet. `unit-tests`: `npm test` mot Postgres-service.
+- `build`: `npm run build`, `frontend/dist/` lagres som artefakt.
+- `e2e`: Playwright-bildet (`mcr.microsoft.com/playwright:v1.63.0-noble`, må følge versjonen i
+  `package-lock.json`) med `postgres:16` som service. `E2E_DATABASE_URL` peker mot service-verten;
+  Playwright starter mock-servere, backend og frontend selv. `playwright-report/` og `test-results/`
+  lagres som artefakt ved feil.
+
 **Låsvindu for migrering 004.** Migreringen legger til tre genererte (`STORED`) kolonner på `titles`
 (`primary_title_norm`, `original_title_norm`, `title_words`) i én `ALTER TABLE`, og bygger deretter
 tre GIN-indekser på dem. `ALTER TABLE ... ADD COLUMN ... STORED` skriver om hele tabellen mens den

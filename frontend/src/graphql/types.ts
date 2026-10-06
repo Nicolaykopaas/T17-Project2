@@ -124,8 +124,15 @@ export interface SearchVars {
   after?: string | null;
 }
 
+/** Forsideradene ber ikke om `totalCount` (se ROW_QUERY). */
+type WithoutCount<T> = Omit<Connection<T>, 'totalCount'>;
+
+export interface RowData {
+  search: WithoutCount<TitleSummary>;
+}
+
 export interface FeaturedData {
-  search: Connection<FeaturedTitle>;
+  search: WithoutCount<FeaturedTitle>;
 }
 
 export interface FacetsData {
@@ -169,6 +176,16 @@ export interface AddReviewData {
 }
 export interface AddReviewVars {
   input: { titleId: string; author: string; rating: number; text: string };
+}
+
+export interface DeleteReviewData {
+  deleteReview: {
+    deletedId: string;
+    title: { __typename?: 'Title'; id: string; userRating: number | null; reviewCount: number };
+  };
+}
+export interface DeleteReviewVars {
+  id: string;
 }
 
 export interface ToggleListData {

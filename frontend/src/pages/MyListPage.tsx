@@ -6,6 +6,7 @@ import { GRID_SIZES, PosterCard } from '../components/PosterCard';
 import { PosterSkeleton } from '../components/PosterSkeleton';
 import { MY_LIST_QUERY, TOGGLE_LIST_MUTATION } from '../graphql/operations';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { rateLimitMessage } from '../lib/apiError';
 import { formatNumber } from '../lib/format';
 
 const PAGE_SIZE = 20;
@@ -19,14 +20,15 @@ export default function MyListPage() {
   });
   const [toggleList, { loading: removing }] = useMutation(TOGGLE_LIST_MUTATION);
   const [message, setMessage] = useState('');
-  const [failed, setFailed] = useState(false);
+  const [removeError, setRemoveError] = useState('');
+  const [moreFailed, setMoreFailed] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
 
   const list = data?.myList;
 
   const remove = async (id: string, name: string) => {
-    setFailed(false);
+    setRemoveError('');
     try {
       await toggleList({
         variables: { titleId: id },
@@ -54,8 +56,8 @@ export default function MyListPage() {
       setMessage(`Fjernet «${name}» fra listen.`);
       // Knappen som hadde fokus forsvinner; flytt fokus til overskriften så tastaturbrukere ikke mister plassen.
       heading.current?.focus();
-    } catch {
-      setFailed(true);
+    } catch (e) {
+      setRemoveError(rateLimitMessage(e) ?? 'Kunne ikke fjerne tittelen. Prøv igjen.');
     }
   };
 
@@ -67,9 +69,9 @@ export default function MyListPage() {
       <p className="count" role="status" aria-live="polite">
         {message || (list ? `${formatNumber(list.totalCount)} titler` : '')}
       </p>
-      {failed && (
+      {removeError && (
         <p className="error-text" role="alert">
-          Kunne ikke fjerne tittelen. Prøv igjen.
+          {removeError}
         </p>
       )}
 
@@ -114,6 +116,11 @@ export default function MyListPage() {
               />
             ))}
           </ul>
+          {moreFailed && (
+            <p className="error-text" role="alert">
+              Kunne ikke hente flere titler. Prøv igjen.
+            </p>
+          )}
           {list.pageInfo.hasNextPage && (
             <div className="more">
               <button
@@ -122,8 +129,9 @@ export default function MyListPage() {
                 disabled={loadingMore}
                 onClick={() => {
                   setLoadingMore(true);
+                  setMoreFailed(false);
                   fetchMore({ variables: { after: list.pageInfo.endCursor } })
-                    .catch(() => setFailed(true))
+                    .catch(() => setMoreFailed(true))
                     .finally(() => setLoadingMore(false));
                 }}
               >

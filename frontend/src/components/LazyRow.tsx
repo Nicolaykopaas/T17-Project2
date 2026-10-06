@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { useQuery } from '@apollo/client/react';
-import { SEARCH_QUERY } from '../graphql/operations';
+import { ROW_QUERY } from '../graphql/operations';
 import { useNearViewport } from '../hooks/useNearViewport';
 import { rowAnchorId, rowVariables, seeAllSearch, type BrowseRow } from '../lib/browseRows';
 import { TitleRow } from './TitleRow';
@@ -12,7 +12,7 @@ import { TitleRow } from './TitleRow';
 export function LazyRow({ row }: { row: BrowseRow }) {
   const anchor = useRef<HTMLDivElement>(null);
   const near = useNearViewport(anchor);
-  const { data, loading, error, refetch } = useQuery(SEARCH_QUERY, {
+  const { data, loading, error, refetch } = useQuery(ROW_QUERY, {
     variables: rowVariables(row.state),
     skip: !near,
   });
