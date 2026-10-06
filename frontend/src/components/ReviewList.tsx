@@ -1,8 +1,16 @@
 import { formatDate } from '../lib/format';
 import type { Review } from '../graphql/types';
+import { DeleteReviewButton } from './DeleteReviewButton';
 import { Stars } from './Stars';
 
-export function ReviewList({ reviews }: { reviews: Review[] }) {
+export function ReviewList({
+  reviews,
+  onDeleted,
+}: {
+  reviews: Review[];
+  /** Kalles etter at brukeren har slettet sin egen anmeldelse. */
+  onDeleted?: () => void;
+}) {
   if (reviews.length === 0) {
     return <p className="muted">Ingen anmeldelser ennå. Bli den første!</p>;
   }
@@ -20,6 +28,7 @@ export function ReviewList({ reviews }: { reviews: Review[] }) {
               </time>
             </header>
             {r.text && <p className="review__text">{r.text}</p>}
+            {r.isMine && <DeleteReviewButton reviewId={r.id} onDeleted={() => onDeleted?.()} />}
           </article>
         </li>
       ))}

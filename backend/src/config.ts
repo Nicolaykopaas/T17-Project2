@@ -31,6 +31,10 @@ function int(value: string | undefined, fallback: number): number {
 
 export const config = {
   port: int(process.env.PORT, 3001),
+  // I produksjon står Apache foran og er eneste vei inn; å lytte på loopback hindrer at noen når
+  // port 3001 direkte og dermed omgår proxyen (og IP-baserte grenser som stoler på den).
+  // Utvikling og tester lytter på alle grensesnitt som før. HOST overstyrer begge deler.
+  host: process.env.HOST || (process.env.NODE_ENV === 'production' ? '127.0.0.1' : undefined),
   databaseUrl: process.env.DATABASE_URL || 'postgres://postgres@localhost:5432/project2',
   testDatabaseUrl:
     process.env.TEST_DATABASE_URL || 'postgres://postgres@localhost:5432/project2_test',

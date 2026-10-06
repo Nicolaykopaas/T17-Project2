@@ -37,20 +37,22 @@ async function waitForMetadata(page: Page) {
   await expect(page.getByText('Laster …')).toHaveCount(0);
 }
 
-test('filtrer på filmer du kan se, åpne en film og spill den av med tastatur', async ({ page }) => {
+test('filtrer på filmer som kan strømmes gratis, åpne en film og spill den av med tastatur', async ({
+  page,
+}) => {
   await page.goto('./?sort=relevans');
   const count = page.locator('.count[role="status"]');
   await expect(count).toHaveText(/\d[\d\s]* treff/);
   const allCount = await count.textContent();
 
   const filters = await openFilters(page);
-  const only = filters.getByRole('checkbox', { name: /^Kun filmer du kan se/ });
+  const only = filters.getByRole('checkbox', { name: /^Kun filmer som kan strømmes gratis/ });
   // Antallet står i etiketten og kommer fra fasettene (SQL), ikke fra klienten.
   await expect(only).toHaveAccessibleName(/\(\d+\)/);
   await only.check();
   await expect(page).toHaveURL(/available=1/);
   await expect(page.getByRole('list', { name: 'Aktive filtre' })).toContainText(
-    'Kun filmer du kan se',
+    'Kun filmer som kan strømmes gratis',
   );
   await expect(count).not.toHaveText(allCount ?? '');
   await expect(page.locator('main ul.is-stale')).toHaveCount(0);

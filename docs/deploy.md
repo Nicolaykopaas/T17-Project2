@@ -13,11 +13,11 @@ automatisk (genererer også databasepassord i `.env`). Stegene under er det samm
 ## 1. PostgreSQL
 
 ```bash
-sudo apt update && sudo apt install -y postgresql postgresql-contrib   # contrib gir pg_trgm
+sudo apt update && sudo apt install -y postgresql postgresql-contrib   # contrib gir pg_trgm og unaccent
 sudo -u postgres createuser project2 --pwprompt                         # velg et sterkt passord
 sudo -u postgres createdb project2 --owner project2
-# pg_trgm må opprettes av en superbruker første gang (migreringen bruker IF NOT EXISTS):
-sudo -u postgres psql -d project2 -c 'CREATE EXTENSION IF NOT EXISTS pg_trgm;'
+# pg_trgm og unaccent må opprettes av en superbruker første gang (migreringene bruker IF NOT EXISTS):
+sudo -u postgres psql -d project2 -c 'CREATE EXTENSION IF NOT EXISTS pg_trgm; CREATE EXTENSION IF NOT EXISTS unaccent;'
 ```
 
 ## 2. Kode, bygg og data
@@ -49,6 +49,10 @@ curl -s -X POST localhost:3001/graphql -H 'content-type: application/json' \
   -d '{"query":"{ search(first: 1) { totalCount } }"}'
 ```
 
+Helsesjekk: `curl -s localhost:3001/health` gir `{"status":"ok"}` (200), eller `{"status":"db-unavailable"}` (503)
+hvis Postgres ikke svarer. Apache videresender den som `/project2/health`; `bash deploy/sjekk.sh` kjører begge.
+Enheten har `Restart=always` og `Wants=postgresql.service` (+ `After`). Frontend viser et banner («Får ikke kontakt med serveren akkurat nå») hvis API-et ikke nås.
+
 ## 4. Apache
 
 ```bash
@@ -65,7 +69,42 @@ sudo apachectl configtest && sudo systemctl reload apache2
 ## Oppdatering senere
 
 ```bash
-cd /opt/project2 && git pull && npm ci && npm run build && npm run db:migrate
+cd /opt/project2 && git pull && npm ci && npm run build
+sudo systemctl stop project2-backend          # se «Låsvindu» under
+npm run db:migrate
 sudo cp -r frontend/dist/* /var/www/html/project2/
-sudo systemctl restart project2-backend
+sudo systemctl start project2-backend
 ```
+
+## Sikkerhetsheadere og Content-Security-Policy
+
+`deploy/apache-project2.conf` setter CSP, `Permissions-Policy`, `Referrer-Policy`,
+`X-Content-Type-Options` og `X-Frame-Options` for `/project2`. CSP-en er satt så streng som appen tåler:
+alt kommer fra samme opphav (`'self'`, ingen inline skript/stiler, GraphQL går via samme domene) bortsett
+fra to passive medieopphav: plakater fra `https://image.tmdb.org` og film/undertekster fra
+`https://archive.org` og `https://*.archive.org` (Archive videresender nedlastinger til verter som
+`ia800000.us.archive.org`). Legger appen til et nytt eksternt opphav, må det inn i policyen, ellers blokkerer
+nettleseren det. `e2e/csp.spec.ts` leser policyen rett fra Apache-konfigen (med mock-vertene byttet inn) og
+sjekker at forside, detalj og spiller laster uten brudd, og feiler hvis `frontend/dist/index.html` har et inline-skript som ikke står som `'sha256-…'` i `script-src`. Hele E2E-suiten kjører dessuten under denne policyen (Vite preview får den som header). Husk `sudo a2enmod headers`.
+
+## CI (`.gitlab-ci.yml`)
+
+- `lint`, `typecheck`: kodekvalitet. `unit-tests`: `npm test` mot Postgres-service.
+- `build`: `npm run build`, `frontend/dist/` lagres som artefakt.
+- `e2e`: Playwright-bildet (`mcr.microsoft.com/playwright:v1.63.0-noble`, må følge versjonen i
+  `package-lock.json`) med `postgres:16` som service. `E2E_DATABASE_URL` peker mot service-verten;
+  Playwright starter mock-servere, backend og frontend selv. `playwright-report/` og `test-results/`
+  lagres som artefakt ved feil.
+
+**Låsvindu for migrering 004.** Migreringen legger til tre genererte (`STORED`) kolonner på `titles`
+(`primary_title_norm`, `original_title_norm`, `title_words`) i én `ALTER TABLE`, og bygger deretter
+tre GIN-indekser på dem. `ALTER TABLE ... ADD COLUMN ... STORED` skriver om hele tabellen mens den
+holder `ACCESS EXCLUSIVE`-lås, så alle spørringer mot `titles` står i kø til den er ferdig (ca. 4 s lokalt, regn med 10–20 s
+for 120 000 titler på VM-en; indeksbyggingen kommer i tillegg). Kjør derfor migreringen med backend
+stoppet, slik `deploy/setup-vm.sh` og kommandoene over gjør. Senere migreringer som ikke skriver om
+tabellen trenger ikke dette.
+
+**Nettverk.** Med `NODE_ENV=production` (satt i `deploy/project2-backend.service`) lytter backend bare
+på `127.0.0.1:3001`, så port 3001 ikke kan nås utenfra uten om Apache. `HOST` overstyrer ved behov.
+Apache-konfigen og `deploy/sjekk.sh` bruker allerede `127.0.0.1`. Begrensningen av mutations stoler på
+`X-Forwarded-For` bare når forbindelsen kommer fra loopback.

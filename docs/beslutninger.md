@@ -6,12 +6,16 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
   lint-støtte framfor nyeste kompilator.
 - **ESLint 9 i stedet for 10.** `eslint-plugin-jsx-a11y` støtter ikke ESLint 10 ennå, og
   tilgjengelighetslinting er et krav.
-- **Git-grener.** CLAUDE.md sier at arbeidet skal skje på grener fra `mvp`. Sky-sesjonen kan bare
-  pushe til én gren (`claude/webutvikling-projekt-2-k5lq6q`), så den grenen spiller rollen til
-  `mvp`. Hver oppgave lages på en lokal `feat/…`-gren og merges inn med `--no-ff`, slik at historikken
-  viser grenene. Ingenting pushes til `main`.
-- **Ingen GitLab-issues/MR-er.** `glab` er ikke tilgjengelig i miljøet, så issue- og review-flyten
-  loggføres i `docs/ki-logg.md` i stedet, slik CLAUDE.md beskriver.
+- **Git-grener.** CLAUDE.md sier at arbeidet skal skje på grener fra `mvp`. Sky-miljøet kan bare
+  pushe til én gren om gangen, så en integrasjonsgren spiller rollen til `mvp`. I september var
+  den `claude/webutvikling-projekt-2-k5lq6q`, og arbeidet gikk inn i `main` via PR-er. I oktober
+  er den `claude/adoring-brown-3nct5k`, som et gruppemedlem merger til `main`; `main` deployes.
+  Hver oppgave lages på en egen gren (`feat/…`, `fix/…`, `docs/…`) og merges inn med PR eller
+  `--no-ff`, slik at historikken viser grenene. Agentene pusher aldri til `main` og aldri med force.
+- **Issues og PR-er på GitHub, ikke GitLab.** I september var `glab` ikke tilgjengelig, så
+  issue- og review-flyten ble loggført i `docs/ki-logg.md`. Fra oktober ligger issues (#13–#17, #23)
+  og PR-er (#18–#24) på GitHub (`Nicolaykopaas/T17-Project2`), og hver PR har review fra en
+  kritiker-agent. Repoet flyttes til NTNU GitLab ved innlevering.
 - **Syntetisk testdatasett.** IMDb-nedlasting er blokkert i miljøet (se `BLOCKERS.md`). Et skript
   genererer filer i nøyaktig samme TSV-format, så importkoden er den samme for ekte og syntetiske
   data.
@@ -23,10 +27,9 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
   enklere og raskere uten join, og sjangre til en hel resultatside følger med raden (ingen N+1).
   `start_decade` er en generert kolonne slik at tiårfilter er en likhet på en indeksert kolonne.
   Prisen er at importen skriver sjangre to steder (i samme transaksjon).
-- **Søk med `lower(col) LIKE lower('%…%')` og trigram-GIN på `lower(...)`-uttrykk,** ikke `ILIKE`.
-  Indeksuttrykket må være identisk med spørringen for å bli brukt. Brukerens `%`, `_` og `\` escapes
-  slik at de er vanlige tegn. Aksenter foldes ikke (`cafe` finner ikke `Café`); `unaccent`
-  er ikke tatt med for å slippe en ekstra utvidelse.
+- **Søk med `LIKE` mot normaliserte tittelkolonner og trigram-GIN,** ikke `ILIKE`. Kolonnene
+  `primary_title_norm`/`original_title_norm` er `lower(f_unaccent(tittel))` (se «Aksentuavhengig søk»
+  under), og indeksene ligger på dem. Brukerens `%`, `_` og `\` escapes slik at de er vanlige tegn.
 - **Keyset-paginering med radsammenligning.** Alle sorteringsnøkler går i samme retning
   (`(a, b, id) < ($1,$2,$3)`), siste nøkkel er `id` (unik), og nullable kolonner erstattes av
   sentinel via `COALESCE` (rating → -1, år → 0). Det gir stabil paginering uten hull/duplikater og lar
@@ -35,8 +38,13 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
   Cursoren inneholder en signatur (sortering/retning/om det finnes søketekst) og avvises
   (`BAD_USER_INPUT`) hvis den brukes med en annen sortering. Tidsstempler i cursorer går som tekst
   (mikrosekund-presisjon; JS `Date` har bare millisekunder).
-- **Relevans = `GREATEST(similarity(primær), similarity(original))`,** tiebreak `num_votes`, så `id`.
-  Uten søketekst betyr «relevans» flest stemmer først.
+- **Relevans = `0,6 * word_similarity + 0,2 * similarity + 0,2 * popularitet`,** tiebreak `num_votes`,
+  så `id`. Begge likhetsmålene tas som `GREATEST` over primær- og originaltittel. Ren likhet rangerte
+  obskure titler med identisk navn («Dark Knight», 1 500 stemmer) over klassikeren brukeren mener
+  («The Dark Knight»). `word_similarity` gir full score når søkeordene står i tittelen, `similarity`
+  belønner eksakte treff, og popularitet (`log10(stemmer) / 7`, mettet ved 10 mill.) skiller resten.
+  Uten søketekst betyr «relevans» flest stemmer først. Formelen står i `sortKeys` i
+  `backend/src/search.ts`.
 - **`totalCount` er lazy** (beregnes bare hvis feltet etterspørres) og kjøres som egen `count(*)`.
   `userRating`/`reviewCount`/`inMyList` hentes med en liten per-request batch-loader (`loaders.ts`),
   så en side med 20 titler koster 1 spørring per felttype i stedet for 20.
@@ -70,8 +78,9 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
   sortering/sidebytte ikke henter fasetter på nytt. Forrige fasetter vises mens nye lastes.
 - **Frontend: ny anmeldelse vises via `refetch` av tittelen** etter `addReview` (serveren er kilden til
   snitt og antall). «Min liste» bruker `cache-and-network` og fjerner rader lokalt i cachen ved «Fjern».
-- **Frontend: ingen nye biblioteker.** Bundle ca. 166 kB gzip initielt (React + Apollo + React Router);
-  detalj- og listesiden er lazy (ca. 4 kB gzip til sammen).
+- **Frontend: ingen nye biblioteker.** Målt 2026-10-06 (`npm run build -w frontend`): initial JS ca. 172 kB gzip
+  (118,3 + 52,5 + 1,2 + 0,4 kB; React, Apollo og React Router) pluss 5,5 kB CSS. Detalj-, spiller- og
+  listesiden er lazy (4,0 + 3,9 + 1,3 + 0,3 kB, ca. 9,5 kB gzip til sammen). Tidligere tall var ca. 166 kB (2026-09-30).
 - **Bruker-ID uten `crypto.randomUUID`.** VM-en serverer appen over http, som ikke er en sikker
   kontekst, og der finnes ikke `crypto.randomUUID`. Alle GraphQL-requests feilet derfor i
   produksjon, selv om alle tester (som kjører på `localhost`, som regnes som sikker) var grønne.
@@ -96,7 +105,7 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
 - **Forsiden har to moduser, styrt av URL-en.** Uten `q`, filtre og sortering (`isBrowseState`) vises
   «bla-modus»: hero + horisontale rader (`lib/browseRows.ts`). Ellers vises trefflisten som før, som
   rutenett av plakatkort. Hver rads variabler og «Se alle»-lenke utledes fra samme `SearchState`, så de
-  ikke kan bli ulike, og «Se alle» treffer Apollo-cachen. All sortering/filtrering er GraphQL-variabler.
+  ikke kan bli ulike, og «Se alle» henter første side på nytt, med antall (radenes `ROW_QUERY` har ikke `totalCount`). All sortering/filtrering er GraphQL-variabler.
 - **Hero og toppraden deler én request.** `Featured`-spørringen er `search` med samme cache-nøkkel som
   raden «Mest populære», bare med `overview` og bakgrunnsbilder på alle 20 titler (ca. 6 kB ekstra).
   Det er billigere enn en egen `first: 1`-request som ville kollidert med radens cache-oppføring.
@@ -169,3 +178,80 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
 - **Volum og demping huskes i `localStorage`** (`filmsok:player`); ødelagt verdi gir standard.
 - **Tilbake-lenken på spillersiden går alltid til `/title/:id`** (deterministisk, også ved direkte åpning).
 - **Mobil skjuler volumslideren** (maskinvareknapper); demp-knappen finnes.
+
+## Backend-herding: kostnadsgrenser, rate limit og søk (#15)
+
+- **Feltgrense i tillegg til dybdegrensen.** `complexityLimit` (`backend/src/complexityLimit.ts`) avviser
+  operasjoner med mer enn 8 rotfelt eller 150 felt totalt (aliaser og ekspanderte fragmenter telt
+  hver for seg). Dybdegrensen stoppet bare nøsting, så ett flatt dokument med hundrevis av aliasede
+  `search` (én SQL-spørring hver) eller `posterUrl` (TMDB) slapp gjennom. Frontendens største spørring
+  (Title-detaljer) har ca. 45 felt og ett rotfelt, så grensene har rundt tre ganger slingringsmonn;
+  `server.test.ts` har kopier av de to største spørringene som vaktbikkje. Fragmenttellingen er
+  memoisert, slik at en fragmentkjede med eksponentiell utvidelse ikke kan brukes til å låse CPU-en
+  under selve valideringen.
+- **Begrensning av mutations: token bucket i prosessminnet** (`backend/src/rateLimit.ts`), per
+  `x-user-id` og i tillegg per IP (siste ledd i `X-Forwarded-For`, som Apache legger til; for
+  tilkoblinger som ikke kommer fra loopback brukes i stedet `remoteAddress`, og IP-grensen hoppes bare
+  over for loopback uten header). Én bøtte for `addReview` (10/min) og én for `toggleList` og
+  `deleteReview` (60/min); IP-grensen er 3 ganger brukergrensen. Per-IP trengs fordi `x-user-id` er
+  anonym og trivielt å rotere. Overskridelse gir `RATE_LIMITED` med `retryAfterSeconds`.
+  Begrensning: tilstanden er per prosess og nullstilles ved restart. Det er greit for én
+  systemd-tjeneste på VM-en; flere instanser ville krevd delt lager (Redis/tabell), som er overkill her.
+  Grensene er romslige nok for E2E-testene og vanlig bruk. Minnet er avgrenset (50 000 nøkler per bøtte).
+- **`deleteReview(id)` returnerer `{ deletedId, title }`.** Eierskapet sjekkes i selve
+  `DELETE ... WHERE id AND user_id`, og både «andres» og «finnes ikke» gir `NOT_FOUND` med lik melding
+  slik at mutationen ikke kan brukes til å lete etter anmeldelser. `title` gir ferdig oppdaterte
+  `userRating`/`reviewCount` som Apollo skriver inn i `Title:<id>` uten refetch; `deletedId` brukes til
+  å evicte `Review:<id>`. Ugyldig id (ikke 1–18 siffer) gir `BAD_USER_INPUT`.
+- **Tittel-id valideres som `^tt\d{7,10}$`** (`isPlausibleTitleId`). Fixture, testdata og
+  Archive-mock bruker bare 7 siffer; IMDb har 7–8 i dag, 10 gir slingringsmonn.
+- **Aksentuavhengig søk («Aksentuavhengig søk»).** `unaccent` via en IMMUTABLE innpakning
+  `f_unaccent(text)` (migrering 004). Normalisert tittel lagres som genererte kolonner
+  `primary_title_norm`/`original_title_norm` (`lower(f_unaccent(tittel))`) med trigram-GIN på dem, i
+  stedet for å legge uttrykket i indeksen og i hver spørring. Grunnen er målt: uttrykket kjører
+  `unaccent` på nytt for hver rad i recheck, filter og relevans og ga opptil 2x tregere brede søk
+  (tall i `docs/ytelse.md`). Kolonnene koster ca. 5 MB ekstra på 120 000 titler. Innpakningen peker på
+  ordlisten med fullt kvalifisert navn; endres ordlisten må kolonner og indekser bygges på nytt.
+  `unaccent` følger med `postgresql-contrib` sammen med `pg_trgm` og er «trusted» fra PostgreSQL 13, så
+  `deploy/setup-vm.sh` og `docs/oppsett.md` trenger bare å nevne den ved siden av `pg_trgm`.
+  Konsekvens: «ø», «å» og «æ» foldes til «o», «a» og «ae».
+- **Korte søk (1–2 tegn) er ordprefiks og rangeres etter popularitet.** Delstrengsøk på 1–2 tegn
+  har ingen trigrammer og traff opptil 70 % av tabellen, og relevansberegningen (`similarity`) på
+  alle treff tok ca. 0,3 s for «a». Nå brukes en generert `tsvector` (`title_words`, `'simple'`) med
+  GIN og `to_tsquery('simple', '<tekst>:*')`; relevans er stemmer, så id. «ma» finner «The Matrix»,
+  men «ar» finner ikke «Dark». Søketeksten strippes for tegnsetting før den settes inn i
+  tsquery-syntaksen, så operatortegn ikke kan gi syntaksfeil, og blir ingenting igjen gir det null
+  treff. Alternativene vi vurderte: (1) beholde delstreng og bare droppe likhetsberegningen (hindrer
+  ikke full skanning), (2) prefiks av hele tittelen med `text_pattern_ops`-btree, som vi først
+  implementerte og målte (like rask) men som ikke fant «The Matrix» på «ma». Den tidligere påstanden
+  om at ordprefiks krever regex uten indeks var feil: tsvector med GIN gir ordprefiks med indeks.
+  Cursoren har en egen signatur for korte søk, siden sorteringsnøklene er annerledes.
+- **Søketeksten normaliseres før den escapes, begge deler i SQL.** `unaccent` mapper fullbreddetegn
+  (`％`, `＿`, `＼`) til `%`, `_` og `\`; escapet vi i JavaScript først, ble de jokertegn i LIKE og
+  traff hele tabellen. Mønsteret bygges derfor som `'%' || regexp_replace(lower(f_unaccent($1)),
+'([\\%_])', '\\\1', 'g') || '%'`.
+- **Kompleksitetsgrensen veier lister med `first`.** I tillegg til rotfelt og totalt antall felt har
+  `complexityLimit` en vektet kostnad: feltene under `search`, `myList` og `reviews` teller `first`
+  ganger (standard 20/20/10 når `first` utelates, 50 når `first` er en variabel uten
+  standardverdi). 8 x `search(first: 50) { reviews(first: 50) }` er under feltgrensene, men koster
+  millioner og avvises. Grensen er 2 500; frontendens største spørring koster ca. 1 100.
+  Regelen er memoisert per fragment (også `depthLimit`), siden en kjede av fragmenter som hver
+  spres ti ganger i det neste ellers tok minutter CPU under validering.
+- **Backend lytter på `127.0.0.1` i produksjon, og `X-Forwarded-For` stoles bare på fra loopback.**
+  Uten det kunne noen nå port 3001 direkte og sette en ny falsk IP per forespørsel og dermed omgå
+  IP-grensen. `HOST` kan overstyre. Apache og `deploy/` bruker allerede `127.0.0.1`.
+
+## Feiltilstand når API-et ikke nås (#13)
+
+- **Ingen mock-data i produksjon; forklarende banner i stedet.** Sensor og brukere skal se ekte data fra databasen eller en ærlig feil. Mock-data ville skjult at serveren er utilgjengelig (backend/DB nede, appen kjørt uten backend, eller utenfor NTNU-nettet uten VPN) og at appen ikke viser det den utgir seg for. Mock-servere finnes allerede for utvikling og E2E (`tmdb:mock`, `archive:mock`).
+- **Én global tilstand, ikke én feil per rad.** Error-linken i `apollo/client.ts` setter reactive var `apiUnavailable` (og årsaken i `apiFailureKind`: `network` eller `service`) ved nettverksfeil (fetch feilet, HTTP 502/503/504, ikke-JSON-svar) og nullstiller den ved første svar fra serveren. GraphQL-feil teller ikke: da svarte serveren, og feilen er vår bug eller brukerinput. `ApiUnavailableBanner` i `Layout` kunngjør nedetiden én gang (`role="alert"`, knappen ligger utenfor alert-regionen) og gir kort hjelp: prøv igjen, start backend hvis du kjører appen selv, og VPN utenfor NTNU-nett. VPN-hintet utelates ved `SERVICE_UNAVAILABLE` (backend svarer, databasen er nede). Radene viser stille skjelett mens banneret står; andre feil viser fortsatt per-rad-feil.
+- **`rxjs` er lagt til som direkte avhengighet i `frontend`.** Apollo 4 har den som obligatorisk peer-avhengighet (allerede i bundlen); vi bruker bare `tap` i linkkjeden.
+- **`GET /health` gjør `SELECT 1` med 2 s tidsgrense** (200 `ok`, 503 `db-unavailable`). Yogas egen `/health` (alltid «alive») er flyttet, fordi den ikke sier noe om databasen. Systemd-enheten har `Restart=always` og `Wants=postgresql.service` (+ `After`).
+
+## Frontend-gjennomgang: tilgjengelighet, tema og sletting (#16)
+
+- **«Legg i min liste»-knappen har dynamisk etikett og ingen `aria-pressed`.** Kombinasjonen ga motstridende opplesning («Fjern fra min liste, trykket»). Et fast navn («Min liste» + `aria-pressed`) ville latt brukeren tolke en tilstand («trykket») i stedet for å få vite hva et trykk gjør. En handlingsetikett er tydeligere for både seende og skjermleser, og utfallet kunngjøres i `role="status"`.
+- **Rutebytte flytter fokus til sidens første `h1`, ellers `<main>`.** Skjermleseren leser da opp hvor man er. Siden h1 ofte kommer først etter lazy-lasting eller datahenting, følger `Layout` med på innholdet i 3 s og flytter fokus til gjeldende h1 så lenge brukeren ikke har flyttet det selv. Skip-linken fokuserer fortsatt `<main>`.
+- **Forsideradene bruker `ROW_QUERY` uten `totalCount`.** Antallet vises aldri der, og hver `totalCount` er en `count(*)`; forsiden sparer åtte slike. Samme `search`-felt og cache-nøkkel, men siden raden mangler `totalCount` gir «Se alle» cache-miss, og søkespørringen henter første side på nytt, nå med antallet.
+- **Brukervalgt tema: bryter med fast navn «Mørkt tema» og `aria-pressed`.** Ikonet er eneste synlige innhold, så navnet («Mørkt tema») er fast og tilstanden bæres av `aria-pressed`; valget synkroniseres mellom faner via `storage`-eventet. Uten valg følger siden systemet (`prefers-color-scheme`); første klikk setter `data-theme` på `<html>` og lagrer i `localStorage` (`filmsok:theme`, try/catch). Det er ingen «tilbake til system»-tilstand, for å holde knappen enkel. `public/theme-init.js` lastes synkront i `<head>` (uten `defer`/`module`) og setter `data-theme` før første maling (ingen blink). De lyse fargene står to ganger i `global.css` (systemvalg og eksplisitt valg); `theme.test.ts` feiler hvis blokkene blir ulike.
+- **CSP:** temaskriptet ligger i en egen fil og ingen inline-skript trengs, så `script-src 'self'` holder (ingen hash å vedlikeholde). En test sjekker at skriptet bruker samme `localStorage`-nøkkel som `THEME_KEY`.

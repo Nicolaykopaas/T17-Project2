@@ -1,7 +1,8 @@
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { useQuery } from '@apollo/client/react';
 import { CombinedGraphQLErrors } from '@apollo/client';
+import { useApiUnavailable } from '../apollo/apiStatus';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { ListToggleButton } from '../components/ListToggleButton';
 import { ReviewForm } from '../components/ReviewForm';
@@ -49,6 +50,12 @@ export default function TitlePage() {
   });
   const [loadingMore, setLoadingMore] = useState(false);
   const [moreFailed, setMoreFailed] = useState(false);
+  const [deleted, setDeleted] = useState('');
+  const reviewsHeading = useRef<HTMLHeadingElement>(null);
+  const deletedTimer = useRef<number>(undefined);
+  const apiDown = useApiUnavailable();
+  // Ellers kan timeren sette state etter at siden er forlatt.
+  useEffect(() => () => window.clearTimeout(deletedTimer.current), []);
   const title = data?.title;
   useDocumentTitle(title?.primaryTitle ?? 'Tittel');
 
@@ -208,7 +215,13 @@ export default function TitlePage() {
 
       <div className="container">
         <section aria-labelledby="reviews-heading" className="section">
-          <h2 id="reviews-heading">Anmeldelser</h2>
+          <h2 id="reviews-heading" ref={reviewsHeading} tabIndex={-1}>
+            Anmeldelser
+          </h2>
+          {/* Regionen finnes hele tiden, ellers leses ikke meldingen opp. */}
+          <p className="sr-only" role="status" aria-live="polite">
+            {deleted}
+          </p>
           <p className="average">
             {title.userRating != null && title.reviewCount > 0 ? (
               <>
@@ -221,10 +234,23 @@ export default function TitlePage() {
             )}
           </p>
 
-          <ReviewList reviews={reviews.edges.map((e) => e.node)} />
+          <ReviewList
+            reviews={reviews.edges.map((e) => e.node)}
+            onDeleted={() => {
+              // Regionen tømmes først: identisk tekst som ved forrige sletting leses ellers ikke opp igjen.
+              setDeleted('');
+              window.clearTimeout(deletedTimer.current);
+              deletedTimer.current = window.setTimeout(
+                () => setDeleted('Anmeldelsen er slettet.'),
+                100,
+              );
+              // Slett-knappen forsvinner med raden; overskriften er et fast punkt å lande på.
+              reviewsHeading.current?.focus();
+            }}
+          />
 
           {moreFailed && (
-            <p className="error-text" role="alert">
+            <p className="error-text" role={apiDown ? undefined : 'alert'}>
               Kunne ikke laste flere anmeldelser.
             </p>
           )}

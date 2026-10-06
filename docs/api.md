@@ -15,7 +15,7 @@ enum TitleType {
 }
 
 enum SortField {
-  RELEVANCE # likhet med søketeksten; uten søketekst: flest stemmer først
+  RELEVANCE # vektet word_similarity/similarity på tittel + popularitet; 1–2 tegn og uten søketekst: popularitet
   RATING
   YEAR
   TITLE
@@ -128,8 +128,14 @@ input AddReviewInput {
   text: String!
 }
 
+type DeleteReviewPayload {
+  deletedId: ID! # id-en som ble slettet; frontend fjerner Review:<id> fra cachen
+  title: Title! # tittelen med oppdaterte userRating og reviewCount
+}
+
 type Query {
-  # query: tom/null = alle titler. Case-insensitivt delstrengsøk i primær- og originaltittel.
+  # query: tom/null = alle titler. Case- og aksentuavhengig delstrengsøk («amelie» finner «Amélie»)
+  # i primær- og originaltittel. Søk på 1–2 tegn er ordprefiks («ma» finner «The Matrix») og rangeres etter popularitet.
   search(
     query: String
     filters: SearchFilters
@@ -148,6 +154,8 @@ type Query {
 type Mutation {
   addReview(input: AddReviewInput!): Review!
   toggleList(titleId: ID!): Title! # returnerer tittelen med oppdatert inMyList
+  # Sletter bare brukerens egne anmeldelser. Andres og ukjente id-er gir begge NOT_FOUND.
+  deleteReview(id: ID!): DeleteReviewPayload!
 }
 ```
 
@@ -156,8 +164,23 @@ type Mutation {
 - `first` må være 1–50, ellers `BAD_USER_INPUT`. `query` maks 200 tegn. Spørredybde maks 6.
 - Cursorer er ugjennomsiktige strenger (base64). Ugyldig cursor gir `BAD_USER_INPUT`.
 - Feil returneres som GraphQL-feil med `extensions.code`: `BAD_USER_INPUT`, `NOT_FOUND`,
-  `UNAUTHENTICATED` (mangler `x-user-id` på mutation), `INTERNAL_SERVER_ERROR` (uten detaljer).
+  `UNAUTHENTICATED` (mangler `x-user-id` på mutation), `RATE_LIMITED` (se under),
+  `SERVICE_UNAVAILABLE` (databasen kan ikke nås; generisk melding uten detaljer),
+  `INTERNAL_SERVER_ERROR` (uten detaljer).
+- Maks 8 rotfelt (aliaser telles hver for seg) og 150 felt totalt per operasjon (fragmenter
+  ekspandert), ellers `BAD_USER_INPUT`. Dessuten en vektet kostnad maks 2 500, der feltene under `search`, `myList` og `reviews` teller `first` ganger (standard 20/20/10; variabel `first` regnes som 50). Frontendens største spørring har ca. 45 felt og kostnad ca. 1 100.
+- `deleteReview(id)`: `id` må være heltallsstrengen fra `Review.id` (ellers `BAD_USER_INPUT`).
+  Hører anmeldelsen til en annen `x-user-id`, eller finnes den ikke, er svaret likt: `NOT_FOUND`
+  («Fant ikke anmeldelsen.»). Svaret har `deletedId` (fjern `Review:<id>` fra Apollo-cachen) og
+  `title` med nye `userRating`/`reviewCount`, som oppdaterer `Title:<id>` i cachen automatisk.
+- Begrensning av mutations (token bucket i prosessminnet, per `x-user-id` og per IP, se
+  `docs/beslutninger.md`): `addReview` maks 10 per minutt per bruker, `toggleList` og `deleteReview`
+  maks 60 per minutt per bruker; IP-grensen er tre ganger så høy. Over grensen gir `RATE_LIMITED`
+  med `extensions.retryAfterSeconds` og meldingen «For mange forsøk. Vent N sekunder og prøv igjen.»
 - All søk, filtrering, sortering og paginering skjer i SQL.
+- `GET /health` (utenfor GraphQL) gjør `SELECT 1` mot databasen: 200 `{"status":"ok"}` eller 503
+  `{"status":"db-unavailable"}`, alltid med `cache-control: no-store`. Brukes av `deploy/sjekk.sh`,
+  Apache og drift; frontend kaller den ikke.
 
 ## Bilder (TMDB)
 

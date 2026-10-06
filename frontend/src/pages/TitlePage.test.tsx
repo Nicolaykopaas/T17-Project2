@@ -2,7 +2,8 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { GraphQLError } from 'graphql';
 import { Route, Routes } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import { apiUnavailable } from '../apollo/apiStatus';
 import { TITLE_QUERY } from '../graphql/operations';
 import type { Review } from '../graphql/types';
 import {
@@ -31,6 +32,8 @@ function setup(
   );
   return { log, unmount, user: userEvent.setup() };
 }
+
+afterEach(() => void apiUnavailable(false));
 
 describe('TitlePage', () => {
   it('viser all info om tittelen', async () => {
@@ -150,7 +153,7 @@ describe('TitlePage: bilder', () => {
 });
 
 describe('TitlePage: Min liste', () => {
-  it('bytter mellom «Legg i min liste» og «Fjern fra min liste» med aria-pressed', async () => {
+  it('bytter mellom «Legg i min liste» og «Fjern fra min liste» uten aria-pressed', async () => {
     let inList = false;
     const { user, log } = setup({
       TitleDetails: () => ({ title: makeDetails({ inMyList: inList }) }),
@@ -160,19 +163,17 @@ describe('TitlePage: Min liste', () => {
       },
     });
     const add = await screen.findByRole('button', { name: 'Legg i min liste' });
-    expect(add).toHaveAttribute('aria-pressed', 'false');
+    // Dynamisk etikett uten aria-pressed, ellers leses «Fjern fra min liste, trykket» opp.
+    expect(add).not.toHaveAttribute('aria-pressed');
 
     await user.click(add);
     const remove = await screen.findByRole('button', { name: 'Fjern fra min liste' });
-    expect(remove).toHaveAttribute('aria-pressed', 'true');
+    expect(remove).not.toHaveAttribute('aria-pressed');
     expect(log.ToggleList).toEqual([{ titleId: 'tt0000001' }]);
     expect(screen.getByText('Lagt til i min liste.')).toBeInTheDocument();
 
     await user.click(remove);
-    expect(await screen.findByRole('button', { name: 'Legg i min liste' })).toHaveAttribute(
-      'aria-pressed',
-      'false',
-    );
+    expect(await screen.findByRole('button', { name: 'Legg i min liste' })).toBeInTheDocument();
     expect(screen.getByText('Fjernet fra min liste.')).toBeInTheDocument();
   });
 
@@ -186,10 +187,7 @@ describe('TitlePage: Min liste', () => {
     // Ingen ToggleList-mock finnes, så mutasjonen feiler som ved nettverksbrudd.
     await user.click(await screen.findByRole('button', { name: 'Legg i min liste' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Kunne ikke oppdatere listen');
-    expect(screen.getByRole('button', { name: 'Legg i min liste' })).toHaveAttribute(
-      'aria-pressed',
-      'false',
-    );
+    expect(screen.getByRole('button', { name: 'Legg i min liste' })).toBeInTheDocument();
   });
 });
 
@@ -244,6 +242,36 @@ describe('TitlePage: anmeldelser', () => {
     expect(screen.getByText('Anmelder 1')).toBeInTheDocument();
     expect(log.TitleDetails.at(-1)).toMatchObject({ after: 'rc-r10' });
     expect(screen.queryByRole('button', { name: 'Vis flere' })).not.toBeInTheDocument();
+  });
+
+  describe.each([
+    { down: false, role: 'alert' },
+    { down: true, role: null },
+  ])('når «Vis flere» feiler (API-banner: $down)', ({ down, role }) => {
+    it(`${role ? 'kunngjør feilen' : 'overlater kunngjøringen til banneret'}`, async () => {
+      apiUnavailable(down);
+      const { user } = setup(
+        {
+          TitleDetails: () => ({
+            title: makeDetails({
+              reviewCount: 12,
+              reviews: makeReviewConnection(many.slice(0, 10), 12, true),
+            }),
+          }),
+        },
+        [
+          {
+            request: { query: TITLE_QUERY, variables: (v: Vars) => v.after != null },
+            result: { errors: [new GraphQLError('Feil')] },
+          },
+        ],
+      );
+      await screen.findByText('Anmelder 1');
+      await user.click(screen.getByRole('button', { name: 'Vis flere' }));
+      const msg = await screen.findByText('Kunne ikke laste flere anmeldelser.');
+      if (role) expect(msg).toHaveAttribute('role', 'alert');
+      else expect(msg).not.toHaveAttribute('role');
+    });
   });
 
   it('viser ny anmeldelse øverst uten omlasting, med oppdatert snitt', async () => {

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation } from '@apollo/client/react';
 import { TOGGLE_LIST_MUTATION } from '../graphql/operations';
+import { rateLimitMessage } from '../lib/apiError';
 
 interface Props {
   titleId: string;
@@ -9,20 +10,25 @@ interface Props {
   variant?: 'primary' | 'secondary';
 }
 
+/**
+ * Handlingsetikett som skifter («Legg i» / «Fjern fra min liste»), bevisst uten `aria-pressed`:
+ * en bryter med dynamisk navn leses opp motstridende («Fjern fra min liste, trykket»). En etikett som
+ * sier hva et trykk gjør er tydeligere enn en tilstand man må tolke, og utfallet kunngjøres i statusregionen.
+ */
 export function ListToggleButton({ titleId, inMyList, variant = 'primary' }: Props) {
   const [toggleList, { loading }] = useMutation(TOGGLE_LIST_MUTATION);
   const [message, setMessage] = useState('');
-  const [failed, setFailed] = useState(false);
+  const [error, setError] = useState('');
 
   const onClick = async () => {
-    setFailed(false);
+    setError('');
     try {
       // Tittelen normaliseres på id, så knappen oppdateres av cachen uten ekstra kode.
       const { data } = await toggleList({ variables: { titleId } });
       setMessage(data?.toggleList.inMyList ? 'Lagt til i min liste.' : 'Fjernet fra min liste.');
-    } catch {
+    } catch (e) {
       setMessage('');
-      setFailed(true);
+      setError(rateLimitMessage(e) ?? 'Kunne ikke oppdatere listen. Prøv igjen.');
     }
   };
 
@@ -31,7 +37,6 @@ export function ListToggleButton({ titleId, inMyList, variant = 'primary' }: Pro
       <button
         type="button"
         className={`btn ${variant === 'primary' ? 'btn--primary' : 'btn--ghost'}`}
-        aria-pressed={inMyList}
         disabled={loading}
         onClick={() => void onClick()}
       >
@@ -40,9 +45,9 @@ export function ListToggleButton({ titleId, inMyList, variant = 'primary' }: Pro
       <p className="sr-only" role="status" aria-live="polite">
         {message}
       </p>
-      {failed && (
+      {error && (
         <p className="error-text" role="alert">
-          Kunne ikke oppdatere listen. Prøv igjen.
+          {error}
         </p>
       )}
     </>

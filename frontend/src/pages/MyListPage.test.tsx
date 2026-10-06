@@ -2,7 +2,14 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { MY_LIST_QUERY } from '../graphql/operations';
-import { buildMocks, emptyLog, makeConnection, makeTitle, renderApp } from '../test/utils';
+import {
+  buildMocks,
+  emptyLog,
+  makeConnection,
+  makeTitle,
+  renderApp,
+  type Vars,
+} from '../test/utils';
 import MyListPage from './MyListPage';
 
 describe('MyListPage', () => {
@@ -87,5 +94,43 @@ describe('MyListPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Kunne ikke hente listen');
     await user.click(screen.getByRole('button', { name: 'Prøv igjen' }));
     expect(await screen.findByRole('link', { name: 'Tittel 1' })).toBeInTheDocument();
+  });
+});
+
+describe('MyListPage: feil', () => {
+  it('feil ved «Last flere» gir egen melding, ikke «Kunne ikke fjerne»', async () => {
+    const user = userEvent.setup();
+    renderApp(<MyListPage />, {
+      mocks: [
+        {
+          request: { query: MY_LIST_QUERY, variables: (v: Vars) => !v.after },
+          maxUsageCount: Number.POSITIVE_INFINITY,
+          result: { data: { myList: makeConnection([makeTitle(1)], 2, true) } },
+        },
+        // Neste side feiler som ved nettverksbrudd.
+        {
+          request: { query: MY_LIST_QUERY, variables: (v: Vars) => !!v.after },
+          maxUsageCount: Number.POSITIVE_INFINITY,
+          error: new Error('Failed to fetch'),
+        },
+      ],
+    });
+    await screen.findByRole('link', { name: 'Tittel 1' });
+    await user.click(screen.getByRole('button', { name: 'Last flere' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Kunne ikke hente flere titler');
+    expect(screen.queryByText(/Kunne ikke fjerne/)).not.toBeInTheDocument();
+    // Knappen er brukbar igjen så brukeren kan prøve på nytt.
+    expect(screen.getByRole('button', { name: 'Last flere' })).toBeEnabled();
+  });
+
+  it('feil ved «Fjern» gir fortsatt «Kunne ikke fjerne tittelen»', async () => {
+    const user = userEvent.setup();
+    // Ingen ToggleList-mock: mutasjonen feiler.
+    renderApp(<MyListPage />, {
+      mocks: buildMocks({ MyList: () => ({ myList: makeConnection([makeTitle(1)]) }) }, emptyLog()),
+    });
+    await screen.findByRole('link', { name: 'Tittel 1' });
+    await user.click(screen.getByRole('button', { name: 'Fjern Tittel 1 fra listen' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Kunne ikke fjerne tittelen');
   });
 });

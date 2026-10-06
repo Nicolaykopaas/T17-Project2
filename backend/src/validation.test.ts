@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  isPlausibleTitleId,
   parseUserId,
   validateFilters,
   validateFirst,
@@ -75,4 +76,25 @@ describe('validateReview', () => {
     expect(() => validateReview({ ...ok, rating: 6 })).toThrow();
     expect(() => validateReview({ ...ok, text: 'x'.repeat(2001) })).toThrow();
   });
+});
+
+describe('isPlausibleTitleId', () => {
+  it.each(['tt0111161', 'tt1234567', 'tt12345678', 'tt1234567890'])('godtar %s', (id) =>
+    expect(isPlausibleTitleId(id)).toBe(true),
+  );
+  it.each([
+    '',
+    'tt',
+    'tt123456',
+    'tt12345678901',
+    'TT0111161',
+    'nm0000001',
+    '0111161',
+    'tt011116a',
+    'tt0111161\n',
+    ' tt0111161',
+    'tt0111161\0',
+    "tt0111161' OR 1=1",
+    'tt' + '1'.repeat(1000),
+  ])('avviser %j', (id) => expect(isPlausibleTitleId(id)).toBe(false));
 });

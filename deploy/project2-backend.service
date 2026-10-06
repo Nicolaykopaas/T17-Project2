@@ -5,6 +5,8 @@
 Description=IT2810 gruppe 17 prosjekt 2 – GraphQL-backend
 # Backenden er ubrukelig uten databasen, så vent på at Postgres er oppe.
 After=network.target postgresql.service
+# Wants (ikke Requires): Requires propagerer bare stopp, ikke start, og postgresql.service er på Ubuntu en
+# oneshot-wrapper. Restart=always under holder backenden oppe og får den tilbake når databasen er klar.
 Wants=postgresql.service
 
 [Service]
@@ -16,7 +18,8 @@ WorkingDirectory=/opt/project2/backend
 EnvironmentFile=/opt/project2/.env
 Environment=NODE_ENV=production
 ExecStart=/usr/bin/node dist/src/index.js
-Restart=on-failure
+# always: også etter rene avslutninger (exit 0), slik at en uventet stopp aldri blir stående som nedetid.
+Restart=always
 RestartSec=5
 
 # Herding: prosessen trenger bare å lese koden og snakke med Postgres over nettverket.

@@ -1,5 +1,5 @@
 import { BACKDROP_WIDTHS, POSTER_WIDTHS, buildImageUrl } from '../artwork.js';
-import { notFound, unauthenticated } from '../errors.js';
+import { badInput, notFound, unauthenticated } from '../errors.js';
 import type { Context } from '../context.js';
 import {
   DEFAULT_DIRECTION,
@@ -97,6 +97,8 @@ export const resolvers = {
   Mutation: {
     addReview: async (_: unknown, args: { input: ReviewInput }, ctx: Context) => {
       if (!ctx.userId) throw unauthenticated('Mangler gyldig x-user-id.');
+      // Før validering: ugyldige forsøk skal også koste, ellers kan en løkke prøve fritt.
+      ctx.limiter.check('review', ctx.userId, ctx.ip);
       const input = validateReview(args.input);
       if (!isPlausibleTitleId(input.titleId) || !(await getTitle(ctx.pool, input.titleId))) {
         throw notFound('Fant ikke tittelen.');
@@ -112,6 +114,7 @@ export const resolvers = {
 
     toggleList: async (_: unknown, args: { titleId: string }, ctx: Context) => {
       if (!ctx.userId) throw unauthenticated('Mangler gyldig x-user-id.');
+      ctx.limiter.check('mutation', ctx.userId, ctx.ip);
       const title = isPlausibleTitleId(args.titleId)
         ? await getTitle(ctx.pool, args.titleId)
         : null;
@@ -131,6 +134,25 @@ export const resolvers = {
         [ctx.userId, title.id],
       );
       return { ...mapTitle(title), inMyList: rows[0]?.in_list ?? false };
+    },
+
+    deleteReview: async (_: unknown, args: { id: string }, ctx: Context) => {
+      if (!ctx.userId) throw unauthenticated('Mangler gyldig x-user-id.');
+      ctx.limiter.check('mutation', ctx.userId, ctx.ip);
+      // bigint tar maks 19 siffer; 18 er nok og gir aldri overflow i ::bigint-castet.
+      if (!/^[1-9]\d{0,17}$/.test(args.id)) throw badInput('Ugyldig id.');
+      // Eierskapet sjekkes i selve DELETE-en. «Finnes ikke» og «tilhører andre» gir samme svar,
+      // så en fremmed ikke kan bruke mutationen til å lete etter anmeldelses-id-er.
+      const { rows } = await ctx.pool.query<{ title_id: string }>(
+        'DELETE FROM reviews WHERE id = $1::bigint AND user_id = $2 RETURNING title_id',
+        [args.id, ctx.userId],
+      );
+      const titleId = rows[0]?.title_id;
+      if (!titleId) throw notFound('Fant ikke anmeldelsen.');
+      const title = await getTitle(ctx.pool, titleId);
+      // Tittelen kan ikke mangle (reviews.title_id har fremmednøkkel), men typene krever sjekken.
+      if (!title) throw notFound('Fant ikke tittelen.');
+      return { deletedId: args.id, title: mapTitle(title) };
     },
   },
 

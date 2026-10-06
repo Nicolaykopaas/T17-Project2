@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { e2ePolicy } from './e2e/csp-policy.js';
 
 // E2E-testene kjører mot en egen database slik at anmeldelser og lister de lager ikke
 // blander seg med utviklingsdata. `e2e/global-setup.ts` migrerer og fyller den.
@@ -16,7 +17,15 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? 'list' : [['list'], ['html', { open: 'never' }]],
+  // Retry gir trace av første feilende forsøk, men en test som bare består på retry skal ikke
+  // skjules: i CI teller den som feil.
+  failOnFlakyTests: !!process.env.CI,
+  // HTML-rapporten og JUnit lastes opp som CI-artefakter; JUnit vises i MR-en.
+  reporter: [
+    ['list'],
+    ['html', { open: 'never' }],
+    ...(process.env.CI ? [['junit', { outputFile: 'test-results/junit.xml' }] as const] : []),
+  ],
   use: {
     baseURL: 'http://localhost:4173/project2/',
     trace: 'retain-on-failure',
@@ -65,6 +74,9 @@ export default defineConfig({
       command:
         'npm run build -w frontend && npm run preview -w frontend -- --port 4173 --strictPort',
       url: 'http://localhost:4173/project2/',
+      // Samme CSP som Apache sender i produksjon (lest fra deploy/apache-project2.conf), slik at
+      // alle E2E-testene fanger et nytt eksternt opphav som policyen ikke tillater.
+      env: { PREVIEW_CSP: e2ePolicy },
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },

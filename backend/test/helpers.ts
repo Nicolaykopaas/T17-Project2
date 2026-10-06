@@ -4,6 +4,7 @@ import { ArtworkService } from '../src/artwork.js';
 import { createApp } from '../src/app.js';
 import { config } from '../src/config.js';
 import { createPool, type Pool } from '../src/db.js';
+import type { RateLimitOptions } from '../src/rateLimit.js';
 import { resetData } from './fixtures.js';
 
 export const USER_A = '3f2504e0-4f89-41d3-9a0c-0305e82c3301';
@@ -27,7 +28,7 @@ export interface TestEnv {
  * Felles oppsett for API-tester: egen pool mot testdatabasen, friskt datasett før filen,
  * og spørringer via yoga.fetch (ingen nettverksport nødvendig).
  */
-export function setupApi(): TestEnv {
+export function setupApi(rateLimits: Partial<RateLimitOptions> = {}): TestEnv {
   const env = {} as TestEnv;
   beforeAll(async () => {
     env.pool = createPool(config.testDatabaseUrl);
@@ -36,6 +37,8 @@ export function setupApi(): TestEnv {
       pool: env.pool,
       production: false,
       corsOrigin: 'http://localhost:5173',
+      // Så høye grenser at funksjonelle tester aldri treffer dem; rate-limit.test.ts bruker egne.
+      rateLimits: { reviewsPerMinute: 10_000, mutationsPerMinute: 10_000, ...rateLimits },
       // Uten nøkkel: testene skal aldri kunne nå et ekte TMDB, selv om utvikleren har en i .env.
       artwork: new ArtworkService({ pool: env.pool, apiKey: undefined }),
     });

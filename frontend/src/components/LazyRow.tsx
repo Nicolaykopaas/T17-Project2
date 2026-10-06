@@ -1,8 +1,8 @@
 import { useRef } from 'react';
 import { useQuery } from '@apollo/client/react';
-import { SEARCH_QUERY } from '../graphql/operations';
+import { ROW_QUERY } from '../graphql/operations';
 import { useNearViewport } from '../hooks/useNearViewport';
-import { rowVariables, seeAllSearch, type BrowseRow } from '../lib/browseRows';
+import { rowAnchorId, rowVariables, seeAllSearch, type BrowseRow } from '../lib/browseRows';
 import { TitleRow } from './TitleRow';
 
 /**
@@ -12,13 +12,14 @@ import { TitleRow } from './TitleRow';
 export function LazyRow({ row }: { row: BrowseRow }) {
   const anchor = useRef<HTMLDivElement>(null);
   const near = useNearViewport(anchor);
-  const { data, loading, error, refetch } = useQuery(SEARCH_QUERY, {
+  const { data, loading, error, refetch } = useQuery(ROW_QUERY, {
     variables: rowVariables(row.state),
     skip: !near,
   });
 
   return (
-    <div ref={anchor}>
+    // Id og scroll-margin lar kategorinavigasjonen hoppe hit forbi den faste headeren.
+    <div ref={anchor} id={rowAnchorId(row)} className="row-anchor">
       <TitleRow
         heading={row.heading}
         seeAllTo={seeAllSearch(row.state)}

@@ -2,12 +2,15 @@ import { gql, type TypedDocumentNode } from '@apollo/client';
 import type {
   AddReviewData,
   AddReviewVars,
+  DeleteReviewData,
+  DeleteReviewVars,
   FacetsData,
   FeaturedData,
   FacetsVars,
   GenresData,
   MyListData,
   MyListVars,
+  RowData,
   SearchData,
   SearchVars,
   TitleData,
@@ -65,8 +68,36 @@ export const SEARCH_QUERY: TypedDocumentNode<SearchData, SearchVars> = gql`
   }
 `;
 
-// Samme `search`-felt og cache-nøkkel som en vanlig rad, bare med flere felt. Toppraden og
-// heltebanneret deler dermed én request i stedet for to.
+// Forsideradene viser aldri antall treff. `totalCount` er en egen `count(*)` over hele treffmengden
+// i databasen, så uten det sparer hver forsidevisning åtte slike spørringer. Samme `search`-felt og
+// cache-nøkkel som SEARCH_QUERY, og titlene normaliseres på id, så kort som er hentet er delt. «Se alle»
+// får likevel ikke antallet fra cachen: raden mangler `totalCount`, så SEARCH_QUERY gir cache-miss og
+// henter første side på nytt, nå med antall.
+export const ROW_QUERY: TypedDocumentNode<RowData, SearchVars> = gql`
+  query Row(
+    $query: String
+    $filters: SearchFilters
+    $sort: SortInput
+    $first: Int
+    $after: String
+  ) {
+    search(query: $query, filters: $filters, sort: $sort, first: $first, after: $after) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      edges {
+        cursor
+        node {
+          ${SUMMARY_FIELDS}
+        }
+      }
+    }
+  }
+`;
+
+// Som ROW_QUERY, men med handling og bakgrunnsbilde. Toppraden og heltebanneret deler dermed én
+// request i stedet for to.
 export const FEATURED_QUERY: TypedDocumentNode<FeaturedData, SearchVars> = gql`
   query Featured(
     $query: String
@@ -76,7 +107,6 @@ export const FEATURED_QUERY: TypedDocumentNode<FeaturedData, SearchVars> = gql`
     $after: String
   ) {
     search(query: $query, filters: $filters, sort: $sort, first: $first, after: $after) {
-      totalCount
       pageInfo {
         hasNextPage
         endCursor
@@ -220,6 +250,20 @@ export const TOGGLE_LIST_MUTATION: TypedDocumentNode<ToggleListData, ToggleListV
     toggleList(titleId: $titleId) {
       id
       inMyList
+    }
+  }
+`;
+
+// Payloaden bærer tittelens nye snitt og antall, så `Title:<id>` i cachen oppdateres uten ny henting.
+export const DELETE_REVIEW_MUTATION: TypedDocumentNode<DeleteReviewData, DeleteReviewVars> = gql`
+  mutation DeleteReview($id: ID!) {
+    deleteReview(id: $id) {
+      deletedId
+      title {
+        id
+        userRating
+        reviewCount
+      }
     }
   }
 `;

@@ -20,7 +20,8 @@ export const BACKDROP_WIDTHS = [300, 780, 1280] as const;
 const SAFE_PATH = /^\/[A-Za-z0-9._-]+\.(jpg|jpeg|png|svg)$/;
 
 /**
- * Snapper til nærmeste tillatte bredde (likt avstand: den største, bedre kvalitet enn skarphet).
+ * Snapper til nærmeste tillatte bredde. Ved lik avstand velges den største bredden, siden bedre
+ * kvalitet veier tyngre enn en litt mindre fil.
  * Ugyldig bredde (≤ 0 eller ikke heltall) avvises heller enn å gjettes på: det er en klientfeil.
  */
 export function snapWidth(width: number, allowed: readonly number[]): number {

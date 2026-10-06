@@ -2,10 +2,11 @@ import { createArtworkLoader, type ArtworkLoader, type ArtworkService } from './
 import type { Pool } from './db.js';
 import { config } from './config.js';
 import { batchLoader } from './loaders.js';
+import { clientIp, MutationLimiter } from './rateLimit.js';
 import { createStreamLoader, type StreamLoader } from './stream.js';
 import { parseUserId } from './validation.js';
 
-export interface ReviewStats {
+interface ReviewStats {
   count: number;
   average: number | null;
 }
@@ -14,6 +15,9 @@ export interface Context {
   pool: Pool;
   /** Gyldig, normalisert UUID fra x-user-id, ellers null. */
   userId: string | null;
+  /** Klientens IP bak proxy, ellers null. Brukes bare til begrensning av mutations. */
+  ip: string | null;
+  limiter: MutationLimiter;
   artwork: ArtworkService;
   loaders: {
     artwork: ArtworkLoader;
@@ -29,11 +33,15 @@ export function createContext(
   request: Request,
   artwork: ArtworkService,
   archiveUrl: string = config.archiveUrl,
+  limiter: MutationLimiter = new MutationLimiter(),
+  remoteAddress?: string,
 ): Context {
   const userId = parseUserId(request.headers.get('x-user-id'));
   return {
     pool,
     userId,
+    ip: clientIp(request, remoteAddress),
+    limiter,
     artwork,
     loaders: {
       artwork: createArtworkLoader(artwork),

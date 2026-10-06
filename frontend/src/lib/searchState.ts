@@ -13,9 +13,9 @@ export interface SearchState {
   decades: number[];
   types: TitleType[];
   minRating: number | null;
-  /** Bare titler med lovlig strøm («Kun filmer du kan se»). */
+  /** Bare titler med lovlig strøm («Kun filmer som kan strømmes gratis»). */
   available: boolean;
-  /** null = ikke valgt, serveren bruker sin standard (relevans). */
+  /** null = ikke valgt, serveren bruker sin standard (relevans, eller popularitet uten søketekst). */
   sort: SortField | null;
   dir: SortDirection | null;
 }

@@ -1,6 +1,8 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { createBrowserRouter, RouterProvider } from 'react-router';
+import { createBrowserRouter } from 'react-router';
+// Varianten fra /dom kobler på ReactDOM.flushSync, som `useSearchState` trenger (se der).
+import { RouterProvider } from 'react-router/dom';
 import { ApolloProvider } from '@apollo/client/react';
 import { createClient } from './apollo/client';
 import { routes } from './routes';
