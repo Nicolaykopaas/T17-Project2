@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import userEvent from '@testing-library/user-event';
 import { useEffect, useState } from 'react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { createCache } from '../apollo/cache';
 import { Layout } from './Layout';
 
@@ -57,12 +57,7 @@ const scrollTo = (y: number) => {
   });
 };
 
-// jsdom implementerer ikke scrollTo; ScrollRestoration kaller den ved hvert rutebytte.
-beforeEach(() => void vi.stubGlobal('scrollTo', vi.fn()));
-afterEach(() => {
-  vi.unstubAllGlobals();
-  scrollTo(0);
-});
+afterEach(() => scrollTo(0));
 
 describe('Layout', () => {
   it('har skip-link, hovedmeny med Min liste og søkefelt i headeren', () => {

@@ -2,7 +2,8 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { GraphQLError } from 'graphql';
 import { Route, Routes } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import { apiUnavailable } from '../apollo/apiStatus';
 import { TITLE_QUERY } from '../graphql/operations';
 import type { Review } from '../graphql/types';
 import {
@@ -31,6 +32,8 @@ function setup(
   );
   return { log, unmount, user: userEvent.setup() };
 }
+
+afterEach(() => void apiUnavailable(false));
 
 describe('TitlePage', () => {
   it('viser all info om tittelen', async () => {
@@ -239,6 +242,36 @@ describe('TitlePage: anmeldelser', () => {
     expect(screen.getByText('Anmelder 1')).toBeInTheDocument();
     expect(log.TitleDetails.at(-1)).toMatchObject({ after: 'rc-r10' });
     expect(screen.queryByRole('button', { name: 'Vis flere' })).not.toBeInTheDocument();
+  });
+
+  describe.each([
+    { down: false, role: 'alert' },
+    { down: true, role: null },
+  ])('når «Vis flere» feiler (API-banner: $down)', ({ down, role }) => {
+    it(`${role ? 'kunngjør feilen' : 'overlater kunngjøringen til banneret'}`, async () => {
+      apiUnavailable(down);
+      const { user } = setup(
+        {
+          TitleDetails: () => ({
+            title: makeDetails({
+              reviewCount: 12,
+              reviews: makeReviewConnection(many.slice(0, 10), 12, true),
+            }),
+          }),
+        },
+        [
+          {
+            request: { query: TITLE_QUERY, variables: (v: Vars) => v.after != null },
+            result: { errors: [new GraphQLError('Feil')] },
+          },
+        ],
+      );
+      await screen.findByText('Anmelder 1');
+      await user.click(screen.getByRole('button', { name: 'Vis flere' }));
+      const msg = await screen.findByText('Kunne ikke laste flere anmeldelser.');
+      if (role) expect(msg).toHaveAttribute('role', 'alert');
+      else expect(msg).not.toHaveAttribute('role');
+    });
   });
 
   it('viser ny anmeldelse øverst uten omlasting, med oppdatert snitt', async () => {

@@ -23,11 +23,25 @@ function stubSystem(initial: 'light' | 'dark') {
 
 const button = () => screen.getByRole('button', { name: 'Mørkt tema' });
 
+function addThemeColorMetas() {
+  const defaults = { light: '#f5f4f1', dark: '#0a0a0c' };
+  for (const scheme of ['light', 'dark'] as const) {
+    const meta = document.createElement('meta');
+    meta.name = 'theme-color';
+    meta.media = `(prefers-color-scheme: ${scheme})`;
+    meta.content = defaults[scheme];
+    document.head.append(meta);
+  }
+}
+const themeColors = () =>
+  [...document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')].map((m) => m.content);
+
 beforeEach(() => {
   localStorage.clear();
   delete document.documentElement.dataset.theme;
 });
 afterEach(() => {
+  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.remove());
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -61,6 +75,18 @@ describe('ThemeToggle', () => {
     expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
     expect(button()).toHaveAttribute('aria-pressed', 'true');
     expect(localStorage.getItem(THEME_KEY)).toBe('dark');
+  });
+
+  it('oppdaterer begge theme-color-taggene ved valgt tema', async () => {
+    stubSystem('dark');
+    addThemeColorMetas();
+    const user = userEvent.setup();
+    render(<ThemeToggle />);
+    expect(themeColors()).toEqual(['#f5f4f1', '#0a0a0c']);
+    await user.click(button());
+    expect(themeColors()).toEqual(['#f5f4f1', '#f5f4f1']);
+    await user.click(button());
+    expect(themeColors()).toEqual(['#0a0a0c', '#0a0a0c']);
   });
 
   it('kan betjenes med tastatur', async () => {

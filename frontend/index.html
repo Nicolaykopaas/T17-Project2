@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Søk, filtrer og anmeld filmer og serier fra IMDb." />
     <meta name="color-scheme" content="dark light" />
-    <meta name="theme-color" content="#0a0a0c" />
+    <!-- Samme farger som --bg i global.css. To tagger så adressefeltet følger systemet; valgt tema overstyrer dem i theme-init.js / useTheme. -->
+    <meta name="theme-color" content="#f5f4f1" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0a0a0c" media="(prefers-color-scheme: dark)" />
     <!-- Tomt ikon: sparer en forespørsel som ellers ender i 404. -->
     <link rel="icon" href="data:," />
     <title>Filmsøk – IT2810 gruppe 17</title>

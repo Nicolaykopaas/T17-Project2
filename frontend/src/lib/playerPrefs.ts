@@ -1,6 +1,6 @@
 const KEY = 'filmsok:player';
 
-export interface PlayerPrefs {
+interface PlayerPrefs {
   volume: number;
   muted: boolean;
 }

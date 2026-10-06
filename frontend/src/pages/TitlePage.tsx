@@ -1,7 +1,8 @@
-import { useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { useQuery } from '@apollo/client/react';
 import { CombinedGraphQLErrors } from '@apollo/client';
+import { useApiUnavailable } from '../apollo/apiStatus';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { ListToggleButton } from '../components/ListToggleButton';
 import { ReviewForm } from '../components/ReviewForm';
@@ -51,6 +52,10 @@ export default function TitlePage() {
   const [moreFailed, setMoreFailed] = useState(false);
   const [deleted, setDeleted] = useState('');
   const reviewsHeading = useRef<HTMLHeadingElement>(null);
+  const deletedTimer = useRef<number>(undefined);
+  const apiDown = useApiUnavailable();
+  // Ellers kan timeren sette state etter at siden er forlatt.
+  useEffect(() => () => window.clearTimeout(deletedTimer.current), []);
   const title = data?.title;
   useDocumentTitle(title?.primaryTitle ?? 'Tittel');
 
@@ -234,14 +239,18 @@ export default function TitlePage() {
             onDeleted={() => {
               // Regionen tømmes først: identisk tekst som ved forrige sletting leses ellers ikke opp igjen.
               setDeleted('');
-              window.setTimeout(() => setDeleted('Anmeldelsen er slettet.'), 100);
+              window.clearTimeout(deletedTimer.current);
+              deletedTimer.current = window.setTimeout(
+                () => setDeleted('Anmeldelsen er slettet.'),
+                100,
+              );
               // Slett-knappen forsvinner med raden; overskriften er et fast punkt å lande på.
               reviewsHeading.current?.focus();
             }}
           />
 
           {moreFailed && (
-            <p className="error-text" role="alert">
+            <p className="error-text" role={apiDown ? undefined : 'alert'}>
               Kunne ikke laste flere anmeldelser.
             </p>
           )}
