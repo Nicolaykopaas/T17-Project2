@@ -139,6 +139,24 @@ describe('ReviewForm: validering', () => {
     expect(log.AddReview).toHaveLength(0);
   });
 
+  it('teller emoji som ett tegn i telleren og ved validering', async () => {
+    const { user, log } = setup();
+    await user.type(name(), 'Kari');
+    await user.click(stars(5));
+    await user.click(text());
+    await user.paste('😀'.repeat(2000));
+    expect(screen.getByText('2000 / 2000 tegn')).toBeInTheDocument();
+    await user.click(submit());
+    await waitFor(() => expect(log.AddReview).toHaveLength(1));
+  });
+
+  it('teller trimmet tekst i telleren', async () => {
+    const { user } = setup();
+    await user.click(text());
+    await user.paste('  abc  ');
+    expect(screen.getByText('3 / 2000 tegn')).toBeInTheDocument();
+  });
+
   it('godtar tom tekst (valgfri) og nøyaktig 2000 tegn', async () => {
     const { user, log } = setup();
     await user.type(name(), 'Kari');

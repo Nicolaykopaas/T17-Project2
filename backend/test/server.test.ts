@@ -111,8 +111,14 @@ describe('servergrenser', () => {
     const SUMMARY = `id primaryTitle type startYear genres averageRating numVotes
       poster185: posterUrl(width: 185) poster342: posterUrl(width: 342) stream { url }`;
     const HERO = `overview backdrop780: backdropUrl(width: 780) backdrop1280: backdropUrl(width: 1280)`;
-    const FEATURED = `query { search(first: 20) { totalCount pageInfo { hasNextPage endCursor }
+    // Frontenden sender `first` som variabel, som kostnadsberegningen regner som 50.
+    const FEATURED = `query Featured($first: Int) { search(first: $first) { pageInfo { hasNextPage endCursor }
       edges { cursor node { ${SUMMARY} ${HERO} inMyList } } } }`;
+    // Forsideradene (ROW_QUERY) ber ikke om totalCount.
+    const ROW = `query Row($first: Int) { search(first: $first) { pageInfo { hasNextPage endCursor }
+      edges { cursor node { ${SUMMARY} } } } }`;
+    const SEARCH = `query Search($first: Int) { search(first: $first) { totalCount pageInfo { hasNextPage endCursor }
+      edges { cursor node { ${SUMMARY} } } } }`;
     const TITLE = `query { title(id: "tt0000001") { ${SUMMARY} ${HERO}
       poster500: posterUrl(width: 500) originalTitle endYear runtimeMinutes userRating reviewCount
       inMyList stream { url archiveUrl license licenseUrl durationSeconds subtitlesUrl }
@@ -120,7 +126,7 @@ describe('servergrenser', () => {
         edges { cursor node { id titleId author rating text createdAt isMine } } } } }`;
 
     it('slipper gjennom frontendens største spørringer', async () => {
-      for (const q of [FEATURED, TITLE]) {
+      for (const q of [FEATURED, ROW, SEARCH, TITLE]) {
         const res = await run(q);
         expect(res.errors, q.slice(0, 40)).toBeUndefined();
       }

@@ -10,10 +10,12 @@ import { RouterProvider } from 'react-router/dom';
 import { createCache } from '../apollo/cache';
 import {
   ADD_REVIEW_MUTATION,
+  DELETE_REVIEW_MUTATION,
   FACETS_QUERY,
   FEATURED_QUERY,
   GENRES_QUERY,
   MY_LIST_QUERY,
+  ROW_QUERY,
   SEARCH_QUERY,
   TITLE_QUERY,
   TOGGLE_LIST_MUTATION,
@@ -33,6 +35,7 @@ type Handler = (vars: Vars) => unknown;
 
 const OPERATIONS = {
   Search: SEARCH_QUERY,
+  Row: ROW_QUERY,
   Featured: FEATURED_QUERY,
   Facets: FACETS_QUERY,
   Genres: GENRES_QUERY,
@@ -41,6 +44,7 @@ const OPERATIONS = {
   MyList: MY_LIST_QUERY,
   AddReview: ADD_REVIEW_MUTATION,
   ToggleList: TOGGLE_LIST_MUTATION,
+  DeleteReview: DELETE_REVIEW_MUTATION,
 } as const;
 export type OperationName = keyof typeof OPERATIONS;
 
@@ -50,6 +54,7 @@ export type CallLog = Record<OperationName, Vars[]>;
 export function emptyLog(): CallLog {
   return {
     Search: [],
+    Row: [],
     Featured: [],
     Facets: [],
     Genres: [],
@@ -58,6 +63,7 @@ export function emptyLog(): CallLog {
     MyList: [],
     AddReview: [],
     ToggleList: [],
+    DeleteReview: [],
   };
 }
 
@@ -108,11 +114,13 @@ export function renderApp(
     ],
     { initialEntries: [route] },
   );
-  return render(
+  const result = render(
     <MockedProvider mocks={mocks} cache={createCache()}>
       <RouterProvider router={router} />
     </MockedProvider>,
   );
+  // Routeren gir testene tilgang til «tilbake» og navigasjon uten å klikke.
+  return { ...result, router };
 }
 
 /** Gjeldende URL slik routeren ser den (sti + query). */

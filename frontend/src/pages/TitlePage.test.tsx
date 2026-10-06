@@ -150,7 +150,7 @@ describe('TitlePage: bilder', () => {
 });
 
 describe('TitlePage: Min liste', () => {
-  it('bytter mellom «Legg i min liste» og «Fjern fra min liste» med aria-pressed', async () => {
+  it('bytter mellom «Legg i min liste» og «Fjern fra min liste» uten aria-pressed', async () => {
     let inList = false;
     const { user, log } = setup({
       TitleDetails: () => ({ title: makeDetails({ inMyList: inList }) }),
@@ -160,19 +160,17 @@ describe('TitlePage: Min liste', () => {
       },
     });
     const add = await screen.findByRole('button', { name: 'Legg i min liste' });
-    expect(add).toHaveAttribute('aria-pressed', 'false');
+    // Dynamisk etikett uten aria-pressed, ellers leses «Fjern fra min liste, trykket» opp.
+    expect(add).not.toHaveAttribute('aria-pressed');
 
     await user.click(add);
     const remove = await screen.findByRole('button', { name: 'Fjern fra min liste' });
-    expect(remove).toHaveAttribute('aria-pressed', 'true');
+    expect(remove).not.toHaveAttribute('aria-pressed');
     expect(log.ToggleList).toEqual([{ titleId: 'tt0000001' }]);
     expect(screen.getByText('Lagt til i min liste.')).toBeInTheDocument();
 
     await user.click(remove);
-    expect(await screen.findByRole('button', { name: 'Legg i min liste' })).toHaveAttribute(
-      'aria-pressed',
-      'false',
-    );
+    expect(await screen.findByRole('button', { name: 'Legg i min liste' })).toBeInTheDocument();
     expect(screen.getByText('Fjernet fra min liste.')).toBeInTheDocument();
   });
 
@@ -186,10 +184,7 @@ describe('TitlePage: Min liste', () => {
     // Ingen ToggleList-mock finnes, så mutasjonen feiler som ved nettverksbrudd.
     await user.click(await screen.findByRole('button', { name: 'Legg i min liste' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Kunne ikke oppdatere listen');
-    expect(screen.getByRole('button', { name: 'Legg i min liste' })).toHaveAttribute(
-      'aria-pressed',
-      'false',
-    );
+    expect(screen.getByRole('button', { name: 'Legg i min liste' })).toBeInTheDocument();
   });
 });
 

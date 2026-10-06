@@ -1,9 +1,11 @@
 import { useId, useRef, useState, type FormEvent } from 'react';
 import { useMutation } from '@apollo/client/react';
 import { ADD_REVIEW_MUTATION } from '../graphql/operations';
+import { rateLimitMessage } from '../lib/apiError';
 import {
   MAX_AUTHOR,
   MAX_TEXT,
+  charLength,
   validateReview,
   type ReviewDraft,
   type ReviewErrors,
@@ -71,8 +73,10 @@ export function ReviewForm({ titleId, onSubmitted }: Props) {
           },
         },
       });
-    } catch {
-      setServerError('Kunne ikke sende anmeldelsen. Sjekk nettverket og prøv igjen.');
+    } catch (error) {
+      setServerError(
+        rateLimitMessage(error) ?? 'Kunne ikke sende anmeldelsen. Sjekk nettverket og prøv igjen.',
+      );
       return;
     }
     setDraft({ author: draft.author, rating: null, text: '' });
@@ -86,7 +90,7 @@ export function ReviewForm({ titleId, onSubmitted }: Props) {
     }
   };
 
-  const textLength = draft.text.length;
+  const textLength = charLength(draft.text.trim());
 
   return (
     <form className="review-form" onSubmit={(e) => void onSubmit(e)} noValidate>

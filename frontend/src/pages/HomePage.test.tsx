@@ -1,7 +1,8 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { print } from 'graphql';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { FEATURED_QUERY } from '../graphql/operations';
+import { FEATURED_QUERY, ROW_QUERY } from '../graphql/operations';
 import {
   FACETS,
   GENRE_LIST,
@@ -47,6 +48,7 @@ function setup(route = '/?sort=relevans', searchHandler?: (v: Vars) => unknown) 
         {
           Featured: () => ({ search: makeConnection(featured, 20, true) }),
           Search: searchHandler ?? (() => ({ search: makeConnection(titles, 1234) })),
+          Row: searchHandler ?? (() => ({ search: makeConnection(titles) })),
           Facets: () => ({ facets: FACETS }),
           Genres: () => ({ genres: GENRE_LIST }),
         },
@@ -350,18 +352,77 @@ describe('HomePage: bla-modus', () => {
       first: 20,
     });
     // Ingen av de andre radene har spurt serveren ennå.
-    expect(log.Search).toHaveLength(0);
+    expect(log.Row).toHaveLength(0);
     expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0);
 
     const topMovies = screen.getByRole('heading', { name: 'Høyest rangerte filmer' });
     io.reveal(topMovies.closest('section')!.parentElement!);
     await screen.findAllByRole('link', { name: 'Tittel 1' });
-    expect(log.Search).toHaveLength(1);
-    expect(log.Search[0]).toMatchObject({
+    expect(log.Row).toHaveLength(1);
+    expect(log.Row[0]).toMatchObject({
       filters: { types: ['MOVIE'] },
       sort: { field: 'RATING', direction: 'DESC' },
       first: 20,
     });
+  });
+
+  it('«Se alle» henter antallet i ett Search-kall, og tilbake gir ingen nye Row-kall', async () => {
+    const io = stubIntersectionObserver();
+    // Serveren svarer med de samme titlene overalt, som den ekte ville gjort for samme søk.
+    const { log, user, router } = setup('/', () => ({ search: makeConnection(featured, 1234) }));
+    await screen.findByRole('region', { name: 'Med bilde' });
+    // Last én rad under folden slik at vi kan se at den kommer fra cachen etterpå.
+    io.reveal(document.getElementById('rad-free')!);
+    await waitFor(() => expect(log.Row).toHaveLength(1));
+
+    await user.click(screen.getByRole('link', { name: /Se alle i Mest populære/ }));
+    await waitFor(() => expect(log.Search).toHaveLength(1));
+    // Antall treff (aria-live) kommer fra Search-kallet, ikke fra radene.
+    const count = await screen.findByText(/1\s?234 treff/);
+    expect(count).toHaveAttribute('aria-live', 'polite');
+
+    await act(() => router.navigate(-1));
+    await screen.findByRole('region', { name: 'Med bilde' });
+    io.reveal(document.getElementById('rad-free')!);
+    const free = await screen.findByRole('region', { name: 'Se gratis nå' });
+    expect((await within(free).findAllByRole('article')).length).toBeGreaterThan(0);
+    expect(log.Row).toHaveLength(1);
+    expect(log.Featured).toHaveLength(1);
+    expect(log.Search).toHaveLength(1);
+  });
+
+  it('viser faktisk Min liste-tilstand på hero-tittelen', async () => {
+    stubIntersectionObserver();
+    const log = emptyLog();
+    renderApp(<HomePage />, {
+      route: '/',
+      mocks: buildMocks(
+        {
+          Featured: () => ({
+            search: makeConnection([
+              makeFeatured(12, {
+                primaryTitle: 'Allerede i lista',
+                backdrop1280: 'http://x/b.jpg',
+                inMyList: true,
+              }),
+            ]),
+          }),
+        },
+        log,
+      ),
+    });
+    const hero = await screen.findByRole('region', { name: 'Allerede i lista' });
+    expect(within(hero).getByRole('button', { name: 'Fjern fra min liste' })).toBeInTheDocument();
+    expect(
+      within(hero).queryByRole('button', { name: 'Legg i min liste' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('ber ikke om totalCount i forsideradene (sparer count(*) per rad)', () => {
+    const fields = (doc: typeof ROW_QUERY) =>
+      doc.definitions.flatMap((d) => (d.kind === 'OperationDefinition' ? [print(d)] : []))[0]!;
+    expect(fields(ROW_QUERY)).not.toContain('totalCount');
+    expect(fields(FEATURED_QUERY)).not.toContain('totalCount');
   });
 
   it('har raden «Se gratis nå» rett under toppraden, med filter og «Se alle» til available=1', async () => {
@@ -373,8 +434,8 @@ describe('HomePage: bla-modus', () => {
 
     const free = screen.getByRole('heading', { name: 'Se gratis nå' });
     io.reveal(free.closest('section')!.parentElement!);
-    await waitFor(() => expect(log.Search).toHaveLength(1));
-    expect(log.Search[0]).toMatchObject({
+    await waitFor(() => expect(log.Row).toHaveLength(1));
+    expect(log.Row[0]).toMatchObject({
       filters: { availableOnly: true },
       sort: { field: 'RELEVANCE', direction: 'DESC' },
       first: 20,
@@ -518,7 +579,7 @@ describe('HomePage: bla-modus', () => {
     const io = stubIntersectionObserver();
     const { log, user } = setup('/');
     await screen.findByRole('region', { name: 'Med bilde' });
-    expect(log.Search).toHaveLength(0);
+    expect(log.Row).toHaveLength(0);
     await user.click(
       within(screen.getByRole('navigation', { name: 'Kategorier' })).getByRole('link', {
         name: 'Science fiction',
@@ -526,7 +587,7 @@ describe('HomePage: bla-modus', () => {
     );
     // Nettleseren melder raden som synlig etter scrollingen.
     io.reveal(document.getElementById('rad-scifi')!);
-    await waitFor(() => expect(log.Search).toHaveLength(1));
-    expect(log.Search[0]).toMatchObject({ filters: { genres: ['Sci-Fi'] } });
+    await waitFor(() => expect(log.Row).toHaveLength(1));
+    expect(log.Row[0]).toMatchObject({ filters: { genres: ['Sci-Fi'] } });
   });
 });

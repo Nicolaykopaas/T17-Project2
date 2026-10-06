@@ -1,5 +1,6 @@
 /*
- * Kinoaktig tema: mørkt er standard, lyst følger systemet (prefers-color-scheme: light).
+ * Kinoaktig tema: mørkt er standard, lyst følger systemet (prefers-color-scheme: light), og brukeren
+ * kan overstyre med knappen i headeren (data-theme på <html>, satt før første maling av public/theme-init.js).
  * Alle fargepar er valgt for WCAG AA (tekst 4.5:1, kontroller 3:1) i begge temaer.
  * Header, heltebilder og plakat-overlegg er alltid mørke (--on-media), fordi de ligger over bilder.
  */
@@ -41,8 +42,11 @@
   line-height: 1.5;
 }
 
+/* De lyse verdiene må stå to ganger (systemvalg og eksplisitt valg); en @media-regel kan ikke deles med en
+   ren attributtselektor uten forprosessor. src/styles/theme.test.ts feiler hvis blokkene blir ulike.
+   Eksplisitt «dark» vinner over systemets lyse tema. */
 @media (prefers-color-scheme: light) {
-  :root {
+  :root:not([data-theme='dark']) {
     --bg: #f5f4f1;
     --surface: #ffffff;
     --surface-2: #ebe9e4;
@@ -57,6 +61,27 @@
     --skeleton: #e4e1da;
     --shadow: 0 0.75rem 1.75rem rgb(20 20 30 / 0.25);
   }
+}
+
+/* color-scheme styrer nettleserens egne flater (rullefelt, skjemakontroller) og må følge valget. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f5f4f1;
+  --surface: #ffffff;
+  --surface-2: #ebe9e4;
+  --border: #6b7080;
+  --border-soft: #d7d4cc;
+  --text: #14151a;
+  --muted: #4a4f5d;
+  --accent-text: #7a5200;
+  --focus: #14151a;
+  --danger: #b00020;
+  --success: #0b6b2e;
+  --skeleton: #e4e1da;
+  --shadow: 0 0.75rem 1.75rem rgb(20 20 30 / 0.25);
 }
 
 @media (min-width: 48rem) {
@@ -122,7 +147,10 @@ a {
   outline: 3px solid var(--focus);
   outline-offset: 2px;
 }
-main:focus {
+main:focus,
+main h1:focus,
+#reviews-heading:focus {
+  /* Programmatisk fokus etter rutebytte er ikke et interaktivt element; ring ville bare se ut som en feil. */
   outline: none;
 }
 
@@ -231,6 +259,24 @@ main {
   box-shadow: inset 0 -3px 0 #f5c518;
   border-radius: 0;
 }
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  /* Rett etter menyen på smal skjerm (søkefeltet har order 3), sist i headeren på bred. */
+  order: 2;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--on-media-muted);
+  cursor: pointer;
+}
+.theme-toggle:hover {
+  color: var(--on-media);
+}
 .site-header :focus-visible,
 .hero :focus-visible,
 .title-hero :focus-visible,
@@ -251,6 +297,9 @@ main {
   }
   .site-header nav + .searchbox {
     margin-left: auto;
+  }
+  .theme-toggle {
+    order: 0;
   }
 }
 
@@ -341,6 +390,7 @@ fieldset {
 .btn:hover:not(:disabled) {
   border-color: var(--accent-text);
 }
+.btn[aria-disabled='true'],
 .btn:disabled {
   cursor: progress;
   opacity: 0.7;
@@ -359,6 +409,18 @@ fieldset {
   background: rgb(38 40 46 / 0.9);
   border-color: rgb(255 255 255 / 0.35);
   color: #ffffff;
+}
+.btn--danger {
+  background: transparent;
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.review__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
 }
 .btn--link {
   background: none;
