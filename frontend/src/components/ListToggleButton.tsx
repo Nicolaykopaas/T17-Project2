@@ -12,8 +12,8 @@ interface Props {
 
 /**
  * Handlingsetikett som skifter («Legg i» / «Fjern fra min liste»), bevisst uten `aria-pressed`:
- * en bryter med dynamisk navn leses opp motstridende («Fjern fra min liste, trykket»), og et
- * fast navn ville stride mot den synlige teksten (WCAG 2.5.3). Resultatet kunngjøres i statusregionen.
+ * en bryter med dynamisk navn leses opp motstridende («Fjern fra min liste, trykket»). En etikett som
+ * sier hva et trykk gjør er tydeligere enn en tilstand man må tolke, og utfallet kunngjøres i statusregionen.
  */
 export function ListToggleButton({ titleId, inMyList, variant = 'primary' }: Props) {
   const [toggleList, { loading }] = useMutation(TOGGLE_LIST_MUTATION);
