@@ -19,14 +19,15 @@ export default function MyListPage() {
   });
   const [toggleList, { loading: removing }] = useMutation(TOGGLE_LIST_MUTATION);
   const [message, setMessage] = useState('');
-  const [failed, setFailed] = useState(false);
+  const [removeFailed, setRemoveFailed] = useState(false);
+  const [moreFailed, setMoreFailed] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
 
   const list = data?.myList;
 
   const remove = async (id: string, name: string) => {
-    setFailed(false);
+    setRemoveFailed(false);
     try {
       await toggleList({
         variables: { titleId: id },
@@ -55,7 +56,7 @@ export default function MyListPage() {
       // Knappen som hadde fokus forsvinner; flytt fokus til overskriften så tastaturbrukere ikke mister plassen.
       heading.current?.focus();
     } catch {
-      setFailed(true);
+      setRemoveFailed(true);
     }
   };
 
@@ -67,7 +68,7 @@ export default function MyListPage() {
       <p className="count" role="status" aria-live="polite">
         {message || (list ? `${formatNumber(list.totalCount)} titler` : '')}
       </p>
-      {failed && (
+      {removeFailed && (
         <p className="error-text" role="alert">
           Kunne ikke fjerne tittelen. Prøv igjen.
         </p>
@@ -114,6 +115,11 @@ export default function MyListPage() {
               />
             ))}
           </ul>
+          {moreFailed && (
+            <p className="error-text" role="alert">
+              Kunne ikke hente flere titler. Prøv igjen.
+            </p>
+          )}
           {list.pageInfo.hasNextPage && (
             <div className="more">
               <button
@@ -122,8 +128,9 @@ export default function MyListPage() {
                 disabled={loadingMore}
                 onClick={() => {
                   setLoadingMore(true);
+                  setMoreFailed(false);
                   fetchMore({ variables: { after: list.pageInfo.endCursor } })
-                    .catch(() => setFailed(true))
+                    .catch(() => setMoreFailed(true))
                     .finally(() => setLoadingMore(false));
                 }}
               >
