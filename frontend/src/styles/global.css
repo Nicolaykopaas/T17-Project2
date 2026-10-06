@@ -1,6 +1,6 @@
 /*
  * Kinoaktig tema: mørkt er standard, lyst følger systemet (prefers-color-scheme: light), og brukeren
- * kan overstyre med knappen i headeren (data-theme på <html>, satt også av et lite skript i index.html).
+ * kan overstyre med knappen i headeren (data-theme på <html>, satt før første maling av public/theme-init.js).
  * Alle fargepar er valgt for WCAG AA (tekst 4.5:1, kontroller 3:1) i begge temaer.
  * Header, heltebilder og plakat-overlegg er alltid mørke (--on-media), fordi de ligger over bilder.
  */
@@ -42,8 +42,9 @@
   line-height: 1.5;
 }
 
-/* De lyse verdiene må stå to ganger (systemvalg og eksplisitt valg); CSS kan ikke dele dem uten forprosessor.
-   Endres de ene, må de andre endres likt. Eksplisitt «dark» vinner over systemets lyse tema. */
+/* De lyse verdiene må stå to ganger (systemvalg og eksplisitt valg); en @media-regel kan ikke deles med en
+   ren attributtselektor uten forprosessor. src/styles/theme.test.ts feiler hvis blokkene blir ulike.
+   Eksplisitt «dark» vinner over systemets lyse tema. */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme='dark']) {
     --bg: #f5f4f1;

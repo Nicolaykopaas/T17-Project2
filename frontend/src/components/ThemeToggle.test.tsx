@@ -110,4 +110,32 @@ describe('ThemeToggle', () => {
     expect(document.documentElement).toHaveAttribute('data-theme', 'light');
     expect(button()).toHaveAttribute('aria-pressed', 'false');
   });
+
+  it('synkroniseres når valget endres i en annen fane (storage-event)', () => {
+    stubSystem('dark');
+    render(<ThemeToggle />);
+    expect(button()).toHaveAttribute('aria-pressed', 'true');
+    localStorage.setItem(THEME_KEY, 'light');
+    act(() => {
+      window.dispatchEvent(new StorageEvent('storage', { key: THEME_KEY, newValue: 'light' }));
+    });
+    expect(button()).toHaveAttribute('aria-pressed', 'false');
+    expect(document.documentElement).toHaveAttribute('data-theme', 'light');
+  });
+
+  it('ignorerer storage-events for andre nøkler', () => {
+    stubSystem('dark');
+    render(<ThemeToggle />);
+    localStorage.setItem(THEME_KEY, 'light');
+    act(() => {
+      window.dispatchEvent(new StorageEvent('storage', { key: 'noe-annet' }));
+    });
+    expect(button()).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('har ikke title som dupliserer navnet', () => {
+    stubSystem('dark');
+    render(<ThemeToggle />);
+    expect(button()).not.toHaveAttribute('title');
+  });
 });

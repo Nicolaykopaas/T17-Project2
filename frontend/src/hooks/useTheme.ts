@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { LIGHT_QUERY, loadTheme, saveTheme, systemTheme, type Theme } from '../lib/theme';
+import {
+  LIGHT_QUERY,
+  THEME_KEY,
+  loadTheme,
+  saveTheme,
+  systemTheme,
+  type Theme,
+} from '../lib/theme';
 
 /**
  * Brukerens temavalg, ellers systemets. `data-theme` på <html> settes bare etter et eksplisitt valg;
@@ -15,6 +22,19 @@ export function useTheme() {
     const onChange = () => setSystem(query.matches ? 'light' : 'dark');
     query.addEventListener('change', onChange);
     return () => query.removeEventListener('change', onChange);
+  }, []);
+
+  // Valg i en annen fane: `storage` utløses bare i de andre fanene, så vi holder alle i synk.
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== null && e.key !== THEME_KEY) return;
+      const next = loadTheme();
+      if (next) document.documentElement.dataset.theme = next;
+      else delete document.documentElement.dataset.theme;
+      setChosen(next);
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
   }, []);
 
   const theme = chosen ?? system;

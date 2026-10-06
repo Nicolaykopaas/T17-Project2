@@ -9,13 +9,7 @@ export function ThemeToggle() {
   const dark = theme === 'dark';
 
   return (
-    <button
-      type="button"
-      className="theme-toggle"
-      aria-pressed={dark}
-      title="Mørkt tema"
-      onClick={toggle}
-    >
+    <button type="button" className="theme-toggle" aria-pressed={dark} onClick={toggle}>
       <svg
         viewBox="0 0 24 24"
         width="20"

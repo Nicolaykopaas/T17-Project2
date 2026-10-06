@@ -9,13 +9,8 @@
     <!-- Tomt ikon: sparer en forespørsel som ellers ender i 404. -->
     <link rel="icon" href="data:," />
     <title>Filmsøk – IT2810 gruppe 17</title>
-    <!-- Setter lagret tema før første maling, ellers blinker siden i feil tema. Må holdes i synk med lib/theme.ts. -->
-    <script>
-      try {
-        var t = localStorage.getItem('filmsok:theme');
-        if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
-      } catch (e) {}
-    </script>
+    <!-- Synkront og uten defer (ikke type=module): må kjøre før første maling for å unngå blink. -->
+    <script src="%BASE_URL%theme-init.js"></script>
   </head>
   <body>
     <div id="root"></div>
