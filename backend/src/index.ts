@@ -11,8 +11,8 @@ const yoga = createApp({
 });
 
 const server = createServer(yoga);
-server.listen(config.port, () => {
-  console.log(`GraphQL-API på http://localhost:${config.port}/graphql`);
+server.listen(config.port, config.host, () => {
+  console.log(`GraphQL-API på http://${config.host ?? 'localhost'}:${config.port}/graphql`);
 });
 
 // Rydder opp så tilkoblinger lukkes pent (systemd sender SIGTERM, Ctrl+C sender SIGINT).

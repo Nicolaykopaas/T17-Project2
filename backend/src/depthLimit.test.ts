@@ -28,4 +28,17 @@ describe('depthLimit', () => {
   it('hopper over introspeksjon', () => {
     expect(check('{ __schema { types { fields { type { ofType { name } } } } } }')).toHaveLength(0);
   });
+  it('tåler eksponentielt voksende fragmentkjeder uten å henge (CPU-DoS)', () => {
+    const levels = 8;
+    let doc = '{ root { ...F0 } }';
+    for (let i = 0; i < levels; i++) {
+      const uses = Array.from({ length: 10 }, () => `...F${i + 1}`).join(' ');
+      doc += ` fragment F${i} on Node { ${uses} }`;
+    }
+    doc += ` fragment F${levels} on Node { child { child { child { id } } } }`;
+    const started = Date.now();
+    expect(check(doc)).toHaveLength(1); // dybde 1 + 3 + 1 > 3
+    expect(Date.now() - started).toBeLessThan(200);
+    expect(check(doc.replace('child { child { child { id } } }', 'id'))).toHaveLength(0);
+  });
 });
