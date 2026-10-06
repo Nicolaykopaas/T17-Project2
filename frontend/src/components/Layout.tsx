@@ -10,7 +10,10 @@ export function Layout() {
   const first = useRef(true);
   const scrolled = useScrolled();
 
-  // Etter navigasjon flyttes fokus til innholdet, ellers blir tastatur- og skjermleserbrukere stående i menyen.
+  // Etter navigasjon flyttes fokus til sidens h1, slik at skjermleseren leser opp hvor man er i stedet for
+  // å starte på «hovedinnhold». h1 finnes ofte ikke med en gang (lazy-lastet side) eller byttes ut når data
+  // er hentet («Laster …» → tittelen), så vi følger med på innholdet en liten stund og flytter fokus til
+  // gjeldende h1 så lenge brukeren ikke selv har flyttet det. Uten h1 står fokus på <main>.
   // Unntak: skriver brukeren i søkefeltet mens søket sender henne til forsiden, må fokus bli der.
   useEffect(() => {
     if (first.current) {
@@ -18,7 +21,31 @@ export function Layout() {
       return;
     }
     if (document.activeElement?.closest('[role="search"]')) return;
-    main.current?.focus({ preventScroll: true });
+    const el = main.current;
+    if (!el) return;
+
+    let focused: HTMLElement = el;
+    const focusTarget = () => {
+      const h1 = el.querySelector('h1');
+      if (h1 && !h1.hasAttribute('tabindex')) h1.tabIndex = -1;
+      focused = h1 ?? el;
+      focused.focus({ preventScroll: true });
+    };
+    focusTarget();
+
+    const observer = new MutationObserver(() => {
+      const active = document.activeElement;
+      // Fokus er «mistet» (elementet ble fjernet) eller står der vi la det; ellers har brukeren flyttet det.
+      if (active === document.body || active === el || active === focused) focusTarget();
+      else observer.disconnect();
+    });
+    observer.observe(el, { childList: true, subtree: true });
+    // Gi opp etter en stund så innhold som dukker opp lenge etter ikke stjeler fokus.
+    const giveUp = window.setTimeout(() => observer.disconnect(), 3000);
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(giveUp);
+    };
   }, [pathname]);
 
   const skip = (e: MouseEvent) => {

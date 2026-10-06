@@ -122,7 +122,9 @@ a {
   outline: 3px solid var(--focus);
   outline-offset: 2px;
 }
-main:focus {
+main:focus,
+main h1:focus {
+  /* Programmatisk fokus etter rutebytte er ikke et interaktivt element; ring ville bare se ut som en feil. */
   outline: none;
 }
 
