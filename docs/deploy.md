@@ -49,6 +49,10 @@ curl -s -X POST localhost:3001/graphql -H 'content-type: application/json' \
   -d '{"query":"{ search(first: 1) { totalCount } }"}'
 ```
 
+Helsesjekk: `curl -s localhost:3001/health` gir `{"status":"ok"}` (200), eller `{"status":"db-unavailable"}` (503)
+hvis Postgres ikke svarer. Apache videresender den som `/project2/health`; `bash deploy/sjekk.sh` kjører begge.
+Enheten har `Restart=always` og `Wants=postgresql.service` (+ `After`). Frontend viser et banner (NTNU VPN) hvis API-et ikke nås.
+
 ## 4. Apache
 
 ```bash

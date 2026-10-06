@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GENRES_QUERY } from '../graphql/operations';
+import { apiUnavailable } from './apiStatus';
 import { createClient } from './client';
 import { getUserId, uuidV4 } from './userId';
 
@@ -62,5 +63,80 @@ describe('Apollo-klient', () => {
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe(import.meta.env.BASE_URL + 'graphql');
     expect((init.headers as Record<string, string>)['x-user-id']).toBe(getUserId());
+  });
+});
+
+describe('API-status fra error-linken', () => {
+  const ok = () =>
+    Response.json(
+      { data: { genres: ['Drama'] } },
+      { headers: { 'content-type': 'application/json' } },
+    );
+  const noCache = { query: GENRES_QUERY, fetchPolicy: 'no-cache' } as const;
+
+  beforeEach(() => {
+    localStorage.clear();
+    apiUnavailable(false);
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    apiUnavailable(false);
+  });
+
+  it('settes når fetch feiler', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+    await expect(createClient().query(noCache)).rejects.toThrow();
+    expect(apiUnavailable()).toBe(true);
+  });
+
+  it.each([502, 503, 504])('settes ved HTTP %i fra proxyen', async (status) => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('Bad gateway', { status })),
+    );
+    await expect(createClient().query(noCache)).rejects.toThrow();
+    expect(apiUnavailable()).toBe(true);
+  });
+
+  it('settes når svaret ikke er JSON', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('<html>VPN-innlogging</html>', { status: 200 })),
+    );
+    await expect(createClient().query(noCache)).rejects.toThrow();
+    expect(apiUnavailable()).toBe(true);
+  });
+
+  it.each([200, 400])('settes ikke ved GraphQL-feil med HTTP %i', async (status) => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Response.json({ errors: [{ message: 'Ugyldig' }] }, { status })),
+    );
+    await expect(createClient().query(noCache)).rejects.toThrow();
+    expect(apiUnavailable()).toBe(false);
+  });
+
+  it('settes når backenden melder SERVICE_UNAVAILABLE (database nede)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        Response.json({
+          errors: [{ message: 'Nede', extensions: { code: 'SERVICE_UNAVAILABLE' } }],
+        }),
+      ),
+    );
+    await expect(createClient().query(noCache)).rejects.toThrow();
+    expect(apiUnavailable()).toBe(true);
+  });
+
+  it('nullstilles når et kall lykkes', async () => {
+    const fetchMock = vi.fn().mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    fetchMock.mockImplementation(async () => ok());
+    vi.stubGlobal('fetch', fetchMock);
+    const client = createClient();
+    await expect(client.query(noCache)).rejects.toThrow();
+    expect(apiUnavailable()).toBe(true);
+    await client.query(noCache);
+    expect(apiUnavailable()).toBe(false);
   });
 });

@@ -15,6 +15,8 @@ export default tseslint.config(
       'playwright-report/**',
       'test-results/**',
       'data/**',
+      // Agentenes midlertidige git-worktrees er kopier av repoet og skal ikke lintes to ganger.
+      '.claude/**',
     ],
   },
   js.configs.recommended,

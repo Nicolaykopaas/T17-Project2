@@ -8,6 +8,9 @@ export function createPool(connectionString: string): pg.Pool {
   const pool = new pg.Pool({
     connectionString,
     max: 10,
+    // Uten tidsgrense henger en tilkobling mot en database bak brannmur til OS gir opp, og
+    // /health og spørringer fyller poolen mens de venter.
+    connectionTimeoutMillis: 5_000,
     statement_timeout: 15_000,
   });
   // Uten en error-lytter krasjer Node hvis en ledig tilkobling brytes (f.eks. Postgres restarter).

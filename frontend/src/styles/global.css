@@ -1405,3 +1405,33 @@ fieldset {
   aspect-ratio: auto;
   border-radius: 0;
 }
+
+/* Globalt banner når API-et ikke kan nås. Bruker temaets tokens (--danger har AA-kontrast mot --surface i begge moduser). */
+.api-banner {
+  background: var(--surface);
+  border-bottom: 3px solid var(--danger);
+  color: var(--text);
+}
+.api-banner__inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+  padding-block: 0.9rem;
+}
+.api-banner__text {
+  flex: 1 1 20rem;
+}
+.api-banner__text p {
+  margin: 0;
+}
+.api-banner__text p + p {
+  margin-top: 0.25rem;
+  color: var(--muted);
+}
+.api-banner__status {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--muted);
+}
