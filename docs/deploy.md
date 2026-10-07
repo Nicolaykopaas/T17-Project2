@@ -72,9 +72,15 @@ sudo apachectl configtest && sudo systemctl reload apache2
 cd /opt/project2 && git pull && npm ci && npm run build
 sudo systemctl stop project2-backend          # se «Låsvindu» under
 npm run db:migrate
-sudo cp -r frontend/dist/* /var/www/html/project2/
-sudo systemctl start project2-backend
+sudo systemctl start project2-backend         # opp igjen med en gang; importene under kan kjøre mens den svarer
+npm run db:seed && npm run db:artwork -- 2000 && npm run db:archive
+sudo cp -r frontend/dist/* /var/www/html/project2/ && sudo systemctl reload apache2
 ```
+
+`deploy/setup-vm.sh` følger samme rekkefølge: stopp, migrer, start backend, så import, plakater og
+Archive-skanning, og til slutt publisering av frontend og reload av Apache. Importene bruker upsert
+og kan derfor kjøre mens backend svarer, så siden er bare nede mens migreringen går (sekunder, ikke
+minutter). Skriptet avslutter med feilmelding og avsluttingskode 1 hvis API-et ikke svarer like etter start.
 
 ## Sikkerhetsheadere og Content-Security-Policy
 
@@ -101,7 +107,9 @@ sjekker at forside, detalj og spiller laster uten brudd, og feiler hvis `fronten
 tre GIN-indekser på dem. `ALTER TABLE ... ADD COLUMN ... STORED` skriver om hele tabellen mens den
 holder `ACCESS EXCLUSIVE`-lås, så alle spørringer mot `titles` står i kø til den er ferdig (ca. 4 s lokalt, regn med 10–20 s
 for 120 000 titler på VM-en; indeksbyggingen kommer i tillegg). Kjør derfor migreringen med backend
-stoppet, slik `deploy/setup-vm.sh` og kommandoene over gjør. Senere migreringer som ikke skriver om
+stoppet, slik `deploy/setup-vm.sh` og kommandoene over gjør. `scripts/migrate.ts` setter
+`statement_timeout = 0` (poolens 15 s-grense ville avbrutt og rullet tilbake omskrivingen) og
+`lock_timeout = 30s` på migreringsklienten, og nullstiller begge etterpå. Senere migreringer som ikke skriver om
 tabellen trenger ikke dette.
 
 **Nettverk.** Med `NODE_ENV=production` (satt i `deploy/project2-backend.service`) lytter backend bare

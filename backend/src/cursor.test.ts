@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decodeCursor, encodeCursor, type KeyDef } from './keyset.js';
+import { decodeCursor, encodeCursor, TIMESTAMP_PATTERN, type KeyDef } from './keyset.js';
 
 const keys: KeyDef[] = [
   { expr: 'a', cast: 'int', kind: 'int' },
@@ -38,5 +38,35 @@ describe('cursor', () => {
     const k: KeyDef[] = [{ expr: 't', cast: 'timestamptz', kind: 'text', pattern: /^\d+$/ }];
     expect(() => decodeCursor(encodeCursor('S', ['abc']), 'S', k)).toThrow();
     expect(decodeCursor(encodeCursor('S', ['123']), 'S', k)).toEqual(['123']);
+  });
+
+  describe('tidsstempel', () => {
+    const ts: KeyDef[] = [
+      { expr: 't', cast: 'timestamptz', kind: 'text', pattern: TIMESTAMP_PATTERN },
+    ];
+    const decode = (v: string) => decodeCursor(encodeCursor('S', [v]), 'S', ts);
+
+    it.each([
+      '2026-05-01 12:00:00+00',
+      '2026-05-01 12:00:00.123456+02:00',
+      '2024-02-29T23:59:59Z',
+      '2026-05-01 12:00:00',
+    ])('godtar %s', (v) => {
+      expect(decode(v)).toEqual([v]);
+    });
+
+    it.each([
+      '2026-13-45 00:00:00',
+      '2026-02-30 00:00:00',
+      '2025-02-29 00:00:00',
+      '2026-00-10 00:00:00',
+      '0000-01-01 00:00:00',
+      '2026-05-01 24:00:00',
+      '2026-05-01 12:60:00',
+      '2026-05-01 12:00:60',
+      '2026-05-01 12:00:00+99',
+    ])('avviser ugyldig dato eller klokkeslett %s som ugyldig cursor', (v) => {
+      expect(() => decode(v)).toThrowError(/cursor/i);
+    });
   });
 });

@@ -367,6 +367,60 @@ describe('antall kall per side', () => {
   });
 });
 
+describe('begrenset oppslagskø', () => {
+  it('avviser oppslag utover køgrensen uten TMDB-kall og uten negativ cache', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    let calls = 0;
+    const svc = service({
+      concurrency: 1,
+      maxQueue: 2,
+      fetch: async (...args) => {
+        calls++;
+        await gate;
+        return fetch(...args);
+      },
+    });
+    // 1 pågår + 2 i kø = 3 aksepterte; de to neste avvises.
+    const ids = ['tt0000001', 'tt0000002', 'tt0000003', 'tt0000004', 'tt0000005'];
+    const lookups = ids.map((id) => svc.lookup(id, 'MOVIE'));
+    const rejected = await Promise.all([lookups[3]!, lookups[4]!]);
+    expect(rejected.map((o) => o.kind)).toEqual(['busy', 'busy']);
+    expect(calls).toBe(1);
+
+    release();
+    const accepted = await Promise.all(lookups.slice(0, 3));
+    expect(accepted.map((o) => o.kind)).toEqual(['found', 'found', 'found']);
+    expect(await rowFor('tt0000004')).toBeUndefined();
+
+    // Ingen negativ cache: når køen er tom, slås de avviste opp som vanlig.
+    expect((await svc.lookup('tt0000004', 'MOVIE')).kind).toBe('found');
+    expect((await rowFor('tt0000004')).status).toBe('found');
+  });
+
+  it('gir null for avviste titler i et GraphQL-svar, ikke feil', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const svc = service({
+      concurrency: 1,
+      maxQueue: 0,
+      batchDeadlineMs: 100,
+      fetch: async (...args) => {
+        await gate;
+        return fetch(...args);
+      },
+    });
+    const res = await gql(
+      svc,
+      '{ a: title(id: "tt0000001") { posterUrl } b: title(id: "tt0000002") { posterUrl } }',
+    );
+    release();
+    expect(res.errors).toBeUndefined();
+    expect(res.data.a.posterUrl).toBeNull();
+    expect(res.data.b.posterUrl).toBeNull();
+  });
+});
+
 describe('db:artwork (prefetch)', () => {
   it('henter de mest populære uten rad, hopper over ferdige og kan kjøres på nytt', async () => {
     const svc = service();

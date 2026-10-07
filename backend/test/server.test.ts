@@ -2,7 +2,14 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { buildSchema, parse, specifiedRules, validate } from 'graphql';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createApp, MAX_COST, MAX_FIELDS, MAX_QUERY_DEPTH, MAX_ROOT_FIELDS } from '../src/app.js';
+import {
+  createApp,
+  MAX_COST,
+  MAX_FIELDS,
+  MAX_QUERY_DEPTH,
+  MAX_ROOT_FIELDS,
+  MAX_TOKENS,
+} from '../src/app.js';
 import { complexityLimit } from '../src/complexityLimit.js';
 import { depthLimit } from '../src/depthLimit.js';
 import { typeDefs } from '../src/typeDefs.js';
@@ -163,8 +170,14 @@ describe('servergrenser', () => {
       }
     });
 
-    it('avviser hundrevis av aliasede søk i ett dokument', async () => {
-      const q = `{ ${Array.from({ length: 300 }, (_, i) => `s${i}: search(query: "a") { totalCount }`).join(' ')} }`;
+    it('holder frontendens operasjoner godt under tokengrensen (minst 4 x margin)', () => {
+      for (const { name, source } of documents) {
+        expect(() => parse(source, { maxTokens: MAX_TOKENS / 4 }), name).not.toThrow();
+      }
+    });
+
+    it('avviser mange aliasede søk i ett dokument (under tokengrensen)', async () => {
+      const q = `{ ${Array.from({ length: 50 }, (_, i) => `s${i}: search(query: "a") { totalCount }`).join(' ')} }`;
       const res = await run(q);
       expect(res.data).toBeUndefined();
       expect(res.errors).toHaveLength(1);
@@ -173,7 +186,7 @@ describe('servergrenser', () => {
     });
 
     it('avviser mange aliasede TMDB-felt på én tittel', async () => {
-      const q = `{ title(id: "tt0000001") { ${Array.from({ length: 200 }, (_, i) => `p${i}: posterUrl(width: 92)`).join(' ')} } }`;
+      const q = `{ title(id: "tt0000001") { ${Array.from({ length: 160 }, (_, i) => `p${i}: posterUrl`).join(' ')} } }`;
       const res = await run(q);
       expect(res.data).toBeUndefined();
       expect(res.errors![0]!.extensions?.code).toBe('BAD_USER_INPUT');
@@ -185,6 +198,26 @@ describe('servergrenser', () => {
         `{ ${Array.from({ length: n }, (_, i) => `g${i}: genres`).join(' ')} }`;
       expect((await run(roots(8))).errors).toBeUndefined();
       expect((await run(roots(9))).errors?.[0]?.extensions?.code).toBe('BAD_USER_INPUT');
+    });
+  });
+
+  describe('CPU-grenser ved parsing', () => {
+    it('avviser 8 000 duplikate felt raskt med en forståelig feil', async () => {
+      // Uten tokengrensen brukte valideringen (kvadratisk) flere sekunder på dette dokumentet.
+      const q = `{ ${'genres '.repeat(8000)}}`;
+      const start = performance.now();
+      const res = await post(createApp({ pool }), q);
+      const elapsed = performance.now() - start;
+      const body = await res.json();
+      expect(body.data).toBeUndefined();
+      expect(body.errors).toHaveLength(1);
+      expect(body.errors[0].message).toMatch(/token/i);
+      expect(elapsed).toBeLessThan(200);
+    });
+
+    it('avviser for store forespørselskropper med 413', async () => {
+      const res = await post(createApp({ pool }), `{ genres #${'x'.repeat(70_000)}\n }`);
+      expect(res.status).toBe(413);
     });
   });
 

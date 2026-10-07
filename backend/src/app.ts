@@ -1,4 +1,4 @@
-import { GraphQLError, type ValidationRule } from 'graphql';
+import { GraphQLError, parse, type ValidationRule } from 'graphql';
 import { createYoga, type Plugin } from 'graphql-yoga';
 import { ArtworkService } from './artwork.js';
 import { config } from './config.js';
@@ -24,6 +24,15 @@ export const MAX_FIELDS = 150;
 // største spørring (forsiden/Featured) ligger på ca. 1 100; 2 500 slipper den gjennom to ganger,
 // men stopper f.eks. 8 x search(first: 50) med nøstede anmeldelser.
 export const MAX_COST = 2500;
+// Tak på antall tokens i ett dokument. graphql-js sin regel OverlappingFieldsCanBeMerged er
+// kvadratisk i antall felt, og complexityLimit stopper ikke de andre reglene: `{ genres genres ... }`
+// med 8 000 felt (55 kB) holdt event-loopen i ca. 5 s. Tokengrensen avviser dokumentet under
+// parsing, før noen valideringsregel kjører. Frontendens største operasjon har 128 tokens og
+// introspeksjonsspørringen til GraphiQL ca. 180, så 1 000 gir åtte ganger slingringsmonn.
+export const MAX_TOKENS = 1000;
+// Alle legitime forespørsler er små (spørring + variabler); 25 MB-standarden i Yoga lar en
+// angriper tvinge oss til å lese og JSON-parse store kropper før noen grense slår inn.
+export const MAX_REQUEST_BODY_BYTES = 64 * 1024;
 
 /**
  * Egen regel i stedet for graphqls NoSchemaIntrospectionCustomRule: den bruker instanceof-sjekker
@@ -97,6 +106,9 @@ export function createApp({
 
   // Egendefinert plugin i stedet for ekstra pakker: envelop lar oss legge til valideringsregler.
   const limits: Plugin = {
+    onParse({ setParseFn }) {
+      setParseFn((source, options) => parse(source, { ...options, maxTokens: MAX_TOKENS }));
+    },
     onValidate({ addValidationRule }) {
       addValidationRule(depthLimit(MAX_QUERY_DEPTH));
       addValidationRule(
@@ -130,6 +142,7 @@ export function createApp({
     graphqlEndpoint: '/graphql',
     healthCheckEndpoint: '/__yoga-health',
     plugins: [health, limits],
+    maxRequestBodySize: MAX_REQUEST_BODY_BYTES,
     // `req` finnes bare når Yoga kjører under node:http (ikke i yoga.fetch i tester).
     context: ({ request, req }) =>
       createContext(

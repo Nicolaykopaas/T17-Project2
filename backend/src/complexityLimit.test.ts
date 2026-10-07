@@ -4,7 +4,7 @@ import { complexityLimit } from './complexityLimit.js';
 
 const schema = buildSchema(`
   type Node { id: ID, name: String, child: Node, reviews(first: Int): Node }
-  type Query { root: Node, search(first: Int): Node, myList(first: Int): Node }
+  type Query { root: Node, facets: Node, search(first: Int): Node, myList(first: Int): Node }
 `);
 const check = (q: string, maxRootFields = 3, maxFields = 10, maxCost = 1e9) =>
   validate(schema, parse(q), [complexityLimit({ maxRootFields, maxFields, maxCost })]);
@@ -103,10 +103,21 @@ describe('complexityLimit', () => {
       expect(cost('{ search { reviews { id } } }', 220)).toHaveLength(1);
     });
 
-    it('regner en variabel first som 50, med mindre den har standardverdi', () => {
+    it('regner en variabel first som 50, også når den har en lav standardverdi', () => {
       expect(cost('query($n: Int) { search(first: $n) { id } }', 51)).toHaveLength(0);
       expect(cost('query($n: Int) { search(first: $n) { id } }', 50)).toHaveLength(1);
-      expect(cost('query($n: Int = 5) { search(first: $n) { id } }', 6)).toHaveLength(0);
+      // Standardverdien kan overstyres av klienten, så den skal ikke gi rabatt.
+      expect(cost('query($n: Int = 5) { search(first: $n) { id } }', 51)).toHaveLength(0);
+      expect(cost('query($n: Int = 5) { search(first: $n) { id } }', 50)).toHaveLength(1);
+    });
+
+    it('stopper omgåelsen via standardverdi på variabel (default 1, sendt som 50)', () => {
+      const q =
+        'query($n: Int = 1) { a: search(first: $n) { id name } b: search(first: $n) { id name } }';
+      // Regnet som first = 1 ville dette kostet 2 x (1 + 2) = 6; riktig er 2 x (1 + 50 x 2) = 202.
+      const errors = cost(q, 100);
+      expect(errors).toHaveLength(1);
+      expect(errors[0]?.message).toContain('kostbar');
     });
 
     it('multipliserer nøstede lister og avviser 8 x search(first: 50) med reviews(first: 50)', () => {
@@ -116,6 +127,19 @@ describe('complexityLimit', () => {
       const errors = check(q, 8, 1000, 2500);
       expect(errors).toHaveLength(1);
       expect(errors[0]?.message).toContain('kostbar');
+    });
+
+    it('gir facets en høy fast vekt slik at aliasede facets stoppes', () => {
+      const facets = (n: number) =>
+        `{ ${Array.from({ length: n }, (_, i) => `f${i}: facets { id }`).join(' ')} }`;
+      // Hver forekomst: 1 + 500 + 1 (id) = 502; grensen 2 500 rommer fire, ikke fem.
+      expect(check(facets(1), 8, 100, 2500)).toHaveLength(0);
+      expect(check(facets(4), 8, 100, 2500)).toHaveLength(0);
+      const errors = check(facets(5), 8, 100, 2500);
+      expect(errors).toHaveLength(1);
+      expect(errors[0]?.message).toContain('kostbar');
+      // 8 aliaser (rotfeltgrensen) ga før 32 parallelle aggregeringer.
+      expect(check(facets(8), 8, 100, 2500)).toHaveLength(1);
     });
 
     it('teller listevekt gjennom fragmenter', () => {

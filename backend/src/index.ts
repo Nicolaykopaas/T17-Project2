@@ -11,6 +11,12 @@ const yoga = createApp({
 });
 
 const server = createServer(yoga);
+// Node lukker ledige forbindelser etter 5 s, og Apache (mod_proxy) gjenbruker forbindelser lenger
+// enn det. Treffer en forespørsel en forbindelse Node akkurat har lukket, gir Apache 502. Lengre
+// tidsgrense enn Apaches gjør at det er Apache som lukker først. headersTimeout må ligge over
+// keepAliveTimeout, ellers kan Node avbryte en gjenbrukt forbindelse midt i neste forespørsel.
+server.keepAliveTimeout = 65_000;
+server.headersTimeout = 66_000;
 server.listen(config.port, config.host, () => {
   console.log(`GraphQL-API på http://${config.host ?? 'localhost'}:${config.port}/graphql`);
 });

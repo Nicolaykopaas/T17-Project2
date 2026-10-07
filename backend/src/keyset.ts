@@ -53,13 +53,34 @@ export function encodeCursor(signature: string, values: unknown[]): string {
 
 const INT32 = 2_147_483_647;
 
+/**
+ * Mønsteret slipper gjennom `2026-13-45 00:00:00`, som Postgres avviser med 22008 (og klienten
+ * ville fått en maskert 500). Komponentene sjekkes derfor mot en ekte kalender: Date.UTC ruller
+ * ugyldige datoer over (30. februar blir 2. mars), så en rundtur avslører dem. Date.parse på selve
+ * strengen ville vært enklere, men Postgres' format (`+00`, mikrosekunder) er ikke ISO 8601, og
+ * resultatet av ikke-ISO-parsing varierer mellom motorer.
+ */
+function validTimestamp(v: string): boolean {
+  const m =
+    /^(\d{4})-(\d\d)-(\d\d)[ T](\d\d):(\d\d):(\d\d)(?:\.\d+)?(?:[+-](\d\d)(?::?(\d\d))?)?/.exec(v);
+  if (!m) return false;
+  const [year, month, day, hour, minute, second, offH, offM] = m
+    .slice(1)
+    .map((x) => Number(x ?? 0)) as [number, number, number, number, number, number, number, number];
+  if (year < 1 || hour > 23 || minute > 59 || second > 59 || offH > 15 || offM > 59) return false;
+  const d = new Date(Date.UTC(2000, month - 1, day));
+  d.setUTCFullYear(year);
+  return d.getUTCFullYear() === year && d.getUTCMonth() === month - 1 && d.getUTCDate() === day;
+}
+
 function validValue(k: KeyDef, v: unknown): boolean {
   if (k.kind === 'text') {
     return (
       typeof v === 'string' &&
       v.length <= 1000 &&
       !v.includes('\0') &&
-      (k.pattern ? k.pattern.test(v) : true)
+      (k.pattern ? k.pattern.test(v) : true) &&
+      (k.pattern === TIMESTAMP_PATTERN ? validTimestamp(v) : true)
     );
   }
   if (typeof v !== 'number' || !Number.isFinite(v)) return false;
