@@ -218,7 +218,9 @@ main {
   align-content: center;
   align-items: center;
   gap: 0.25rem 1rem;
-  height: var(--header-h);
+  /* min-height, ikke height: ved 320 px bredde eller 400 % zoom brytes headeren over flere rader, og en fast
+     høyde lot innholdet flyte ut over (og under) headeren. */
+  min-height: var(--header-h);
 }
 .brand {
   font-weight: 900;
@@ -1515,6 +1517,30 @@ fieldset {
 }
 .row-anchor:focus-visible {
   outline-offset: -3px;
+}
+
+/* Lav viewport (landskap på mobil, 400 % zoom): en klebrig header på flere rader ville tatt halve skjermen
+   og dekket fokuserte elementer (WCAG 2.4.11/1.4.10). Da følger den siden, og alt som kompenserte for en
+   overlappende header (heltebilde under headeren, scroll-margin) skrus av. Over heltebildet ville den ellers
+   vært gjennomsiktig uten bilde bak seg, så den får fast bakgrunn. */
+@media (max-height: 30rem) {
+  .site-header {
+    position: static;
+  }
+  :root[data-hero] .site-header:not(.is-scrolled) {
+    background: var(--media-bg);
+    box-shadow: 0 1px 0 #2c2f38;
+  }
+  .hero,
+  .title-hero {
+    margin-top: 0;
+  }
+  .title-hero {
+    padding-top: 1rem;
+  }
+  .row-anchor {
+    scroll-margin-top: 0.5rem;
+  }
 }
 
 /* Globalt banner når API-et ikke kan nås. Bruker temaets tokens (--danger har AA-kontrast mot --surface i begge moduser). */

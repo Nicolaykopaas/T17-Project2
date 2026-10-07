@@ -58,7 +58,22 @@ test('ingen horisontal scroll ved 320 px', async ({ page }) => {
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow, path).toBeLessThanOrEqual(0);
+    // Headeren brytes over flere rader her; den skal vokse med innholdet, ikke la søkefeltet flyte ut under seg.
+    const [header, search] = await Promise.all([
+      page.locator('.site-header').boundingBox(),
+      page.getByRole('search').boundingBox(),
+    ]);
+    expect(search!.y + search!.height, path).toBeLessThanOrEqual(header!.y + header!.height + 1);
   }
+});
+
+test('lav viewport (400 % zoom, landskap): headeren er ikke klebrig og dekker ikke innholdet', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 200 });
+  await page.goto('./');
+  await expect(page.getByRole('heading', { level: 1 })).toBeAttached();
+  await expect(page.locator('.site-header')).toHaveCSS('position', 'static');
 });
 
 // Brukervalgt tema skal overstyre systemets og være tilgjengelig i begge tilstander.
