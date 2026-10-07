@@ -75,6 +75,12 @@ describe('Layout', () => {
     expect(within(header).getByLabelText('Søk etter tittel')).toBeInTheDocument();
   });
 
+  it('fjerner heltebanner-markeringen fra theme-init.js når siden ikke viser noe banner', () => {
+    document.documentElement.dataset.hero = '';
+    setup();
+    expect(document.documentElement).not.toHaveAttribute('data-hero');
+  });
+
   it('skip-link flytter fokus til main', async () => {
     setup();
     await userEvent.click(screen.getByRole('link', { name: 'Hopp til innhold' }));

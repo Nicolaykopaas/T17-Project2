@@ -923,6 +923,13 @@ fieldset {
 .hero--skeleton {
   align-items: flex-end;
 }
+/* Plassholder i index.html; skjult utenfor forsiden (se theme-init.js). */
+.shell-hero {
+  display: none;
+}
+:root[data-hero] .shell-hero {
+  display: flex;
+}
 .hero--skeleton .skeleton__line--title {
   height: 2.5rem;
   width: min(24rem, 80%);
