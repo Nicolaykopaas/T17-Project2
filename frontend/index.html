@@ -21,30 +21,31 @@
     <!--
       Statisk app-skall: gir første maling (header og heltebanner-plassholder) så snart CSS er lastet, i stedet for
       etter at JS er lastet og kjørt. Samme klasser og mål som Layout/HeroSkeleton, så det ikke hopper når React
-      tar over; createRoot erstatter alt under, så det blir aldri doble landemerker. Plassholderen vises bare på
+      tar over; createRoot erstatter alt under. Skallet er skjult for hjelpemidler og har ingen lenker (ingen doble
+      landemerker, ingenting å klikke på som forsvinner) og varer bare noen millisekunder. Plassholderen vises bare på
       forsiden (theme-init.js setter data-hero der), ellers ville andre sider blinket med et heltebanner.
     -->
     <div id="root">
-      <header class="site-header">
+      <header class="site-header" aria-hidden="true">
         <div class="container site-header__inner">
-          <a href="%BASE_URL%" class="brand">Film<span>søk</span></a>
-          <nav aria-label="Hovedmeny">
+          <a class="brand">Film<span>søk</span></a>
+          <nav>
             <ul>
-              <li><a href="%BASE_URL%">Søk</a></li>
-              <li><a href="%BASE_URL%my-list">Min liste</a></li>
+              <li><a>Søk</a></li>
+              <li><a>Min liste</a></li>
             </ul>
           </nav>
         </div>
       </header>
-      <main>
-        <div class="hero hero--skeleton shell-hero" aria-hidden="true">
-          <div class="hero__content container">
-            <div class="skeleton__line skeleton__line--title"></div>
-            <div class="skeleton__line skeleton__line--short"></div>
-          </div>
+      <div class="shell-hero hero hero--skeleton" aria-hidden="true">
+        <div class="hero__content container">
+          <div class="skeleton__line skeleton__line--title"></div>
+          <div class="skeleton__line skeleton__line--short"></div>
         </div>
-        <noscript><p class="container">Filmsøk trenger JavaScript for å fungere.</p></noscript>
-      </main>
+      </div>
+      <noscript
+        ><main class="container"><p>Filmsøk trenger JavaScript for å fungere.</p></main></noscript
+      >
     </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
