@@ -10,6 +10,8 @@ import { GRID_SIZES, PosterCard } from './PosterCard';
 import { PosterSkeleton } from './PosterSkeleton';
 
 export const PAGE_SIZE = 20;
+/** Så mange plakater ligger over folden på vanlige skjermer (2 rader på mobil, 1 på desktop). */
+const EAGER_POSTERS = 6;
 
 interface Props {
   state: SearchState;
@@ -100,8 +102,13 @@ export function SearchResults({ state, onReset }: Props) {
       {result && total > 0 && (
         <>
           <ul className={`poster-grid${loading ? ' is-stale' : ''}`}>
-            {result.edges.map((edge) => (
-              <PosterCard key={edge.node.id} title={edge.node} sizes={GRID_SIZES} />
+            {result.edges.map((edge, i) => (
+              <PosterCard
+                key={edge.node.id}
+                title={edge.node}
+                sizes={GRID_SIZES}
+                priority={i === 0 ? 'high' : i < EAGER_POSTERS ? 'eager' : undefined}
+              />
             ))}
           </ul>
           <div ref={sentinel} aria-hidden="true" />

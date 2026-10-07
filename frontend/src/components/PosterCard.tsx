@@ -11,6 +11,11 @@ interface Props {
   sizes?: string;
   /** Overskriftsnivå må passe sidens struktur (Min liste har ingen h2 over kortene). */
   headingLevel?: 2 | 3;
+  /**
+   * Plakater over folden skal ikke være lazy (nettleseren venter ellers med å hente dem til layout
+   * er ferdig, og LCP blir sen). `high` gir i tillegg fetchpriority=high til den første, som oftest er LCP.
+   */
+  priority?: 'high' | 'eager';
 }
 
 // Kortene står i to sammenhenger: rader (fast bredde) og rutenett (flytende).
@@ -22,7 +27,13 @@ export const GRID_SIZES = '(min-width: 64rem) 12rem, (min-width: 40rem) 30vw, 45
  * klikkbart uten at hele innholdet blir lenketekst for skjermlesere, og tastaturfokus
  * får én tydelig ramme rundt plakaten.
  */
-export function PosterCard({ title, actions, sizes = ROW_SIZES, headingLevel = 3 }: Props) {
+export function PosterCard({
+  title,
+  actions,
+  sizes = ROW_SIZES,
+  headingLevel = 3,
+  priority,
+}: Props) {
   // Samme tittel kan stå i flere rader på samme side, så id-en kan ikke bygge på tittel-id alene.
   const headingId = useId();
   const Heading = `h${headingLevel}` as const;
@@ -45,7 +56,8 @@ export function PosterCard({ title, actions, sizes = ROW_SIZES, headingLevel = 3
               alt=""
               width={185}
               height={278}
-              loading="lazy"
+              loading={priority ? 'eager' : 'lazy'}
+              fetchPriority={priority === 'high' ? 'high' : undefined}
               decoding="async"
             />
           ) : (
