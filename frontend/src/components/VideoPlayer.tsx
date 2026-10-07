@@ -59,6 +59,11 @@ const PATHS = {
 export function VideoPlayer({ src, title, archiveUrl, subtitlesUrl, poster, durationHint }: Props) {
   const wrapper = useRef<HTMLDivElement>(null);
   const video = useRef<HTMLVideoElement>(null);
+  const playButton = useRef<HTMLButtonElement>(null);
+  const retryButton = useRef<HTMLButtonElement>(null);
+  // Ved feil og nytt forsøk byttes kontrollene mot feilmeldingen og tilbake; knappen som hadde fokus forsvinner
+  // begge veier. Hvor fokus skal lande etter neste render (kontrollene finnes ikke før den er committet).
+  const focusAfter = useRef<'retry' | 'play' | null>(null);
   const idleTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -118,6 +123,14 @@ export function VideoPlayer({ src, title, archiveUrl, subtitlesUrl, poster, dura
     el.volume = prefs.volume;
     el.muted = prefs.muted;
   }, [prefs, attempt, subsOk]);
+
+  useEffect(() => {
+    const target = focusAfter.current;
+    if (target === 'retry' && failed) retryButton.current?.focus();
+    else if (target === 'play' && !failed) playButton.current?.focus();
+    else return;
+    focusAfter.current = null;
+  }, [failed]);
 
   useEffect(() => {
     const onChange = () => setFullscreen(document.fullscreenElement === wrapper.current);
@@ -270,6 +283,8 @@ export function VideoPlayer({ src, title, archiveUrl, subtitlesUrl, poster, dura
       // Første feil med undertekster: prøv på nytt uten CORS-kravet.
       setSubsOk(false);
     } else {
+      // Bare når fokus var i spilleren: en feil som kommer mens brukeren er et annet sted skal ikke stjele det.
+      if (wrapper.current?.contains(document.activeElement)) focusAfter.current = 'retry';
       setFailed(true);
       setPlaying(false);
       setWaiting(false);
@@ -277,6 +292,7 @@ export function VideoPlayer({ src, title, archiveUrl, subtitlesUrl, poster, dura
   };
 
   const retry = () => {
+    focusAfter.current = 'play';
     setFailed(false);
     setReady(false);
     setWaiting(false);
@@ -392,7 +408,7 @@ export function VideoPlayer({ src, title, archiveUrl, subtitlesUrl, poster, dura
             </a>
             .
           </p>
-          <button type="button" className="btn" onClick={retry}>
+          <button ref={retryButton} type="button" className="btn" onClick={retry}>
             Prøv igjen
           </button>
         </div>
@@ -418,6 +434,7 @@ export function VideoPlayer({ src, title, archiveUrl, subtitlesUrl, poster, dura
           />
           <div className="player__row">
             <button
+              ref={playButton}
               type="button"
               className="player__btn"
               aria-label={playing ? 'Pause' : 'Spill av'}
