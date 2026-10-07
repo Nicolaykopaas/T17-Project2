@@ -143,8 +143,11 @@ test('ingen treff og direkte lenke til ukjent side', async ({ page }) => {
 
 test('tastatur: skip-link flytter fokus til hovedinnholdet', async ({ page }) => {
   await page.goto('./');
-  await page.keyboard.press('Tab');
   const skip = page.getByRole('link', { name: /Hopp til innhold/ });
+  // Første render skjer i en transition (main.tsx), og til da vises bare det statiske skallet uten
+  // fokuserbare elementer. Vent til appen er montert før Tab, slik en bruker ser siden før hen tabber.
+  await expect(skip).toBeAttached();
+  await page.keyboard.press('Tab');
   await expect(skip).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.locator('main')).toBeFocused();
