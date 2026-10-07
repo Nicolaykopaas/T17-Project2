@@ -247,22 +247,31 @@ describe('TitlePage: anmeldelser', () => {
   });
 
   it('«Vis flere» beholder fokus og sender ikke to forespørsler mens den laster', async () => {
-    const { user, log } = setup({
-      TitleDetails: (vars: Vars) =>
-        vars.after
-          ? {
-              title: makeDetails({
-                reviewCount: 12,
-                reviews: makeReviewConnection(many.slice(10), 12, false),
-              }),
-            }
-          : {
-              title: makeDetails({
-                reviewCount: 12,
-                reviews: makeReviewConnection(many.slice(0, 10), 12, true),
-              }),
-            },
-    });
+    // Side to svarer sent, slik at «Laster …»-tilstanden varer lenge nok til å kunne observeres.
+    const slowPage2 = {
+      request: { query: TITLE_QUERY, variables: (v: Vars) => !!v.after },
+      maxUsageCount: 1,
+      delay: 200,
+      result: {
+        data: {
+          title: makeDetails({
+            reviewCount: 12,
+            reviews: makeReviewConnection(many.slice(10), 12, false),
+          }),
+        },
+      },
+    };
+    const { user, log } = setup(
+      {
+        TitleDetails: () => ({
+          title: makeDetails({
+            reviewCount: 12,
+            reviews: makeReviewConnection(many.slice(0, 10), 12, true),
+          }),
+        }),
+      },
+      [slowPage2],
+    );
     await screen.findByText('Anmelder 1');
     const button = screen.getByRole('button', { name: 'Vis flere' });
     await user.click(button);
@@ -274,7 +283,7 @@ describe('TitlePage: anmeldelser', () => {
     expect(button).toHaveFocus();
     await user.click(button);
     await screen.findByText('Anmelder 12');
-    expect(log.TitleDetails.filter((v) => v.after)).toHaveLength(1);
+    expect(log.TitleDetails.filter((v) => v.after)).toHaveLength(0);
   });
 
   describe.each([

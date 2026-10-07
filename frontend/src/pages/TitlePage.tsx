@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router';
+import { Link, useParams } from 'react-router';
 import { useQuery } from '@apollo/client/react';
 import { CombinedGraphQLErrors } from '@apollo/client';
 import { useApiUnavailable } from '../apollo/apiStatus';
+import { BackLink } from '../components/BackLink';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { ListToggleButton } from '../components/ListToggleButton';
 import { ReviewForm } from '../components/ReviewForm';
@@ -22,26 +23,6 @@ const REVIEWS_PAGE_SIZE = 10;
 function HeaderOverlay() {
   useHeaderOverlay();
   return null;
-}
-
-/** Fra søket brukes historikken, så resultater og scrollposisjon er intakt. Ved direkte åpning finnes ingen «forrige». */
-function BackLink() {
-  const navigate = useNavigate();
-  const { key } = useLocation();
-  if (key === 'default') {
-    return (
-      <p className="backlink">
-        <Link to="/">← Til søket</Link>
-      </p>
-    );
-  }
-  return (
-    <p className="backlink">
-      <button type="button" className="btn btn--link" onClick={() => void navigate(-1)}>
-        ← Tilbake
-      </button>
-    </p>
-  );
 }
 
 export default function TitlePage() {
@@ -137,7 +118,7 @@ export default function TitlePage() {
           )}
         </div>
         <div className="title-hero__inner container">
-          <BackLink />
+          <BackLink fallbackTo="/" fallbackLabel="← Til søket" />
           <div className="title-hero__body">
             <div className="title-hero__poster" aria-hidden="true">
               {poster ? (
