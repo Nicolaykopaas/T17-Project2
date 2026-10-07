@@ -15,3 +15,11 @@ export function rateLimitMessage(error: unknown): string | null {
   const n = Math.ceil(seconds);
   return `For mange forsøk. Vent ${n} ${n === 1 ? 'sekund' : 'sekunder'} og prøv igjen.`;
 }
+
+/** Serveren svarte, men avviste selve inputen (f.eks. for langt søk). Å prøve samme forespørsel igjen hjelper ikke. */
+export function isBadUserInput(error: unknown): boolean {
+  return (
+    CombinedGraphQLErrors.is(error) &&
+    error.errors.some((e) => e.extensions?.code === 'BAD_USER_INPUT')
+  );
+}
