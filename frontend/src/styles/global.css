@@ -848,7 +848,9 @@ fieldset {
 .hero {
   display: flex;
   align-items: flex-end;
-  min-height: 34rem;
+  /* Høyere enn skjelettets minimum krever: tittel (3 linjer) + sammendrag (4 linjer) + to rader knapper
+     passer da alltid, så heltebanneret ikke vokser (og dytter radene ned) når dataene kommer. */
+  min-height: 38rem;
 }
 @media (min-width: 48rem) {
   .hero {
@@ -897,6 +899,12 @@ fieldset {
   color: #f5c518;
 }
 .hero__title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  /* overflow: hidden klipper nedstrekene på tette linjer uten litt luft. */
+  padding-bottom: 0.1em;
   margin: 0;
   font-size: clamp(2rem, 6vw, 3.75rem);
   font-weight: 900;
@@ -911,6 +919,10 @@ fieldset {
   font-weight: 600;
 }
 .hero__overview {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
   margin: 0 0 1.25rem;
   font-size: 1.05rem;
   text-shadow: 0 1px 8px rgb(0 0 0 / 0.6);
