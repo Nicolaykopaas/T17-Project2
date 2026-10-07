@@ -97,6 +97,56 @@ describe('MyListPage', () => {
   });
 });
 
+describe('MyListPage: fokus', () => {
+  it('«Last flere» som fjernes etter siste side flytter fokus til overskriften', async () => {
+    const user = userEvent.setup();
+    const log = emptyLog();
+    renderApp(<MyListPage />, {
+      mocks: buildMocks(
+        {
+          MyList: (vars: Vars) => ({
+            myList: vars.after
+              ? makeConnection([makeTitle(2)], 2, false)
+              : makeConnection([makeTitle(1)], 2, true),
+          }),
+        },
+        log,
+      ),
+    });
+    await screen.findByRole('link', { name: 'Tittel 1' });
+    await user.click(screen.getByRole('button', { name: 'Last flere' }));
+    await screen.findByRole('link', { name: 'Tittel 2' });
+    expect(screen.queryByRole('button', { name: 'Last flere' })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1 })).toHaveFocus();
+  });
+
+  it('«Fjern» beholder fokus mens den jobber (aria-disabled) og hindrer dobbel forespørsel', async () => {
+    const user = userEvent.setup();
+    const log = emptyLog();
+    const mocks = buildMocks(
+      {
+        MyList: () => ({ myList: makeConnection([makeTitle(1), makeTitle(2)]) }),
+        ToggleList: (vars) => ({
+          toggleList: { __typename: 'Title', id: vars.titleId, inMyList: false },
+        }),
+      },
+      log,
+    );
+    for (const m of mocks) m.delay = 100;
+    renderApp(<MyListPage />, { mocks });
+    await screen.findByRole('link', { name: 'Tittel 1' });
+    const button = screen.getByRole('button', { name: 'Fjern Tittel 1 fra listen' });
+    await user.click(button);
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+    expect(button).toHaveFocus();
+    await user.click(button);
+    await waitFor(() =>
+      expect(screen.queryByRole('link', { name: 'Tittel 1' })).not.toBeInTheDocument(),
+    );
+    expect(log.ToggleList).toHaveLength(1);
+  });
+});
+
 describe('MyListPage: feil', () => {
   it('feil ved «Last flere» gir egen melding, ikke «Kunne ikke fjerne»', async () => {
     const user = userEvent.setup();

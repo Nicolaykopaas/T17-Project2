@@ -204,7 +204,9 @@ describe('ReviewForm: innsending', () => {
     await user.click(stars(4));
     await user.click(submit());
     const button = screen.getByRole('button', { name: 'Sender …' });
-    expect(button).toBeDisabled();
+    // aria-disabled, ikke disabled: en disabled knapp mister fokus i Chrome mens skjemaet sendes.
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+    expect(button).toHaveFocus();
     await user.click(button);
     await screen.findByText('Takk! Anmeldelsen din er lagt til.');
     expect(log.AddReview).toHaveLength(1);

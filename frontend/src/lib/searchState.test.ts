@@ -63,6 +63,15 @@ describe('searchState', () => {
     expect(toFilters({ ...EMPTY_STATE, available: false })).toBeUndefined();
   });
 
+  it('avkorter søketekst over 200 tegn (backend avviser mer), uten å dele et tegn midt i', () => {
+    expect(parse(`q=${'a'.repeat(300)}`).q).toHaveLength(200);
+    expect(parse(`q=${'a'.repeat(200)}`).q).toHaveLength(200);
+    const emoji = parse(`q=${encodeURIComponent('🎬'.repeat(250))}`).q;
+    expect(Array.from(emoji)).toHaveLength(200);
+    // Mellomrom i enden etter avkortingen blir også borte, så q er alltid trimmet.
+    expect(parse(`q=${'a'.repeat(199)}+bbb`).q).toBe('a'.repeat(199));
+  });
+
   it('serialiserer bare det som er satt', () => {
     expect(serializeSearchState(EMPTY_STATE).toString()).toBe('');
   });

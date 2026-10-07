@@ -1,5 +1,6 @@
 import { Link, useParams } from 'react-router';
 import { useQuery } from '@apollo/client/react';
+import { BackLink } from '../components/BackLink';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { StreamInfo } from '../components/StreamInfo';
 import { VideoPlayer } from '../components/VideoPlayer';
@@ -37,12 +38,16 @@ export default function WatchPage() {
   }
 
   const { stream } = title;
+  // Fra tittelsiden går «tilbake» i historikken i stedet for å pushe tittelsiden på nytt (ellers ring tittel ↔ spiller).
   const back = (
-    <p className="backlink">
-      <Link to={`/title/${title.id}`}>
-        ← Tilbake<span className="sr-only"> til {title.primaryTitle}</span>
-      </Link>
-    </p>
+    <BackLink
+      fallbackTo={`/title/${title.id}`}
+      fallbackLabel={
+        <>
+          ← Tilbake<span className="sr-only"> til {title.primaryTitle}</span>
+        </>
+      }
+    />
   );
 
   if (!stream) {

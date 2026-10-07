@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { useQuery } from '@apollo/client/react';
 import { ActiveFilters } from '../components/ActiveFilters';
 import { CategoryNav } from '../components/CategoryNav';
@@ -9,7 +10,9 @@ import { SortControls } from '../components/SortControls';
 import { TitleRow } from '../components/TitleRow';
 import { FEATURED_QUERY } from '../graphql/operations';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { useFocusOnViewSwitch } from '../hooks/useFocusOnViewSwitch';
 import { useSearchState } from '../hooks/useSearchState';
+import { focusResults } from '../lib/focus';
 import { BROWSE_ROWS, rowAnchorId, rowVariables, seeAllSearch } from '../lib/browseRows';
 import { isBrowseState, type SearchState } from '../lib/searchState';
 
@@ -56,8 +59,18 @@ function SearchView({
   state: SearchState;
   update: (patch: Partial<SearchState>) => void;
 }) {
-  const reset = () =>
+  // «Nullstill alle» og «Fjern alle filtre» forsvinner når filtrene er borte; fokus flyttes til
+  // resultatoverskriften. (Ender vi i bla-modus, tar useFocusOnViewSwitch over.)
+  const resetFocus = useRef(false);
+  useEffect(() => {
+    if (!resetFocus.current) return;
+    resetFocus.current = false;
+    if (document.activeElement === document.body) focusResults();
+  });
+  const reset = () => {
+    resetFocus.current = true;
     update({ genres: [], decades: [], types: [], minRating: null, available: false });
+  };
 
   return (
     <div className="container">
@@ -77,5 +90,6 @@ function SearchView({
 export default function HomePage() {
   useDocumentTitle('Søk');
   const { state, update } = useSearchState();
+  useFocusOnViewSwitch(isBrowseState(state) ? 'browse' : 'search');
   return isBrowseState(state) ? <BrowseView /> : <SearchView state={state} update={update} />;
 }

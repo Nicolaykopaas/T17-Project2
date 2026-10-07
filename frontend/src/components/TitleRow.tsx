@@ -27,6 +27,9 @@ export function TitleRow({ heading, seeAllTo, titles, loading, error, onRetry }:
   const list = useRef<HTMLUListElement>(null);
   const [canPrev, setCanPrev] = useState(false);
   const [canNext, setCanNext] = useState(false);
+  // Pilen som har fokus. Når raden er scrollet helt til enden ville pilen forsvunnet under fingrene (fokus
+  // faller til body), så den blir stående som utilgjengelig til fokus flytter seg selv.
+  const [focusedArrow, setFocusedArrow] = useState<'prev' | 'next' | null>(null);
 
   const measure = useCallback(() => {
     const el = list.current;
@@ -92,12 +95,15 @@ export function TitleRow({ heading, seeAllTo, titles, loading, error, onRetry }:
 
       {titles && (
         <div className="row__viewport">
-          {canPrev && (
+          {(canPrev || focusedArrow === 'prev') && (
             <button
               type="button"
               className="row__nav row__nav--prev"
               aria-label={`Forrige i ${heading}`}
-              onClick={() => scrollByPage(-1)}
+              aria-disabled={!canPrev || undefined}
+              onClick={() => canPrev && scrollByPage(-1)}
+              onFocus={() => setFocusedArrow('prev')}
+              onBlur={() => setFocusedArrow(null)}
             >
               <span aria-hidden="true">‹</span>
             </button>
@@ -109,12 +115,15 @@ export function TitleRow({ heading, seeAllTo, titles, loading, error, onRetry }:
               <PosterCard key={title.id} title={title} />
             ))}
           </ul>
-          {canNext && (
+          {(canNext || focusedArrow === 'next') && (
             <button
               type="button"
               className="row__nav row__nav--next"
               aria-label={`Neste i ${heading}`}
-              onClick={() => scrollByPage(1)}
+              aria-disabled={!canNext || undefined}
+              onClick={() => canNext && scrollByPage(1)}
+              onFocus={() => setFocusedArrow('next')}
+              onBlur={() => setFocusedArrow(null)}
             >
               <span aria-hidden="true">›</span>
             </button>

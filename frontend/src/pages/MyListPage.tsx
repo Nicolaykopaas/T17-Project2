@@ -5,6 +5,7 @@ import { ErrorMessage } from '../components/ErrorMessage';
 import { GRID_SIZES, PosterCard } from '../components/PosterCard';
 import { PosterSkeleton } from '../components/PosterSkeleton';
 import { MY_LIST_QUERY, TOGGLE_LIST_MUTATION } from '../graphql/operations';
+import { useMoreButtonFocus } from '../hooks/useMoreButtonFocus';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { rateLimitMessage } from '../lib/apiError';
 import { formatNumber } from '../lib/format';
@@ -26,8 +27,11 @@ export default function MyListPage() {
   const heading = useRef<HTMLHeadingElement>(null);
 
   const list = data?.myList;
+  // «Last flere» forsvinner når hele lista er lastet; da flyttes fokus til overskriften.
+  const moreFocus = useMoreButtonFocus(list?.pageInfo.hasNextPage ?? false, heading);
 
   const remove = async (id: string, name: string) => {
+    if (removing) return;
     setRemoveError('');
     try {
       await toggleList({
@@ -107,7 +111,8 @@ export default function MyListPage() {
                   <button
                     type="button"
                     className="btn"
-                    disabled={removing}
+                    // aria-disabled i stedet for disabled: en disabled knapp mister fokus i Chrome mens den jobber.
+                    aria-disabled={removing || undefined}
                     onClick={() => void remove(node.id, node.primaryTitle)}
                   >
                     Fjern <span className="sr-only">{node.primaryTitle} fra listen</span>
@@ -126,8 +131,10 @@ export default function MyListPage() {
               <button
                 type="button"
                 className="btn"
-                disabled={loadingMore}
+                aria-disabled={loadingMore || undefined}
+                {...moreFocus}
                 onClick={() => {
+                  if (loadingMore) return;
                   setLoadingMore(true);
                   setMoreFailed(false);
                   fetchMore({ variables: { after: list.pageInfo.endCursor } })

@@ -504,6 +504,34 @@ describe('VideoPlayer: feil', () => {
   });
 });
 
+describe('VideoPlayer: fokus ved feil', () => {
+  it('flytter fokus til «Prøv igjen» når en feil fjerner kontrollene fokus lå på', () => {
+    const { video } = setup();
+    screen.getByRole('button', { name: 'Spill av' }).focus();
+    fireEvent.error(video());
+    expect(screen.getByRole('button', { name: 'Prøv igjen' })).toHaveFocus();
+  });
+
+  it('flytter fokus til spill-knappen etter nytt forsøk', () => {
+    const { video } = setup();
+    screen.getByRole('button', { name: 'Spill av' }).focus();
+    fireEvent.error(video());
+    fireEvent.click(screen.getByRole('button', { name: 'Prøv igjen' }));
+    expect(screen.getByRole('button', { name: 'Spill av' })).toHaveFocus();
+  });
+
+  it('stjeler ikke fokus når feilen kommer mens brukeren er et annet sted', () => {
+    const { video } = setup();
+    const other = document.createElement('input');
+    document.body.append(other);
+    other.focus();
+    fireEvent.error(video());
+    expect(screen.getByRole('button', { name: 'Prøv igjen' })).not.toHaveFocus();
+    expect(other).toHaveFocus();
+    other.remove();
+  });
+});
+
 describe('VideoPlayer: skjulte kontroller', () => {
   it('skjules etter 3 s uten bevegelse mens den spiller, og vises igjen ved bevegelse', () => {
     vi.useFakeTimers();

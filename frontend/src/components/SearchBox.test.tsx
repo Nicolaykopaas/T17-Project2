@@ -128,6 +128,12 @@ describe('SearchBox', () => {
     await user.click(input);
     await user.paste(weird);
     act(() => vi.advanceTimersByTime(300));
-    expect(onCommit).toHaveBeenCalledExactlyOnceWith(weird.trim());
+    // Feltet kutter ved 200 tegn (backend avviser lengre), så ingenting over grensen sendes videre.
+    expect(onCommit).toHaveBeenCalledExactlyOnceWith(weird.slice(0, 200).trim());
+  });
+
+  it('har maxLength 200, samme grense som backend', () => {
+    const { input } = setup();
+    expect(input).toHaveAttribute('maxlength', '200');
   });
 });
