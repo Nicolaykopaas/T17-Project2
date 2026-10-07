@@ -442,10 +442,11 @@ export function VideoPlayer({ src, title, archiveUrl, subtitlesUrl, poster, dura
             >
               <Icon path={playing ? PATHS.pause : PATHS.play} />
             </button>
+            {/* Navnet starter med den synlige teksten (WCAG 2.5.3 Label in Name), slik at talestyring med «−10 s» virker. */}
             <button
               type="button"
               className="player__btn player__btn--text"
-              aria-label="Spol 10 sekunder tilbake"
+              aria-label="−10 s, spol tilbake"
               onClick={() => skip(-SKIP_SECONDS)}
             >
               <span aria-hidden="true">−10 s</span>
@@ -453,7 +454,7 @@ export function VideoPlayer({ src, title, archiveUrl, subtitlesUrl, poster, dura
             <button
               type="button"
               className="player__btn player__btn--text"
-              aria-label="Spol 10 sekunder frem"
+              aria-label="+10 s, spol frem"
               onClick={() => skip(SKIP_SECONDS)}
             >
               <span aria-hidden="true">+10 s</span>

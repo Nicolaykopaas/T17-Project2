@@ -178,7 +178,77 @@ batcher på 2 000 rader; bare rating-rader over stemmegrensen holdes i minnet.
 
 ## Lighthouse
 
-**Målt 2026-09-30, før M7** (oktober-endringene er ikke målt på nytt; `/watch/:id` er ikke målt). Lighthouse (Chromium, headless) mot produksjonsbygget servert av `vite preview`
+### Måling 2026-10-06 (etter ytelsesrunden)
+
+**Oppsett.** Produksjonsbygg (`npm run build -w frontend`) servert av en liten Node-server som etterligner
+`deploy/apache-project2.conf`: gzip for samme MIME-typer, samme sikkerhetsheadere og CSP, samme cache-headere,
+SPA-fallback, proxy til backend og 404 utenfor `/project2/` (som Apache). Backend i produksjonsmodus med
+20 000 syntetiske titler, falsk TMDB (bildene er små SVG-er på localhost) og falsk Archive. Lighthouse 12,
+Chromium headless, standard simulert struping (mobil: 4x CPU, simulert 4G; desktop: ingen CPU-struping).
+Format: Performance / Accessibility / Best Practices / SEO. Skriptene ligger ikke i repoet; oppsettet er
+beskrevet her så det kan gjentas.
+
+| Side                 | Mobil før        | Mobil etter       | Desktop før          | Desktop etter   |
+| -------------------- | ---------------- | ----------------- | -------------------- | --------------- |
+| Forside              | 76/100/100/91-92 | 93-96/100/100/100 | 99-100/100/100/91-92 | 100/100/100/100 |
+| Detalj (`/title/…`)  | 82/100/100/91-92 | 98/100/100/100    | 99-100/100/100/91-92 | 100/100/100/100 |
+| Min liste            | 96/100/100/91-92 | 97/100/100/100    | 99-100/100/100/91-92 | 100/100/100/100 |
+| Søk (`/?q=dark`)     | 71/100/100/91-92 | 96-97/100/100/100 | 99-100/100/100/91-92 | 100/100/100/100 |
+| Spiller (`/watch/…`) | 95/100/100/91-92 | 97/100/100/100    | 99-100/100/100/91-92 | 100/100/100/100 |
+
+«Før» er `main` før denne grenen (første måling i oppsettet). Etter at serveren også gzippet GraphQL-svar
+ga `main` selv 89 på forside og søk på mobil (TBT ca. 300 ms), så en del av forskjellen på forsiden/søk skyldes
+Apache-konfigen og ikke bare frontenden. Intervallene (f.eks. 93-96) er variasjon mellom gjentatte kjøringer;
+mobil TBT svinger fra ca. 40 til 200 ms på samme bygg.
+
+**Tiltak som ga effekt**
+
+- `startTransition` rundt første `root.render` og `useDeferredValue` for radenes titler: React tidsdeler
+  rendringen (5 ms per bit) i stedet for én lang oppgave. TBT på forsiden mobil gikk fra ca. 300-500 til 70-200 ms. Dette var
+  det tiltaket som flyttet mobilscoren mest.
+- Søkevisningen (filtre, sortering, trefflisten) er lazy-lastet, så forsiden slipper den. Plakatene over folden
+  på søk er `loading="eager"`, den første med `fetchpriority="high"` (fjernet `lcp-lazy-loaded`).
+- Gzip av `application/graphql-response+json` (Apollo 4 ber om den; Yoga svarer med den, og den ble tidligere
+  sendt ukomprimert) og `text/javascript` i `deploy/apache-project2.conf`.
+- `robots.txt` (SEO 91-92 til 100) og tilgjengelig navn på spol-knappene i spilleren (`label-content-name-mismatch`).
+- Heltebanneret har fast høyde på mobil (38 rem) og tittel/sammendrag er avkortet med `line-clamp`, så det ikke
+  vokser når dataene kommer. Målt med Chromium: 608 px både med vanlige og ekstremt lange tekster, ved 320-412 px bredde.
+- Statisk app-skall i `index.html` (header og heltebanner-plassholder) og `preconnect` til TMDB. Skallet er
+  skjult for hjelpemidler, uten lenker, og skiftes ut av `createRoot`. Det gir ekte tidlig maling
+  (observert FCP ca. 85 ms), men se merknaden om simulert FCP under.
+- Vendor-chunks (react, router, apollo) endrer ikke mengden JS (ca. 170 kB gzip initialt), men de endres sjelden og
+  kan derfor ligge i nettleserens cache etter en deploy.
+- `theme-init.js` har en dags cache i Apache-konfigen. `Cross-Origin-Opener-Policy` er fjernet fra konfigen
+  (ignoreres på http og gir bare konsollmelding).
+
+**Ærlige merknader**
+
+- **Simulert FCP står på ca. 2,0 s på mobil, selv om observert FCP er under 100 ms.** Lighthouse' simulering
+  regner JS-bunten som nødvendig for første maling når den har lastet og kjørt før malingen i sporet. På
+  localhost skjer alt på noen få millisekunder, så JS rekker det. Et skall som maler før JS er lastet,
+  ville gitt lavere FCP på et ekte tregt nett, men det kan ikke måles slik her. Vi har ikke forsøkt å lure
+  målingen (f.eks. forsinke JS kunstig).
+- **LCP er ca. 2,3 s på mobil** fordi appen er klient-rendret: HTML, JS, GraphQL-kall, så render av heltebanneret
+  (`.hero__overview`). Kjeden kan bare kortes ved å forhåndshente spørringen (krever GET-persisted queries) eller
+  server-rendre, og begge deler er større endringer enn prosjektet tillater. Dette, sammen med TBT, er grunnen til at mobil
+  Performance ligger på 93-98 og ikke 100. Desktop er 100.
+- Lighthouse-revisjonene `unused-javascript`, `render-blocking-resources` (CSS og `theme-init.js`) og
+  `uses-long-cache-ttl` står igjen som anbefalinger, men telles ikke i scoren. `theme-init.js` må være
+  blokkerende for å unngå temablink, og CSS er blokkerende med vilje.
+- **Best Practices 100 gjelder lokalt.** På VM-en serveres appen over http, og der får Best Practices trekk for
+  `is-on-https` (og eventuelt andre https-avhengige revisjoner). Det kan ikke fikses uten https på VM-en.
+- **`robots.txt`:** Lighthouse leser `/robots.txt` på rotadressen, mens appen ligger under `/project2/`. Filen
+  (`frontend/public/robots.txt`, `Allow: /`) havner derfor på `/project2/robots.txt`. I målingen svarer serveren 404
+  på `/robots.txt`, som Lighthouse behandler som «ingen robots.txt» (OK). På VM-en avhenger resultatet av hva Apache
+  svarer på rotadressen; en egen `/robots.txt` på VM-roten ligger utenfor repoet.
+- Søk på desktop har CLS 0,02 (nye resultater erstatter skjelettet); under grensen på 0,1.
+- Detaljsiden: waterfall chunk til spørring ble ikke endret. Detaljsiden scorer 98 på mobil, så
+  forhåndslasting gir for lite til å forsvare mer kode.
+- Prøvd og forkastet: `async` på modulskriptet (ingen målbar effekt på FCP, og det kan kjøre før `#root` finnes).
+
+### Måling 2026-09-30 (historisk, før M7)
+
+**Målt 2026-09-30, før M7** (`/watch/:id` ble ikke målt). Lighthouse (Chromium, headless) mot produksjonsbygget servert av `vite preview`
 og backend med det syntetiske datasettet (120 000 titler). Format: Performance / Accessibility /
 Best Practices / SEO.
 

@@ -78,9 +78,9 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
   sortering/sidebytte ikke henter fasetter på nytt. Forrige fasetter vises mens nye lastes.
 - **Frontend: ny anmeldelse vises via `refetch` av tittelen** etter `addReview` (serveren er kilden til
   snitt og antall). «Min liste» bruker `cache-and-network` og fjerner rader lokalt i cachen ved «Fjern».
-- **Frontend: ingen nye biblioteker.** Målt 2026-10-06 (`npm run build -w frontend`): initial JS ca. 172 kB gzip
-  (118,3 + 52,5 + 1,2 + 0,4 kB; React, Apollo og React Router) pluss 5,5 kB CSS. Detalj-, spiller- og
-  listesiden er lazy (4,0 + 3,9 + 1,3 + 0,3 kB, ca. 9,5 kB gzip til sammen). Tidligere tall var ca. 166 kB (2026-09-30).
+- **Frontend: ingen nye biblioteker.** Målt 2026-10-06 (`npm run build -w frontend`): initial JS ca. 170 kB gzip
+  (react 68,3 + apollo 58,8 + router 31,5 + app 10,6 + 0,4 kB; vendor-chunks, se `docs/ytelse.md`) pluss 5,5 kB CSS. Detalj-, spiller-, liste- og
+  søkevisningen er lazy (3,9 + 4,0 + 1,3 + 2,9 + 0,3 kB, ca. 12,4 kB gzip til sammen). Tidligere tall var ca. 172 kB (2026-10-06 før Lighthouse-runden) og 166 kB (2026-09-30).
 - **Bruker-ID uten `crypto.randomUUID`.** VM-en serverer appen over http, som ikke er en sikker
   kontekst, og der finnes ikke `crypto.randomUUID`. Alle GraphQL-requests feilet derfor i
   produksjon, selv om alle tester (som kjører på `localhost`, som regnes som sikker) var grønne.

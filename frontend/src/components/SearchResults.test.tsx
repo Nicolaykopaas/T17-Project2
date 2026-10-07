@@ -65,6 +65,24 @@ describe('SearchResults', () => {
     expect(card.textContent?.replace(/\s/g, ' ')).toContain('1 234 567 stemmer');
   });
 
+  it('laster de første plakatene eager (den første med høy prioritet) og resten lazy', async () => {
+    const titles = Array.from({ length: 8 }, (_, i) =>
+      makeTitle(i + 1, { poster342: `http://img/${i + 1}.jpg` }),
+    );
+    renderApp(<SearchResults state={EMPTY_STATE} onReset={noop} />, {
+      mocks: buildMocks({ Search: () => ({ search: makeConnection(titles, 8) }) }, emptyLog()),
+    });
+    await screen.findByRole('link', { name: 'Tittel 1' });
+    const imgs = [...document.querySelectorAll('img')];
+    expect(imgs.map((img) => img.getAttribute('loading'))).toEqual([
+      ...Array<string>(6).fill('eager'),
+      'lazy',
+      'lazy',
+    ]);
+    expect(imgs[0]).toHaveAttribute('fetchpriority', 'high');
+    expect(imgs[1]).not.toHaveAttribute('fetchpriority');
+  });
+
   it('formaterer store treffantall med tusenskille', async () => {
     renderApp(<SearchResults state={EMPTY_STATE} onReset={noop} />, {
       mocks: buildMocks(

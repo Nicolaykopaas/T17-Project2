@@ -234,17 +234,17 @@ describe('VideoPlayer: tidslinje og spoling', () => {
     const { loaded, status } = setup();
     loaded(100);
     media.currentTime = 50;
-    fireEvent.click(screen.getByRole('button', { name: 'Spol 10 sekunder frem' }));
+    fireEvent.click(screen.getByRole('button', { name: '+10 s, spol frem' }));
     expect(media.currentTime).toBe(60);
     expect(status()).toBe('10 sekunder frem');
-    fireEvent.click(screen.getByRole('button', { name: 'Spol 10 sekunder tilbake' }));
+    fireEvent.click(screen.getByRole('button', { name: '−10 s, spol tilbake' }));
     expect(media.currentTime).toBe(50);
 
     media.currentTime = 4;
-    fireEvent.click(screen.getByRole('button', { name: 'Spol 10 sekunder tilbake' }));
+    fireEvent.click(screen.getByRole('button', { name: '−10 s, spol tilbake' }));
     expect(media.currentTime).toBe(0);
     media.currentTime = 95;
-    fireEvent.click(screen.getByRole('button', { name: 'Spol 10 sekunder frem' }));
+    fireEvent.click(screen.getByRole('button', { name: '+10 s, spol frem' }));
     expect(media.currentTime).toBe(100);
   });
 });

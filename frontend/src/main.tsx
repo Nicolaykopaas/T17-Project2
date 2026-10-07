@@ -1,4 +1,4 @@
-import { StrictMode } from 'react';
+import { StrictMode, startTransition } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter } from 'react-router';
 // Varianten fra /dom kobler på ReactDOM.flushSync, som `useSearchState` trenger (se der).
@@ -14,10 +14,14 @@ const router = createBrowserRouter(routes, {
   basename: import.meta.env.BASE_URL.replace(/\/$/, ''),
 });
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <ApolloProvider client={client}>
-      <RouterProvider router={router} />
-    </ApolloProvider>
-  </StrictMode>,
-);
+// Som transition tidsdeles første rendering (React gir tilbake kontrollen til nettleseren hvert 5. ms),
+// i stedet for én lang oppgave som blokkerer input. Det statiske skallet i index.html står til den er ferdig.
+startTransition(() => {
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <ApolloProvider client={client}>
+        <RouterProvider router={router} />
+      </ApolloProvider>
+    </StrictMode>,
+  );
+});

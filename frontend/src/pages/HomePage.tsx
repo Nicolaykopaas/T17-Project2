@@ -1,20 +1,18 @@
-import { useEffect, useRef } from 'react';
+import { lazy, Suspense } from 'react';
 import { useQuery } from '@apollo/client/react';
-import { ActiveFilters } from '../components/ActiveFilters';
 import { CategoryNav } from '../components/CategoryNav';
-import { FilterPanel } from '../components/FilterPanel';
 import { Hero, HeroSkeleton } from '../components/Hero';
 import { LazyRow } from '../components/LazyRow';
-import { SearchResults } from '../components/SearchResults';
-import { SortControls } from '../components/SortControls';
 import { TitleRow } from '../components/TitleRow';
 import { FEATURED_QUERY } from '../graphql/operations';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { useFocusOnViewSwitch } from '../hooks/useFocusOnViewSwitch';
 import { useSearchState } from '../hooks/useSearchState';
-import { focusResults } from '../lib/focus';
 import { BROWSE_ROWS, rowAnchorId, rowVariables, seeAllSearch } from '../lib/browseRows';
-import { isBrowseState, type SearchState } from '../lib/searchState';
+import { isBrowseState } from '../lib/searchState';
+
+// Filtre, sortering og trefflisten trengs bare når man søker, så forsiden slipper å laste dem.
+const SearchView = lazy(() => import('../components/SearchView'));
 
 const [FEATURED_ROW, ...OTHER_ROWS] = BROWSE_ROWS;
 
@@ -51,45 +49,21 @@ function BrowseView() {
   );
 }
 
-/** Treffliste med filtre, sortering og aktive filtre. Alt speiles i URL-en. */
-function SearchView({
-  state,
-  update,
-}: {
-  state: SearchState;
-  update: (patch: Partial<SearchState>) => void;
-}) {
-  // «Nullstill alle» og «Fjern alle filtre» forsvinner når filtrene er borte; fokus flyttes til
-  // resultatoverskriften. (Ender vi i bla-modus, tar useFocusOnViewSwitch over.)
-  const resetFocus = useRef(false);
-  useEffect(() => {
-    if (!resetFocus.current) return;
-    resetFocus.current = false;
-    if (document.activeElement === document.body) focusResults();
-  });
-  const reset = () => {
-    resetFocus.current = true;
-    update({ genres: [], decades: [], types: [], minRating: null, available: false });
-  };
-
-  return (
-    <div className="container">
-      <h1 className="page-title">Søk i filmer og serier</h1>
-      <div className="layout">
-        <FilterPanel state={state} onChange={update} />
-        <div className="layout__results">
-          <SortControls state={state} onChange={update} />
-          <ActiveFilters state={state} onChange={update} onReset={reset} />
-          <SearchResults state={state} onReset={reset} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function HomePage() {
   useDocumentTitle('Søk');
   const { state, update } = useSearchState();
   useFocusOnViewSwitch(isBrowseState(state) ? 'browse' : 'search');
-  return isBrowseState(state) ? <BrowseView /> : <SearchView state={state} update={update} />;
+  if (isBrowseState(state)) return <BrowseView />;
+  return (
+    <Suspense
+      fallback={
+        <div className="container">
+          <h1 className="page-title">Søk i filmer og serier</h1>
+          <p role="status">Laster …</p>
+        </div>
+      }
+    >
+      <SearchView state={state} update={update} />
+    </Suspense>
+  );
 }

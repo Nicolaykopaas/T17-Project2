@@ -6,6 +6,29 @@ export default defineConfig({
   // Appen serveres fra http://it2810-17.idi.ntnu.no/project2/ på VM-en.
   base: '/project2/',
   plugins: [react()],
+  build: {
+    rolldownOptions: {
+      output: {
+        // Vendor-kode endres sjelden, så egne chunks lar nettleseren gjenbruke dem fra cache etter en
+        // ny deploy (appkoden får nytt hash, vendor beholder sitt) og parse dem parallelt.
+        codeSplitting: {
+          groups: [
+            {
+              name: 'react',
+              test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/,
+              priority: 30,
+            },
+            { name: 'router', test: /node_modules[\\/]react-router[\\/]/, priority: 20 },
+            {
+              name: 'apollo',
+              test: /node_modules[\\/](@apollo|graphql|rxjs|@wry|optimism|tslib|zen-observable-ts)[\\/]/,
+              priority: 10,
+            },
+          ],
+        },
+      },
+    },
+  },
   server: {
     proxy: {
       // Samme URL-struktur i utvikling som i produksjon (Apache proxyer /project2/graphql).
