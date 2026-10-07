@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from 'react';
 import { Link } from 'react-router';
 import { useApiUnavailable } from '../apollo/apiStatus';
 import type { TitleSummary } from '../graphql/types';
@@ -21,7 +29,10 @@ const prefersReducedMotion = () =>
   window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /** Horisontal rad med plakater: scroll-snap, pil-knapper og piltaster mellom kortene. */
-export function TitleRow({ heading, seeAllTo, titles, loading, error, onRetry }: Props) {
+export function TitleRow({ heading, seeAllTo, titles: latest, loading, error, onRetry }: Props) {
+  // Kortene tegnes i en avbrytbar, tidsdelt rendering (ikke i den samme lange oppgaven som mottar dataene),
+  // så radene ikke blokkerer input like etter første maling. Skjelettet står til kortene er klare.
+  const titles = useDeferredValue(latest);
   const headingId = useId();
   const apiDown = useApiUnavailable();
   const list = useRef<HTMLUListElement>(null);
