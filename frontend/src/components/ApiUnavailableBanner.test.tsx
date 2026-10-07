@@ -59,7 +59,11 @@ describe('ApiUnavailableBanner', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Prøv igjen' }));
     expect(client.refetchQueries).toHaveBeenCalledWith({ include: 'active' });
     const busy = screen.getByRole('button', { name: 'Prøver …' });
-    expect(busy).toBeDisabled();
+    // aria-disabled, ikke disabled: en disabled knapp mister fokus i Chrome, og tastaturbrukeren havner på body.
+    expect(busy).toHaveAttribute('aria-disabled', 'true');
+    expect(busy).toHaveFocus();
+    await userEvent.click(busy);
+    expect(client.refetchQueries).toHaveBeenCalledTimes(1);
     // Knappen ligger utenfor alert-regionen, så tekstskiftet kunngjøres ikke på nytt.
     expect(screen.getByRole('alert')).not.toContainElement(busy);
     await act(async () => finish());
@@ -82,6 +86,15 @@ describe('ApiUnavailableBanner', () => {
     expect(await screen.findByText('Fortsatt ingen kontakt med serveren.')).toBe(status);
     expect(screen.getByRole('alert')).not.toContainElement(status);
     expect(screen.getAllByRole('alert')).toHaveLength(1);
+  });
+
+  it('lar tilbakemeldingen følge feiltypen: databasen er nede, ikke «ingen kontakt»', async () => {
+    apiFailureKind('service');
+    apiUnavailable(true);
+    setup(async () => []);
+    await userEvent.click(screen.getByRole('button', { name: 'Prøv igjen' }));
+    expect(await screen.findByText('Tjenesten er fortsatt utilgjengelig.')).toBeInTheDocument();
+    expect(screen.queryByText(/ingen kontakt/)).not.toBeInTheDocument();
   });
 
   it('flytter fokus til main når forsøket lykkes og knappen forsvinner', async () => {

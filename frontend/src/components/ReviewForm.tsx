@@ -175,7 +175,8 @@ export function ReviewForm({ titleId, onSubmitted }: Props) {
         </p>
       )}
 
-      <button type="submit" className="btn btn--primary" disabled={loading}>
+      {/* aria-disabled i stedet for disabled: en disabled knapp mister fokus i Chrome mens den sender. onSubmit stopper dobbeltsending. */}
+      <button type="submit" className="btn btn--primary" aria-disabled={loading || undefined}>
         {loading ? 'Sender …' : 'Send anmeldelse'}
       </button>
 

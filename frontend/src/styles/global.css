@@ -387,7 +387,7 @@ fieldset {
   text-decoration: none;
   font-weight: 600;
 }
-.btn:hover:not(:disabled) {
+.btn:hover:not(:disabled):not([aria-disabled='true']) {
   border-color: var(--accent-text);
 }
 .btn[aria-disabled='true'],
@@ -401,7 +401,7 @@ fieldset {
   color: var(--on-accent);
   font-weight: 700;
 }
-.btn--primary:hover:not(:disabled) {
+.btn--primary:hover:not(:disabled):not([aria-disabled='true']) {
   filter: brightness(1.08);
   border-color: var(--accent);
 }

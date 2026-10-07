@@ -10,6 +10,7 @@ import { ReviewList } from '../components/ReviewList';
 import { Stars } from '../components/Stars';
 import { StreamInfo } from '../components/StreamInfo';
 import { TITLE_QUERY } from '../graphql/operations';
+import { useMoreButtonFocus } from '../hooks/useMoreButtonFocus';
 import { useHeaderOverlay } from '../hooks/useHeaderOverlay';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { formatNumber, formatRating, formatYears, hueFromId, typeLabel } from '../lib/format';
@@ -53,6 +54,11 @@ export default function TitlePage() {
   const [deleted, setDeleted] = useState('');
   const reviewsHeading = useRef<HTMLHeadingElement>(null);
   const deletedTimer = useRef<number>(undefined);
+  // «Vis flere» forsvinner når alle anmeldelser er lastet; da flyttes fokus til overskriften.
+  const moreFocus = useMoreButtonFocus(
+    data?.title?.reviews.pageInfo.hasNextPage ?? false,
+    reviewsHeading,
+  );
   const apiDown = useApiUnavailable();
   // Ellers kan timeren sette state etter at siden er forlatt.
   useEffect(() => () => window.clearTimeout(deletedTimer.current), []);
@@ -93,6 +99,7 @@ export default function TitlePage() {
 
   const reviews = title.reviews;
   const loadMoreReviews = async () => {
+    if (loadingMore) return;
     setLoadingMore(true);
     setMoreFailed(false);
     try {
@@ -258,8 +265,10 @@ export default function TitlePage() {
             <button
               type="button"
               className="btn"
-              disabled={loadingMore}
+              // aria-disabled i stedet for disabled: en disabled knapp mister fokus i Chrome mens den laster.
+              aria-disabled={loadingMore || undefined}
               onClick={() => void loadMoreReviews()}
+              {...moreFocus}
             >
               {loadingMore ? 'Laster …' : 'Vis flere'}
             </button>
