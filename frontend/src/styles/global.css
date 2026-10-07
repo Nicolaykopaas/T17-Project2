@@ -455,6 +455,12 @@ fieldset {
   border-color: #7d8494;
   color: #f4f5f7;
 }
+/* Headeren er mørk i begge temaer. Nettleserens standard plassholderfarge (~#757575) følger det lyse temaet
+   og gir bare 3,9:1 mot den mørke bakgrunnen; #a9afbd gir over 7:1. */
+.site-header .searchbox input::placeholder {
+  color: #a9afbd;
+  opacity: 1;
+}
 .searchbox input::-webkit-search-cancel-button {
   display: none;
 }
@@ -880,7 +886,7 @@ fieldset {
   inset: 0;
   background:
     linear-gradient(to top, var(--bg) 0, rgb(10 10 12 / 0) 4rem),
-    linear-gradient(to top, rgb(10 10 12 / 0.92) 0, rgb(10 10 12 / 0.5) 50%, rgb(10 10 12 / 0.15)),
+    linear-gradient(to top, rgb(10 10 12 / 0.92) 0, rgb(10 10 12 / 0.7) 50%, rgb(10 10 12 / 0.3)),
     linear-gradient(to right, rgb(10 10 12 / 0.75), rgb(10 10 12 / 0) 65%);
 }
 .hero__content {
@@ -1095,7 +1101,10 @@ fieldset {
 .star-input__option:has(input:checked) {
   background: var(--accent);
   color: var(--on-accent);
-  border-color: var(--accent);
+  /* Gul fyll alene har bare 1,6:1 mot hvit bakgrunn i lyst tema (WCAG 1.4.11). En 2 px kant i tekstfarge gjør
+     valgt tilstand synlig uten farge; indre skygge i stedet for bredere kant, så ingenting flytter seg. */
+  border-color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--text);
 }
 .star-input__option:has(input:focus-visible) {
   outline: 3px solid var(--focus);
