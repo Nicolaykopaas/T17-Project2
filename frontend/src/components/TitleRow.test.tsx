@@ -66,6 +66,30 @@ describe('TitleRow', () => {
     expect(screen.queryByRole('button', { name: /Neste/ })).not.toBeInTheDocument();
   });
 
+  it('beholder Neste (utilgjengelig) når raden når enden mens pilen har fokus', async () => {
+    fakeLayout(900);
+    renderRow();
+    const list = document.querySelector<HTMLElement>('ul.row__list')!;
+    const next = screen.getByRole('button', { name: 'Neste i Action' });
+    next.focus();
+    list.scrollLeft = 600;
+    fireEvent.scroll(list);
+
+    const still = screen.getByRole('button', { name: 'Neste i Action' });
+    expect(still).toBe(next);
+    expect(still).toHaveFocus();
+    expect(still).toHaveAttribute('aria-disabled', 'true');
+    // Et trykk på en utilgjengelig pil gjør ingenting.
+    const scrollBy = vi.fn();
+    list.scrollBy = scrollBy;
+    await userEvent.click(still);
+    expect(scrollBy).not.toHaveBeenCalled();
+
+    // Flytter fokus seg videre, forsvinner pilen som før.
+    await userEvent.tab({ shift: true });
+    expect(screen.queryByRole('button', { name: /Neste/ })).not.toBeInTheDocument();
+  });
+
   it('Neste scroller omtrent en side mot høyre', async () => {
     fakeLayout(900);
     renderRow();

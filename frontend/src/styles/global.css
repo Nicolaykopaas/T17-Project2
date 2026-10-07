@@ -825,6 +825,10 @@ fieldset {
   line-height: 1;
   cursor: pointer;
 }
+.row__nav[aria-disabled='true'] {
+  opacity: 0.4;
+  cursor: default;
+}
 .row__nav--prev {
   left: 0;
   background: linear-gradient(to right, rgb(10 10 12 / 0.9), rgb(10 10 12 / 0));
