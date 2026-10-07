@@ -229,8 +229,8 @@ Målet er WCAG 2.1 AA, og det er verifisert automatisk og med tastatur:
 - **Visuelt:** synlig fokusring, AA-kontrast i lys og mørk modus, `prefers-reduced-motion` respekteres,
   og responsivt ned til 320 px uten horisontal scroll.
 - **Verifisering:** axe kjører i Playwright på alle sider i lys og mørk modus, på desktop og mobil.
-  Lighthouse Accessibility var 100 på forside, detaljside og Min liste. Det er målt lokalt
-  30.09.2026 mot produksjonsbygget med syntetiske data, før endringene i oktober (se
+  Lighthouse Accessibility, Best Practices og SEO er 100 på alle fem sider, mobil og desktop. Målt
+  lokalt 07.10.2026 mot produksjonsbygget med Apache-like headere og syntetiske data (se
   [`docs/ytelse.md`](docs/ytelse.md)).
 
 ## Bærekraft
@@ -251,8 +251,8 @@ Målet er WCAG 2.1 AA, og det er verifisert automatisk og med tastatur:
   ingen video selv.
 - **Mørk modus** er standard i kinodesignet, noe som sparer strøm på OLED-skjermer. Lys modus kan
   velges.
-- **Få avhengigheter:** ingen UI-, spiller- eller ORM-bibliotek. Lighthouse Performance var 94–100 ved
-  siste lokale måling (30.09.2026, før endringene i oktober).
+- **Få avhengigheter:** ingen UI-, spiller- eller ORM-bibliotek. Lighthouse Performance er 100 på
+  desktop og 95–97 på mobil (simulert treg 4G), målt lokalt 07.10.2026.
 
 ## Sikkerhet og robusthet
 
@@ -270,9 +270,9 @@ Målet er WCAG 2.1 AA, og det er verifisert automatisk og med tastatur:
 
 | Type                                            | Antall | Kommando           |
 | ----------------------------------------------- | -----: | ------------------ |
-| API og database (Vitest mot ekte PostgreSQL)    |    415 | `npm test`         |
-| Komponenter og hooks (Vitest + Testing Library) |    249 | `npm test`         |
-| E2E med axe (Playwright, desktop og mobil)      |     97 | `npm run test:e2e` |
+| API og database (Vitest mot ekte PostgreSQL)    |    441 | `npm test`         |
+| Komponenter og hooks (Vitest + Testing Library) |    288 | `npm test`         |
+| E2E med axe (Playwright, desktop og mobil)      |    101 | `npm run test:e2e` |
 
 **Typisk bruk** testes med hele flyten: søk, filtrer, sorter, scroll, åpne detalj, skriv anmeldelse
 og se den i lista, legg i og fjern fra Min liste, og spill en gratisfilm med tastatur.
