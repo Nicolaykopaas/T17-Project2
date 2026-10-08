@@ -4,6 +4,52 @@ Krever Node.js ≥ 20 (testet med 22) og PostgreSQL ≥ 14 med `pg_trgm` og `una
 `postgresql-contrib`; i Debian/Ubuntu-pakken `postgresql-contrib`, i Homebrew og offisielle
 Docker-bilder er den med).
 
+## Rask start (2 minutter)
+
+Trenger bare Node.js ≥ 20 og en kjørende PostgreSQL (med contrib). Ingen API-nøkler, ingen VPN, ingen
+nedlasting av datasett.
+
+```bash
+npm ci
+npm run setup     # lager .env, databaser, syntetiske data, plakater og gratisfilmer
+npm run dev       # http://localhost:5173/project2/
+```
+
+`npm run setup` gjør, i denne rekkefølgen (alle steg kan kjøres på nytt uten skade):
+
+1. Kopierer `.env.example` til `.env` hvis `.env` mangler. En eksisterende `.env` røres aldri.
+2. Oppretter databasene i `DATABASE_URL` og `TEST_DATABASE_URL` hvis de mangler. Skriptet kobler til
+   databasen `postgres` på samme server, så brukeren må ha `CREATEDB`.
+3. Migrerer skjemaet (`npm run db:migrate`).
+4. Genererer et syntetisk datasett i `data/` hvis IMDb-filene mangler (20 000 titler, tar noen sekunder) og importerer
+   det. `FIXTURE_SIZE=120000 npm run setup` gir det store settet (ca. 120 000 titler) i stedet. Ligger ekte
+   IMDb-filer i `data/` (se [steg 5A](#a-ekte-imdb-data-ca-200-mb-nedlasting)), brukes de.
+5. Importerer gratisfilmene fra en falsk Internet Archive som setup starter og stopper selv
+   (`npm run db:archive`).
+
+`npm run dev` starter backend (3001) og frontend (5173). Når `TMDB_API_KEY` i `.env` er tom, starter den i tillegg
+en falsk TMDB-server (port 3999, tegner plakater) og en falsk Internet Archive (port 3998, serverer en
+testvideo), og gir backend de riktige URL-ene. Da vises plakater og «Se gratis nå» uten internett. Har du en ekte
+nøkkel i `.env`, brukes ekte TMDB som før. Skriptene er vanlige Node-programmer (`backend/scripts/setup.ts` og
+`backend/scripts/dev.ts`) og virker likt på Linux, macOS og Windows.
+
+Hvis noe feiler:
+
+- **Postgres svarer ikke:** start tjenesten (`sudo systemctl start postgresql`, eller `brew services start postgresql`).
+- **`password authentication failed` / bruker uten passord:** rediger `.env` og sett bruker og passord, for eksempel
+  `DATABASE_URL=postgres://it2810:hemmelig@localhost:5432/project2` og
+  `TEST_DATABASE_URL=postgres://it2810:hemmelig@localhost:5432/project2_test`, og kjør `npm run setup` på nytt.
+- **`permission denied to create database`:** gi brukeren `CREATEDB`
+  (`sudo -u postgres psql -c "ALTER USER it2810 WITH CREATEDB SUPERUSER;"`), eller opprett databasene selv med
+  `createdb project2` og `createdb project2_test`.
+- **`permission denied to create extension`:** brukeren må være superuser, se [Feilsøking](#feilsøking).
+- **`Port(er) i bruk`:** en annen `npm run dev` eller en E2E-kjøring bruker 3001, 3998, 3999 eller 5173.
+- **Du legger inn en ekte TMDB-nøkkel senere:** da brukes ekte TMDB, men gratisfilmene som setup importerte peker på
+  den falske serveren. Sett `ARCHIVE_URL=https://archive.org` og kjør `npm run db:archive` for ekte filmer.
+
+Resten av dette dokumentet beskriver de samme stegene én og én, for deg som vil ha full kontroll (ekte IMDb-data,
+ekte TMDB, produksjonsbygg).
+
 ## 1. Installer avhengigheter
 
 ```bash
@@ -114,7 +160,7 @@ Mangler filene, gir skriptet en feilmelding som peker hit.
 
 ```bash
 npm run dev -w backend      # API på http://localhost:3001/graphql (GraphiQL i nettleseren)
-npm run dev                 # backend + frontend sammen (fra roten)
+npm run dev                 # backend + frontend sammen (fra roten); uten TMDB_API_KEY også falsk TMDB og Archive
 ```
 
 Frontend kjører da på <http://localhost:5173/project2/> (Vite bruker `base: '/project2/'`, også i
