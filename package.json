@@ -10,7 +10,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "concurrently -n backend,frontend -c blue,magenta \"npm run dev -w backend\" \"npm run dev -w frontend\"",
+    "setup": "tsx backend/scripts/setup.ts",
+    "dev": "tsx backend/scripts/dev.ts",
     "build": "npm run build -w backend && npm run build -w frontend",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
