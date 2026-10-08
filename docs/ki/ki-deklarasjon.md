@@ -40,9 +40,9 @@ og #23, ferdigstilling etter medstudentvurderingen). Arbeidet i september ble co
 
 Agentenes roller og instrukser ligger i repoet, så de kan inspiseres:
 
-- [`CLAUDE.md`](../CLAUDE.md): regler for alle agenter (tekniske rammer, krav til testing,
+- [`CLAUDE.md`](../../CLAUDE.md): regler for alle agenter (tekniske rammer, krav til testing,
   tilgjengelighet, bærekraft, git-flyt og hva som krever et menneske).
-- [`.claude/agents/`](../.claude/agents/): rollebeskrivelser for `backend-utvikler`,
+- [`.claude/agents/`](../../.claude/agents/): rollebeskrivelser for `backend-utvikler`,
   `frontend-utvikler`, `tester` og `reviewer`.
 - [`plan.md`](../prosess/plan.md): milepælene (M0–M7) som agentene jobbet mot, krysset av når verifisert.
 
