@@ -230,6 +230,9 @@ tjenester som allerede kjører på portene; i CI (`CI=1`) starter Playwright all
 - **CI-modus:** `CI=1 npm run test:e2e` gir én retry, og en test som bare består på retry
   regnes som feil (`failOnFlakyTests`). Rapport i `playwright-report/`, JUnit i `test-results/`.
 
+`npm run screenshots` lager skjermbildene i `docs/img/` (samme stack som E2E; `e2e/screenshots.spec.ts`
+hoppes over uten `SCREENSHOTS=1`).
+
 ## Feilsøking
 
 - `permission denied to create extension "pg_trgm"` (eller `"unaccent"`): kjør migrasjonen som superuser, eller kjør
