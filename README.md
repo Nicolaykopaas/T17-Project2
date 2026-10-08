@@ -380,6 +380,10 @@ Historikken skrives aldri om (ingen force-push), og merge-commits viser grenene.
 - **Ytelsestallene er målt på syntetiske data** (120 000 titler) i utviklingsmiljøet. VM-en har det
   ekte datasettet.
 - **Rate limiting ligger i minnet** og nullstilles ved omstart. Det holder for én serverprosess.
+- **VM-en kjører http, ikke https.** Lighthouse Best Practices blir derfor lavere der (`is-on-https`), og
+  brotli og HTTP/2 er ikke tilgjengelig; https krever sertifikat på VM-en.
+- **Appen er klient-rendret (ingen SSR).** Mobil Performance i Lighthouse stopper derfor på 95–97, se
+  [Hvorfor ikke SSR](docs/beslutninger.md#hvorfor-ikke-ssr).
 
 ## Videre dokumentasjon
 
