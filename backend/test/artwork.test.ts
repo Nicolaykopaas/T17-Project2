@@ -14,8 +14,11 @@ const API = () => `http://127.0.0.1:${mock.port}/3`;
 const IMG = () => `http://127.0.0.1:${mock.port}/t/p`;
 const quiet = () => {};
 
-const service = (over: Partial<ArtworkOptions> = {}) =>
-  new ArtworkService({
+// Oppslag som en forespørsel har gitt opp på, fortsetter i bakgrunnen og lagrer etterpå. Uten å
+// vente på dem kunne en rad fra forrige test dukke opp etter tømmingen i beforeEach.
+const services: ArtworkService[] = [];
+const service = (over: Partial<ArtworkOptions> = {}) => {
+  const svc = new ArtworkService({
     pool,
     apiKey: 'test',
     apiUrl: API(),
@@ -23,6 +26,9 @@ const service = (over: Partial<ArtworkOptions> = {}) =>
     log: quiet,
     ...over,
   });
+  services.push(svc);
+  return svc;
+};
 
 async function gql(svc: ArtworkService, query: string) {
   const yoga = createApp({ pool, production: false, artwork: svc });
@@ -48,10 +54,12 @@ beforeAll(async () => {
   mock = await startTmdbMock(0);
 });
 afterAll(async () => {
+  await Promise.all(services.splice(0).map((s) => s.idle()));
   await mock.close();
   await pool.end();
 });
 beforeEach(async () => {
+  await Promise.all(services.splice(0).map((s) => s.idle()));
   await pool.query('DELETE FROM title_artwork');
   mock.state.calls.length = 0;
   mock.state.delayMs = 0;

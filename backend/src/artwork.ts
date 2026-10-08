@@ -186,6 +186,15 @@ export class ArtworkService {
     return new Map(result);
   }
 
+  /**
+   * Venter til alle påbegynte oppslag er ferdige og lagret. En GraphQL-forespørsel gir opp etter
+   * batchDeadlineMs, men oppslaget fortsetter og skriver til title_artwork etterpå; den som trenger
+   * en rolig database (tester, nedstengning) må derfor vente på dette.
+   */
+  async idle(): Promise<void> {
+    while (this.inflight.size > 0) await Promise.allSettled([...this.inflight.values()]);
+  }
+
   /** Slår opp én tittel hos TMDB og lagrer resultatet. Kaster aldri. */
   lookup(id: string, kind: TitleKind): Promise<Outcome> {
     const existing = this.inflight.get(id);
