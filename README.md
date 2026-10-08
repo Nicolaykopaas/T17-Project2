@@ -384,7 +384,7 @@ Historikken skrives aldri om (ingen force-push), og merge-commits viser grenene.
 ## Videre dokumentasjon
 
 [Oppsett](docs/oppsett.md) · [Deploy](docs/deploy.md) · [API](docs/api.md) ·
-[Beslutninger](docs/beslutninger.md) · [Ytelse](docs/ytelse.md) ·
+[Beslutninger](docs/beslutninger.md) · [Ytelse](docs/ytelse.md) · [Forklaring](docs/forklaring.md) ·
 [KI-deklarasjon](docs/ki-deklarasjon.md) · [KI-logg](docs/ki-logg.md) · [Status](docs/status.md)
 
 _Bilder og beskrivelser fra TMDB. Produktet bruker TMDB-API-et, men er ikke godkjent eller
