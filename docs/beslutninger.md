@@ -331,3 +331,7 @@ for noen få poeng i en syntetisk måling, og tiden gjorde mer nytte på søk, t
 lazy-lastet søkevisning, vendor-chunks som kan ligge i nettleserens cache, `preconnect` til TMDB, fast høyde
 på heltebanneret (ingen layoutskift) og gzip av JS, CSS og GraphQL-svar. Mål og tall står i
 [`ytelse.md`](ytelse.md#lighthouse).
+
+## Oppsett med to kommandoer
+
+`npm run setup` og `npm run dev` er små tsx-skript (`backend/scripts/setup.ts`, `dev.ts`) i stedet for shell-kommandoer i `package.json`, fordi `VAR=verdi cmd` ikke virker i cmd.exe. Setup starter den falske Archive i samme prosess på en tilfeldig ledig port (databasen lagrer bare element-id og filnavn, ikke vertsnavn), så den ikke kolliderer med en kjørende dev- eller E2E-stack. `npm run dev` velger falske TMDB/Archive kun når `TMDB_API_KEY` er tom; en eksplisitt `ARCHIVE_URL` respekteres. Standard `FIXTURE_SIZE` i setup er 20 000 for rask første kjøring (`db:fixture` alene har fortsatt 120 000).
