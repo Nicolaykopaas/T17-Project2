@@ -136,7 +136,9 @@ fi
 step "Henter lovlige filmer fra Internet Archive"
 # Kobler IMDb-titler til gratis public domain-/Creative Commons-versjoner. Feil her skal ikke
 # stoppe deployen: appen fungerer, bare uten «Se filmen» for titler som mangler.
-npm run db:archive || echo "Advarsel: henting fra Internet Archive feilet – prøv igjen senere med npm run db:archive."
+# ARCHIVE_LIMIT er antall koblede titler før innsamlingen stopper (standard 500, så hver deploy
+# ikke skanner hele Archive). ARCHIVE_LIMIT=0 gir full skanning, f.eks. ved første fylling.
+ARCHIVE_LIMIT="${ARCHIVE_LIMIT:-500}" npm run db:archive || echo "Advarsel: henting fra Internet Archive feilet – prøv igjen senere med npm run db:archive."
 
 # Importene over er upsert-trygge og kjørte mens backenden svarte, så siden var oppe hele tiden.
 # Apache lastes først nå, når frontend og data er på plass.
