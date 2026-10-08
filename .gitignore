@@ -14,5 +14,6 @@ blob-report/
 .vite/
 *.tsbuildinfo
 .DS_Store
+.claude/DONE
 .claude/DONE.local
 data/e2e/
