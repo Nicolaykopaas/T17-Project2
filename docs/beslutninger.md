@@ -301,3 +301,33 @@ FROM (EXCLUDED.kolonner)` hindrer at hver omkjøring lager en ny radversjon per 
   kjøre mens backend svarer. Tjenesten kjører som `project2`, så `.env` får gruppen `project2` og
   modus 640 i stedet for at hele katalogen skifter eier (importene kjører som deploy-brukeren og
   skriver til `data/`). Apache lastes på nytt til slutt.
+
+## Hvorfor ikke SSR
+
+Appen er en klient-rendret React-app (Vite SPA) som Apache serverer som statiske filer. Vi vurderte
+server-rendering, men valgte det bort.
+
+**Prisen vi betaler.** Lighthouse mobil Performance ligger på 95–97 under simulert 4G og når ikke 100.
+Første maling og LCP venter på kjeden HTML, JS, GraphQL-kall og render av heltebanneret. Så lenge innholdet
+bygges i nettleseren, kan ikke kjeden kortes ned til mindre enn dette. Desktop er 100.
+
+**Hvorfor vi ikke gjorde det.** SSR eller streaming (for eksempel React Router i framework mode eller Vite
+SSR) ville krevd:
+
+- Node-rendering av alle ruter (forside, søk, detalj, spiller, min liste), også de som avhenger av
+  nettleserens anonyme bruker-ID i `localStorage`, som serveren ikke kjenner.
+- Hydrering som må gi nøyaktig samme HTML som serveren, med tilhørende feilkilder (hydreringsfeil, flimmer
+  ved tema og URL-styrt søketilstand).
+- Dobbel datahenting eller serialisering av Apollo-cachen fra server til klient, og en server som snakker
+  med GraphQL-laget i tillegg til nettleseren.
+- Endret deploy: i dag er frontend statiske filer bak Apache. Med SSR må en Node-prosess til å kjøre i
+  tillegg til backend, med egen systemd-enhet, minne- og feilhåndtering på en liten VM.
+
+Det er mer kompleksitet og flere ting som kan gå galt enn et prosjekt av dette omfanget har nytte av,
+for noen få poeng i en syntetisk måling, og tiden gjorde mer nytte på søk, tilgjengelighet og testing.
+
+**Hva vi gjorde i stedet.** Et statisk app-skall i `index.html` (header og plassholder for heltebanneret),
+`startTransition` rundt første render og `useDeferredValue` for radene slik at React tidsdeler arbeidet,
+lazy-lastet søkevisning, vendor-chunks som kan ligge i nettleserens cache, `preconnect` til TMDB, fast høyde
+på heltebanneret (ingen layoutskift) og gzip av JS, CSS og GraphQL-svar. Mål og tall står i
+[`ytelse.md`](ytelse.md#lighthouse).
