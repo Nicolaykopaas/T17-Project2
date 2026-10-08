@@ -503,7 +503,7 @@ forsvinner. Faller fokus til `<body>`, mister tastaturbrukeren plassen og skjerm
   `gql`-maler i fila (en ny operasjon i et format regexen ikke kjenner kan ikke gli forbi), og at
   hver holder seg under en fjerdedel av tokengrensen. Feiler den, er skjemaet endret uten at
   klienten fulgte med, eller grensene er for stramme for den faktiske klienten.
-- **Omfang** (siste verifiserte kjøring, `docs/status.md`): ca. 415 backendtester, 288
+- **Omfang** (siste verifiserte kjøring): 454 backendtester, 288
   komponenttester og 101 bestått E2E. CI (`.gitlab-ci.yml`) kjører lint, typecheck, enhetstester
   mot Postgres 16, build og E2E.
 
