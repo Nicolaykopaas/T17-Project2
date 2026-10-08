@@ -314,15 +314,17 @@ describe('bilde-URL-er', () => {
 describe('tidsgrense', () => {
   it('svarer innen ca. 2,5 s med null, og lagrer resultatet i bakgrunnen', async () => {
     mock.state.delayMs = 3000;
+    const svc = service();
     const started = Date.now();
-    const res = await gql(service(), poster(FOUND));
+    const res = await gql(svc, poster(FOUND));
     const elapsed = Date.now() - started;
     expect(res.data.title.posterUrl).toBeNull();
     expect(elapsed).toBeGreaterThanOrEqual(2400);
     expect(elapsed).toBeLessThan(3000);
     expect(await rowFor(FOUND)).toBeUndefined();
 
-    await new Promise((r) => setTimeout(r, 900));
+    // Vent på selve oppslaget i stedet for en fast pause, som er for kort på en belastet maskin.
+    await svc.idle();
     expect((await rowFor(FOUND)).status).toBe('found');
     expect((await gql(service(), poster(FOUND))).data.title.posterUrl).not.toBeNull();
   }, 15_000);
