@@ -96,7 +96,7 @@ Rediger `DATABASE_URL` og `TEST_DATABASE_URL` hvis du ikke bruker `postgres` ute
 | `TMDB_MOCK_DELAY_MS` | `0`                                                | `tmdb:mock` (kunstig forsinkelse)           |
 | `ARCHIVE_URL`        | `https://archive.org`                              | backend og `db:archive`                     |
 | `ARCHIVE_MOCK_PORT`  | `3998`                                             | `archive:mock`                              |
-| `ARCHIVE_LIMIT`      | (ingen grense)                                     | `db:archive` (som `--limit`)                |
+| `ARCHIVE_LIMIT`      | (ingen grense; `setup-vm.sh` bruker 500)           | `db:archive` (som `--limit`, 0 = ingen)     |
 | `FIXTURE_SIZE`       | `120000`                                           | `db:fixture` (antall syntetiske titler)     |
 | `VITE_GRAPHQL_URL`   | `<base>/graphql`, i praksis `/project2/graphql`    | frontend (leses ved bygging og i dev)       |
 | `PW_CHROMIUM_PATH`   | (tom: Playwrights egen Chromium)                   | E2E, sti til forhåndsinstallert Chromium    |
@@ -222,6 +222,9 @@ Skriptet kan kjøres på nytt uten duplikater (upsert).
 npm run db:archive                    # alle lovlige kandidater
 npm run db:archive -- --limit 50      # bare de 50 første koblede (test). Env: ARCHIVE_LIMIT=50
 ```
+
+Ctrl+C er todelt: første trykk stopper skanningen og lagrer filmene som allerede er koblet, andre
+trykk avbryter helt. Filmer lagres side for side underveis.
 
 **Mot falsk Archive** (utvikling, E2E, ingen internett; port `ARCHIVE_MOCK_PORT`, standard 3998):
 

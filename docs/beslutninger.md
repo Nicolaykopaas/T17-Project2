@@ -164,6 +164,22 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
   kallstart), 20 s tidsgrense per kall, ett nytt forsøk ved 5xx/429/timeout/nettverksfeil (ikke ved 404),
   upsert per tittel, og `--limit`/`ARCHIVE_LIMIT` som stopper innsamlingen etter N koblede titler. Et
   element som feiler teller som `feilet` uten å stoppe resten; skriptet avslutter da med kode 1.
+- **Archive-importen lagrer underveis, har todelt avbrudd og et smalere søk.** Fullskanning mot ekte
+  Archive tok 10-30 minutter (259 000 elementer) og lagret først etter hele skanningen, så Ctrl+C ga
+  «0 lagret» selv med ca. 700 koblede kandidater. Nå hentes filliste og upsert per Scrape-side.
+  Determinismen består: en tittelkobling som allerede er lagret overskrives av et senere IMDb-treff
+  for samme tittel (upsert), og utfallet telles per tittel. Første Ctrl+C (`stopCollecting`) stopper
+  innsamlingen og lagrer siden som er under behandling; andre (`signal`) stopper også lagringen.
+  `CANDIDATE_QUERY` er snevret inn: lisensgrenen (`licenseurl:*creativecommons*` / `*publicdomain*`)
+  krever nå også `external-identifier:*imdb*`, og `classic_tv` er fjernet (lovlig bare med lisens-URL,
+  og dermed dekket av lisensgrenen). Kuraterte samlinger (`feature_films`, `film_noir`,
+  `silent_films`) er uendret. Begrunnelse: under 1 % av CC-elementene ble koblet til en IMDb-film, og
+  nesten alle koblede hadde IMDb-ID. Pris: CC-elementer utenfor kuraterte samlinger som bare kunne
+  kobles på tittel + år, uten IMDb-ID, blir ikke lenger funnet (tittel + år på hjemmevideoer ga
+  uansett størst fare for feilkobling). `isLawful` og koblingsreglene er uendret. `setup-vm.sh` setter
+  `ARCHIVE_LIMIT=500` som standard (`0` = full skanning). Det nye søket er ikke prøvd mot ekte
+  Archive fra utviklingsmiljøet (ingen nettilgang); `external-identifier:*imdb*` følger samme
+  jokertegn-syntaks som `licenseurl:*…*`, men må bekreftes på VM-en.
 - **Falsk Archive (`scripts/archive-mock.ts`) serverer WebM.** Testvideoen er `.webm`, så de spillbare
   filene i mocken heter `.webm` (ellers ville `Content-Type: video/mp4` løyet om bytene). Filvalg
   mellom mp4/webm/ogv dekkes av enhetstester på `chooseFiles`.

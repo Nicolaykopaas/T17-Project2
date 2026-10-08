@@ -82,6 +82,12 @@ Archive-skanning, og til slutt publisering av frontend og reload av Apache. Impo
 og kan derfor kjøre mens backend svarer, så siden er bare nede mens migreringen går (sekunder, ikke
 minutter). Skriptet avslutter med feilmelding og avsluttingskode 1 hvis API-et ikke svarer like etter start.
 
+**Archive-skanningen har en grense.** `setup-vm.sh` kjører `db:archive` med `ARCHIVE_LIMIT=500`
+(maks 500 koblede titler; innsamlingen stopper da), så hver deploy ikke skanner hele Archive. Full
+skanning: `ARCHIVE_LIMIT=0 bash deploy/setup-vm.sh`, eller `ARCHIVE_LIMIT=0 npm run db:archive` alene.
+Skanningen lagrer side for side, så Ctrl+C taper ikke det som er funnet: første Ctrl+C stopper
+innsamlingen og lagrer kandidatene som allerede er koblet, andre Ctrl+C avbryter helt.
+
 **Måle ytelse på ekte data:** `bash deploy/mal-ytelse.sh > ytelse-vm.md` kjører `EXPLAIN ANALYZE` på søkespørringene og skriver en tabell til `docs/ytelse.md` (se «Måle på VM-en» der). Den bare leser fra databasen.
 
 ## Sikkerhetsheadere og Content-Security-Policy

@@ -86,7 +86,7 @@ sammen, steg for steg: [`docs/forklaring.md`](docs/forklaring.md).
 
 | Type                                            | Antall | Kommando           |
 | ----------------------------------------------- | -----: | ------------------ |
-| API og database (Vitest mot ekte PostgreSQL)    |    482 | `npm test`         |
+| API og database (Vitest mot ekte PostgreSQL)    |    490 | `npm test`         |
 | Komponenter og hooks (Vitest + Testing Library) |    288 | `npm test`         |
 | E2E med axe (Playwright, desktop og mobil)      |    101 | `npm run test:e2e` |
 
