@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react';
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { makeTitle, renderApp } from '../test/utils';
@@ -11,10 +12,14 @@ const withPoster = makeTitle(3, {
   poster342: 'http://img/342.jpg',
 });
 
-const renderCard = (title = withPoster, sizes?: string) =>
+const renderCard = (
+  title = withPoster,
+  sizes?: string,
+  priority?: ComponentProps<typeof PosterCard>['priority'],
+) =>
   renderApp(
     <ul>
-      <PosterCard title={title} sizes={sizes} />
+      <PosterCard title={title} sizes={sizes} priority={priority} />
     </ul>,
   );
 
@@ -25,6 +30,18 @@ describe('PosterCard', () => {
     expect(link).toHaveAccessibleName('Heat');
     expect(link).toHaveAttribute('href', '/title/tt0000003');
     expect(screen.getByRole('article')).toHaveAccessibleName('Heat');
+  });
+
+  it('priority=high gir eager lasting og fetchpriority=high, eager bare eager', () => {
+    const { unmount } = renderCard(withPoster, undefined, 'high');
+    let img = document.querySelector('img')!;
+    expect(img).toHaveAttribute('loading', 'eager');
+    expect(img).toHaveAttribute('fetchpriority', 'high');
+    unmount();
+    renderCard(withPoster, undefined, 'eager');
+    img = document.querySelector('img')!;
+    expect(img).toHaveAttribute('loading', 'eager');
+    expect(img).not.toHaveAttribute('fetchpriority');
   });
 
   it('viser plakat med srcset, sizes, lat lasting, mål og tom alt', () => {

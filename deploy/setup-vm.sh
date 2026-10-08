@@ -87,9 +87,37 @@ HUSKY=0 npm ci --no-audit --no-fund
 npm run build
 # Migrering 004 skriver om titles og holder en lås som blokkerer all lesing og skriving i noen sekunder (ca. 4 s lokalt, 10–20 s på VM).
 # Stopper backend først (ved første kjøring finnes den ikke ennå), så brukere får en ryddig 503 fra
-# Apache i stedet for forespørsler som henger på låsen. Den startes igjen lenger ned.
+# Apache i stedet for forespørsler som henger på låsen. Den startes igjen rett etter migreringen,
+# før de tidkrevende stegene (import, plakater, Archive), slik at nedetiden bare er migreringen.
 sudo systemctl stop project2-backend 2>/dev/null || true
 npm run db:migrate
+
+step "Starter backend som systemd-tjeneste"
+# Tjenesten kjører som project2 og må kunne lese .env (chmod 600 og eid av oss ville gitt «permission
+# denied»). Gruppen får lesetilgang i stedet for at vi flytter eierskap av hele katalogen: importene
+# under kjører som oss og skriver til data/.
+sudo chgrp project2 .env
+chmod 640 .env
+sudo cp deploy/project2-backend.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable project2-backend
+sudo systemctl restart project2-backend
+# Backenden trenger et par sekunder på å starte; prøv noen ganger før vi gir opp. Vi stopper her, og
+# ikke etter flere minutter med import, hvis den ikke kommer opp.
+check() {
+  curl -fsS -m 5 -X POST "$1" -H 'content-type: application/json' \
+    -d '{"query":"{ search(first: 1) { totalCount } }"}'
+}
+for i in 1 2 3 4 5 6 7 8 9 10; do
+  check http://127.0.0.1:3001/graphql >/dev/null 2>&1 && break
+  sleep 2
+done
+# `if !` i stedet for `cmd && echo`: set -e overser feil i &&-lister, og da ville skriptet
+# fortsatt selv om API-et ikke svarte.
+if ! check http://127.0.0.1:3001/graphql >/dev/null; then
+  echo "FEIL: backenden svarer ikke på port 3001. Se: sudo journalctl -u project2-backend -n 50" >&2
+  exit 1
+fi
 
 step "Laster ned IMDb-data og importerer (tar noen minutter)"
 mkdir -p data
@@ -108,15 +136,12 @@ fi
 step "Henter lovlige filmer fra Internet Archive"
 # Kobler IMDb-titler til gratis public domain-/Creative Commons-versjoner. Feil her skal ikke
 # stoppe deployen: appen fungerer, bare uten «Se filmen» for titler som mangler.
-npm run db:archive || echo "Advarsel: henting fra Internet Archive feilet – prøv igjen senere med npm run db:archive."
+# ARCHIVE_LIMIT er antall koblede titler før innsamlingen stopper (standard 500, så hver deploy
+# ikke skanner hele Archive). ARCHIVE_LIMIT=0 gir full skanning, f.eks. ved første fylling.
+ARCHIVE_LIMIT="${ARCHIVE_LIMIT:-500}" npm run db:archive || echo "Advarsel: henting fra Internet Archive feilet – prøv igjen senere med npm run db:archive."
 
-step "Starter backend som systemd-tjeneste"
-sudo chown -R project2:project2 "$APP_DIR"
-sudo cp deploy/project2-backend.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now project2-backend
-sudo systemctl restart project2-backend
-
+# Importene over er upsert-trygge og kjørte mens backenden svarte, så siden var oppe hele tiden.
+# Apache lastes først nå, når frontend og data er på plass.
 step "Publiserer frontend og konfigurerer Apache"
 sudo mkdir -p "$WEB_DIR"
 sudo rsync -a --delete frontend/dist/ "$WEB_DIR/"
@@ -127,22 +152,7 @@ sudo apachectl configtest
 sudo systemctl reload apache2
 
 step "Sjekker at alt svarer"
-# Backenden trenger et par sekunder på å starte; prøv noen ganger før vi gir opp.
-check() {
-  curl -fsS -m 5 -X POST "$1" -H 'content-type: application/json' \
-    -d '{"query":"{ search(first: 1) { totalCount } }"}'
-}
-for i in 1 2 3 4 5 6 7 8 9 10; do
-  check http://127.0.0.1:3001/graphql >/dev/null 2>&1 && break
-  sleep 2
-done
-# `if !` i stedet for `cmd && echo`: set -e overser feil i &&-lister, og da ville skriptet
-# meldt «Ferdig!» selv om API-et ikke svarte.
-if ! check http://127.0.0.1:3001/graphql; then
-  echo "FEIL: backenden svarer ikke på port 3001. Se: sudo journalctl -u project2-backend -n 50" >&2
-  exit 1
-fi
-echo
+# API-et ble sjekket rett etter start; her gjenstår veien via Apache.
 if ! check http://localhost/project2/graphql; then
   echo "FEIL: backenden svarer, men ikke via Apache. Se: sudo tail -n 50 /var/log/apache2/error.log" >&2
   exit 1

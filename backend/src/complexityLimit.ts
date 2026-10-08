@@ -4,7 +4,6 @@ import {
   type ArgumentNode,
   type FieldNode,
   type FragmentDefinitionNode,
-  type OperationDefinitionNode,
   type SelectionSetNode,
   type ValidationRule,
 } from 'graphql';
@@ -24,6 +23,13 @@ export interface ComplexityLimits {
  * legges til her.
  */
 const LIST_FIELDS: Record<string, number> = { search: 20, myList: 20, reviews: 10 };
+/**
+ * Tilleggskostnad per forekomst for felt som er dyre uavhengig av hvor mange felt som velges under
+ * dem. Hver `facets` kjører fire aggregeringer over hele titles-tabellen (poolen har 10
+ * tilkoblinger), så åtte aliasede `facets` ga 32 parallelle helskanninger. Med 500 og en
+ * kostnadsgrense på 2 500 rommer en operasjon fire; frontend sender én.
+ */
+const FIELD_WEIGHTS: Record<string, number> = { facets: 500 };
 /** Tak for `first` (samme som MAX_FIRST i validation.ts), brukt når `first` er en variabel. */
 const MAX_FIRST_ASSUMED = 50;
 
@@ -33,7 +39,7 @@ const MAX_FIRST_ASSUMED = 50;
  * og `first: 50` på nøstede lister multipliserer arbeidet. Regelen teller derfor tre ting:
  *  - rotfelt (det er dem som starter databasekall),
  *  - alle felt totalt (størrelsen på svaret og antall resolver-kall),
- *  - vektet kostnad: et listefelt koster `first` ganger feltene under seg. En variabel `first`
+ *  - vektet kostnad: dyre felt som `facets` har en fast tilleggskostnad (se `FIELD_WEIGHTS`), og et listefelt koster `first` ganger feltene under seg. En variabel `first`
  *    regnes som 50 (verste tilfelle) siden verdien ikke er kjent ved validering. Det overvurderer
  *    litt (totalCount og pageInfo telles også ganger `first`), som er trygt.
  *
@@ -82,10 +88,10 @@ export function complexityLimit({
             // Introspeksjon har egen regel (slått av i produksjon) og er stor av natur.
             if (sel.name.value === '__schema' || sel.name.value === '__type') continue;
             const sub = sel.selectionSet ? count(sel.selectionSet, visiting) : null;
-            const mult = sub ? multiplier(sel, operation) : 1;
+            const mult = sub ? multiplier(sel) : 1;
             total.roots += 1;
             total.fields += 1 + (sub?.fields ?? 0);
-            total.cost += 1 + mult * (sub?.cost ?? 0);
+            total.cost += 1 + (FIELD_WEIGHTS[sel.name.value] ?? 0) + mult * (sub?.cost ?? 0);
           } else {
             const c =
               sel.kind === Kind.INLINE_FRAGMENT
@@ -129,21 +135,14 @@ export function complexityLimit({
 }
 
 /** Hvor mange ganger feltene under et listefelt kan gjentas. 1 for alt som ikke er en liste. */
-function multiplier(field: FieldNode, operation: OperationDefinitionNode): number {
+function multiplier(field: FieldNode): number {
   const fallback = LIST_FIELDS[field.name.value];
   if (fallback === undefined) return 1;
   const first = field.arguments?.find((a: ArgumentNode) => a.name.value === 'first');
   if (!first) return fallback;
   if (first.value.kind === Kind.INT) return Math.max(1, Number.parseInt(first.value.value, 10));
-  if (first.value.kind === Kind.VARIABLE) {
-    // Bruk variabelens standardverdi hvis den har en; ellers verste tilfelle.
-    const def = operation.variableDefinitions?.find(
-      (v) => v.variable.name.value === (first.value as { name: { value: string } }).name.value,
-    );
-    if (def?.defaultValue?.kind === Kind.INT) {
-      return Math.max(1, Number.parseInt(def.defaultValue.value, 10));
-    }
-    return MAX_FIRST_ASSUMED;
-  }
+  // En variabel regnes alltid som verste tilfelle, også når den har standardverdi: klienten kan
+  // overstyre standardverdien i `variables`, så `query($n: Int = 1) { search(first: $n) }` sendt med
+  // n = 50 ville ellers blitt vektet som first = 1 og omgått kostnadsgrensen.
   return MAX_FIRST_ASSUMED;
 }

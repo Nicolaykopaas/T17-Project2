@@ -234,17 +234,17 @@ describe('VideoPlayer: tidslinje og spoling', () => {
     const { loaded, status } = setup();
     loaded(100);
     media.currentTime = 50;
-    fireEvent.click(screen.getByRole('button', { name: 'Spol 10 sekunder frem' }));
+    fireEvent.click(screen.getByRole('button', { name: '+10 s, spol frem' }));
     expect(media.currentTime).toBe(60);
     expect(status()).toBe('10 sekunder frem');
-    fireEvent.click(screen.getByRole('button', { name: 'Spol 10 sekunder tilbake' }));
+    fireEvent.click(screen.getByRole('button', { name: '−10 s, spol tilbake' }));
     expect(media.currentTime).toBe(50);
 
     media.currentTime = 4;
-    fireEvent.click(screen.getByRole('button', { name: 'Spol 10 sekunder tilbake' }));
+    fireEvent.click(screen.getByRole('button', { name: '−10 s, spol tilbake' }));
     expect(media.currentTime).toBe(0);
     media.currentTime = 95;
-    fireEvent.click(screen.getByRole('button', { name: 'Spol 10 sekunder frem' }));
+    fireEvent.click(screen.getByRole('button', { name: '+10 s, spol frem' }));
     expect(media.currentTime).toBe(100);
   });
 });
@@ -501,6 +501,34 @@ describe('VideoPlayer: feil', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(video()).not.toBe(first);
     expect(screen.getByRole('slider', { name: 'Tidslinje' })).toBeInTheDocument();
+  });
+});
+
+describe('VideoPlayer: fokus ved feil', () => {
+  it('flytter fokus til «Prøv igjen» når en feil fjerner kontrollene fokus lå på', () => {
+    const { video } = setup();
+    screen.getByRole('button', { name: 'Spill av' }).focus();
+    fireEvent.error(video());
+    expect(screen.getByRole('button', { name: 'Prøv igjen' })).toHaveFocus();
+  });
+
+  it('flytter fokus til spill-knappen etter nytt forsøk', () => {
+    const { video } = setup();
+    screen.getByRole('button', { name: 'Spill av' }).focus();
+    fireEvent.error(video());
+    fireEvent.click(screen.getByRole('button', { name: 'Prøv igjen' }));
+    expect(screen.getByRole('button', { name: 'Spill av' })).toHaveFocus();
+  });
+
+  it('stjeler ikke fokus når feilen kommer mens brukeren er et annet sted', () => {
+    const { video } = setup();
+    const other = document.createElement('input');
+    document.body.append(other);
+    other.focus();
+    fireEvent.error(video());
+    expect(screen.getByRole('button', { name: 'Prøv igjen' })).not.toHaveFocus();
+    expect(other).toHaveFocus();
+    other.remove();
   });
 });
 

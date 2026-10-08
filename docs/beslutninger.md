@@ -13,10 +13,10 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
   Hver oppgave lages på en egen gren (`feat/…`, `fix/…`, `docs/…`) og merges inn med PR eller
   `--no-ff`, slik at historikken viser grenene. Agentene pusher aldri til `main` og aldri med force.
 - **Issues og PR-er på GitHub, ikke GitLab.** I september var `glab` ikke tilgjengelig, så
-  issue- og review-flyten ble loggført i `docs/ki-logg.md`. Fra oktober ligger issues (#13–#17, #23)
+  issue- og review-flyten ble loggført i `docs/ki/ki-logg.md`. Fra oktober ligger issues (#13–#17, #23)
   og PR-er (#18–#24) på GitHub (`Nicolaykopaas/T17-Project2`), og hver PR har review fra en
   kritiker-agent. Repoet flyttes til NTNU GitLab ved innlevering.
-- **Syntetisk testdatasett.** IMDb-nedlasting er blokkert i miljøet (se `BLOCKERS.md`). Et skript
+- **Syntetisk testdatasett.** IMDb-nedlasting er blokkert i miljøet (se `docs/prosess/blokkeringer.md`). Et skript
   genererer filer i nøyaktig samme TSV-format, så importkoden er den samme for ekte og syntetiske
   data.
 - **Egen migreringsrunner.** `backend/scripts/migrate.ts` (tabell `schema_migrations`, én transaksjon per
@@ -78,9 +78,9 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
   sortering/sidebytte ikke henter fasetter på nytt. Forrige fasetter vises mens nye lastes.
 - **Frontend: ny anmeldelse vises via `refetch` av tittelen** etter `addReview` (serveren er kilden til
   snitt og antall). «Min liste» bruker `cache-and-network` og fjerner rader lokalt i cachen ved «Fjern».
-- **Frontend: ingen nye biblioteker.** Målt 2026-10-06 (`npm run build -w frontend`): initial JS ca. 172 kB gzip
-  (118,3 + 52,5 + 1,2 + 0,4 kB; React, Apollo og React Router) pluss 5,5 kB CSS. Detalj-, spiller- og
-  listesiden er lazy (4,0 + 3,9 + 1,3 + 0,3 kB, ca. 9,5 kB gzip til sammen). Tidligere tall var ca. 166 kB (2026-09-30).
+- **Frontend: ingen nye biblioteker.** Målt 2026-10-06 (`npm run build -w frontend`): initial JS ca. 170 kB gzip
+  (react 68,3 + apollo 58,8 + router 31,5 + app 10,6 + 0,4 kB; vendor-chunks, se `docs/ytelse.md`) pluss 5,5 kB CSS. Detalj-, spiller-, liste- og
+  søkevisningen er lazy (3,9 + 4,0 + 1,3 + 2,9 + 0,3 kB, ca. 12,4 kB gzip til sammen). Tidligere tall var ca. 172 kB (2026-10-06 før Lighthouse-runden) og 166 kB (2026-09-30).
 - **Bruker-ID uten `crypto.randomUUID`.** VM-en serverer appen over http, som ikke er en sikker
   kontekst, og der finnes ikke `crypto.randomUUID`. Alle GraphQL-requests feilet derfor i
   produksjon, selv om alle tester (som kjører på `localhost`, som regnes som sikker) var grønne.
@@ -164,6 +164,22 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
   kallstart), 20 s tidsgrense per kall, ett nytt forsøk ved 5xx/429/timeout/nettverksfeil (ikke ved 404),
   upsert per tittel, og `--limit`/`ARCHIVE_LIMIT` som stopper innsamlingen etter N koblede titler. Et
   element som feiler teller som `feilet` uten å stoppe resten; skriptet avslutter da med kode 1.
+- **Archive-importen lagrer underveis, har todelt avbrudd og et smalere søk.** Fullskanning mot ekte
+  Archive tok 10-30 minutter (259 000 elementer) og lagret først etter hele skanningen, så Ctrl+C ga
+  «0 lagret» selv med ca. 700 koblede kandidater. Nå hentes filliste og upsert per Scrape-side.
+  Determinismen består: en tittelkobling som allerede er lagret overskrives av et senere IMDb-treff
+  for samme tittel (upsert), og utfallet telles per tittel. Første Ctrl+C (`stopCollecting`) stopper
+  innsamlingen og lagrer siden som er under behandling; andre (`signal`) stopper også lagringen.
+  `CANDIDATE_QUERY` er snevret inn: lisensgrenen (`licenseurl:*creativecommons*` / `*publicdomain*`)
+  krever nå også `external-identifier:*imdb*`, og `classic_tv` er fjernet (lovlig bare med lisens-URL,
+  og dermed dekket av lisensgrenen). Kuraterte samlinger (`feature_films`, `film_noir`,
+  `silent_films`) er uendret. Begrunnelse: under 1 % av CC-elementene ble koblet til en IMDb-film, og
+  nesten alle koblede hadde IMDb-ID. Pris: CC-elementer utenfor kuraterte samlinger som bare kunne
+  kobles på tittel + år, uten IMDb-ID, blir ikke lenger funnet (tittel + år på hjemmevideoer ga
+  uansett størst fare for feilkobling). `isLawful` og koblingsreglene er uendret. `setup-vm.sh` setter
+  `ARCHIVE_LIMIT=500` som standard (`0` = full skanning). Det nye søket er ikke prøvd mot ekte
+  Archive fra utviklingsmiljøet (ingen nettilgang); `external-identifier:*imdb*` følger samme
+  jokertegn-syntaks som `licenseurl:*…*`, men må bekreftes på VM-en.
 - **Falsk Archive (`scripts/archive-mock.ts`) serverer WebM.** Testvideoen er `.webm`, så de spillbare
   filene i mocken heter `.webm` (ellers ville `Content-Type: video/mp4` løyet om bytene). Filvalg
   mellom mp4/webm/ogv dekkes av enhetstester på `chooseFiles`.
@@ -232,8 +248,8 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
 '([\\%_])', '\\\1', 'g') || '%'`.
 - **Kompleksitetsgrensen veier lister med `first`.** I tillegg til rotfelt og totalt antall felt har
   `complexityLimit` en vektet kostnad: feltene under `search`, `myList` og `reviews` teller `first`
-  ganger (standard 20/20/10 når `first` utelates, 50 når `first` er en variabel uten
-  standardverdi). 8 x `search(first: 50) { reviews(first: 50) }` er under feltgrensene, men koster
+  ganger (standard 20/20/10 når `first` utelates, 50 når `first` er en variabel, også når den
+  har en lavere standardverdi, siden klienten kan overstyre den i `variables`). 8 x `search(first: 50) { reviews(first: 50) }` er under feltgrensene, men koster
   millioner og avvises. Grensen er 2 500; frontendens største spørring koster ca. 1 100.
   Regelen er memoisert per fragment (også `depthLimit`), siden en kjede av fragmenter som hver
   spres ti ganger i det neste ellers tok minutter CPU under validering.
@@ -255,3 +271,170 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
 - **Forsideradene bruker `ROW_QUERY` uten `totalCount`.** Antallet vises aldri der, og hver `totalCount` er en `count(*)`; forsiden sparer åtte slike. Samme `search`-felt og cache-nøkkel, men siden raden mangler `totalCount` gir «Se alle» cache-miss, og søkespørringen henter første side på nytt, nå med antallet.
 - **Brukervalgt tema: bryter med fast navn «Mørkt tema» og `aria-pressed`.** Ikonet er eneste synlige innhold, så navnet («Mørkt tema») er fast og tilstanden bæres av `aria-pressed`; valget synkroniseres mellom faner via `storage`-eventet. Uten valg følger siden systemet (`prefers-color-scheme`); første klikk setter `data-theme` på `<html>` og lagrer i `localStorage` (`filmsok:theme`, try/catch). Det er ingen «tilbake til system»-tilstand, for å holde knappen enkel. `public/theme-init.js` lastes synkront i `<head>` (uten `defer`/`module`) og setter `data-theme` før første maling (ingen blink). De lyse fargene står to ganger i `global.css` (systemvalg og eksplisitt valg); `theme.test.ts` feiler hvis blokkene blir ulike.
 - **CSP:** temaskriptet ligger i en egen fil og ingen inline-skript trengs, så `script-src 'self'` holder (ingen hash å vedlikeholde). En test sjekker at skriptet bruker samme `localStorage`-nøkkel som `THEME_KEY`.
+
+## Sluttgjennomgang av backend
+
+- **Tokengrense (1 000) og kroppsgrense (64 kB) mot CPU-DoS i validering.** graphql-js sin regel
+  `OverlappingFieldsCanBeMerged` er kvadratisk i antall felt, og `complexityLimit` stopper ikke de
+  andre reglene: `{ genres genres … }` med 8 000 felt (55 kB) blokkerte event-loopen i ca. 5 s. En
+  `onParse`-plugin parser derfor med `maxTokens`, så dokumentet avvises før validering. Frontendens
+  største operasjon har 128 tokens (GraphiQLs introspeksjonsspørring ca. 180), så grensen har åtte
+  ganger slingringsmonn; en test krever minst fire ganger. Yogas `maxRequestBodySize` er satt til
+  64 kB (standard er 25 MB).
+- **Variabel `first` regnes alltid som 50 i kostnadsgrensen.** Standardverdien (`$n: Int = 1`) kan
+  overstyres i `variables`, så å bruke den lot en angriper be om 50 per side og betale for 1.
+- **`facets` har en fast tilleggskostnad på 500.** Hver `facets` kjører fire aggregeringer over
+  hele tabellen; åtte aliasede ga 32 parallelle helskanninger mot en pool på 10. Med grensen 2 500
+  rommer en operasjon fire, og frontend sender én. Vi la ikke til en minnecache for fasetter uten
+  søk (60 s TTL): kostnadsgrensen fjerner angrepsflaten, og en cache ville gitt gammel telling rett
+  etter import uten at noen målt gevinst krever det.
+- **Migreringer og importer kjører uten API-ets `statement_timeout`.** Poolens 15 s-grense er et
+  vern mot løpske spørringer fra API-et. `ALTER TABLE … ADD COLUMN … STORED` (migrering 004) tar
+  10–20 s eller mer på VM-en med ca. 190 000 titler, og en avbrutt migrering ruller tilbake og kan
+  aldri bli ferdig. `migrate()` setter `statement_timeout = 0` og `lock_timeout = '30s'` på sin
+  klient og nullstiller begge etterpå (tilkoblingen går tilbake til poolen). `import-imdb` bruker en
+  pool med 10 minutters grense, siden en batch på 2 000 rader oppdaterer tre GIN-indekser.
+  `import-archive` og `db:artwork` gjør bare små upserts og ett enkelt utvalg, og beholder
+  standardgrensen.
+- **TMDB-oppslagskøen er begrenset til 200 ventende.** Scraping av søk og detaljsider kunne fylle
+  den delte, FIFO-baserte køen med titusenvis av ventende oppslag og sulte vanlige brukere.
+  Oppslag utover grensen avvises (`busy`) uten TMDB-kall, uten lagring og uten negativ cache, så
+  bildet hentes som vanlig neste gang det er plass. Plakater er valgfrie, så avvisning gir `null`.
+- **Cursor med umulig dato gir `BAD_USER_INPUT`.** Mønsteret slapp gjennom `2026-13-45 00:00:00`,
+  som Postgres avviser (22008) og dermed ga maskert 500. Komponentene valideres mot kalender i JS.
+  Vi bruker ikke `Date.parse` på strengen, siden Postgres' tidsstempelformat (`+00`, mikrosekunder)
+  ikke er ISO 8601 og ikke-ISO-parsing varierer mellom JS-motorer.
+- **IMDb-importen skriver bare endrede rader.** `ON CONFLICT DO UPDATE … WHERE (kolonner) IS DISTINCT
+FROM (EXCLUDED.kolonner)` hindrer at hver omkjøring lager en ny radversjon per tittel (bloat), regner
+  ut de genererte kolonnene på nytt og oppdaterer GIN-indeksene. `title_genres` bygges bare på nytt
+  for rader som ble satt inn eller endret (`RETURNING id`). **Titler som faller under `minVotes` ved en
+  senere import slettes ikke**: importen er bare upsert, og sletting ville også fjernet brukernes
+  anmeldelser og lister (fremmednøkler med `ON DELETE CASCADE`). Vil man rydde, må det gjøres bevisst.
+- **Keep-alive 65 s på Node-serveren.** Node lukker ledige forbindelser etter 5 s, mens Apache
+  gjenbruker dem lenger, noe som ga sporadiske 502. `headersTimeout` er satt litt høyere (66 s).
+- **`setup-vm.sh` starter backend rett etter migreringen.** Tidligere var siden nede under hele
+  importen, plakathentingen og Archive-skanningen (minutter). Importene er upsert-trygge og kan
+  kjøre mens backend svarer. Tjenesten kjører som `project2`, så `.env` får gruppen `project2` og
+  modus 640 i stedet for at hele katalogen skifter eier (importene kjører som deploy-brukeren og
+  skriver til `data/`). Apache lastes på nytt til slutt.
+
+## Hvorfor ikke SSR
+
+Appen er en klient-rendret React-app (Vite SPA) som Apache serverer som statiske filer. Vi vurderte
+server-rendering, men valgte det bort.
+
+**Prisen vi betaler.** Lighthouse mobil Performance ligger på 95–97 under simulert 4G og når ikke 100.
+Første maling og LCP venter på kjeden HTML, JS, GraphQL-kall og render av heltebanneret. Så lenge innholdet
+bygges i nettleseren, kan ikke kjeden kortes ned til mindre enn dette. Desktop er 100.
+
+**Hvorfor vi ikke gjorde det.** SSR eller streaming (for eksempel React Router i framework mode eller Vite
+SSR) ville krevd:
+
+- Node-rendering av alle ruter (forside, søk, detalj, spiller, min liste), også de som avhenger av
+  nettleserens anonyme bruker-ID i `localStorage`, som serveren ikke kjenner.
+- Hydrering som må gi nøyaktig samme HTML som serveren, med tilhørende feilkilder (hydreringsfeil, flimmer
+  ved tema og URL-styrt søketilstand).
+- Dobbel datahenting eller serialisering av Apollo-cachen fra server til klient, og en server som snakker
+  med GraphQL-laget i tillegg til nettleseren.
+- Endret deploy: i dag er frontend statiske filer bak Apache. Med SSR må en Node-prosess til å kjøre i
+  tillegg til backend, med egen systemd-enhet, minne- og feilhåndtering på en liten VM.
+
+Det er mer kompleksitet og flere ting som kan gå galt enn et prosjekt av dette omfanget har nytte av,
+for noen få poeng i en syntetisk måling, og tiden gjorde mer nytte på søk, tilgjengelighet og testing.
+
+**Hva vi gjorde i stedet.** Et statisk app-skall i `index.html` (header og plassholder for heltebanneret),
+`startTransition` rundt første render og `useDeferredValue` for radene slik at React tidsdeler arbeidet,
+lazy-lastet søkevisning, vendor-chunks som kan ligge i nettleserens cache, `preconnect` til TMDB, fast høyde
+på heltebanneret (ingen layoutskift) og gzip av JS, CSS og GraphQL-svar. Mål og tall står i
+[`ytelse.md`](ytelse.md#lighthouse).
+
+## Datasett, komponenter og biblioteker
+
+Denne delen er flyttet hit fra README.md, slik at README kan være kort.
+
+### Datasett
+
+[IMDb non-commercial datasets](https://developer.imdb.com/non-commercial-datasets/) er åpne, store
+og realistiske. Vi tar med filmer og serier med minst 100 stemmer, som gir 190 607 titler på VM-en.
+IMDb har ingen bilder, så plakater og handling hentes fra TMDB første gang en tittel vises, og
+lagres i databasen. Uten TMDB-nøkkel vises plassholdere.
+
+### Egne komponenter og hooks
+
+Komponentene er delt etter ansvar, slik at logikk som er vanskelig å få riktig (debounce, fokus,
+lazy-lasting, paginering) ligger ett sted og kan testes isolert.
+
+| Komponent / hook                                    | Ansvar og hvorfor den er skilt ut                                                                                                                                                              |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `useSearchState` (+ `lib/searchState.ts`)           | Leser og skriver søk, filtre og sortering i URL-en. Eneste kilde til søketilstand, så alle komponenter er enige                                                                                |
+| `SearchBox`, `HeaderSearch`, `useDebouncedCallback` | `SearchBox` debouncer (300 ms) og hopper over tomme og uendrede søk. `HeaderSearch` kobler den til URL-en: på forsiden endres bare `q`, fra andre sider sendes brukeren til forsiden med søket |
+| `FilterPanel`, `ActiveFilters`, `SortControls`      | Fasetter med antall treff, aktive filtre som chips og sortering. Endrer bare URL-en; serveren gjør resten                                                                                      |
+| `SearchResults`, `useInfiniteScroll`                | Resultatliste med uendelig scroll og «Last flere», `aria-live` for antall treff og alle tom-, feil- og lastetilstander                                                                         |
+| `TitleRow`, `LazyRow`, `useNearViewport`            | Forsiderader som henter data først når de nærmer seg skjermen. Piltaster flytter fokus mellom kortene i raden                                                                                  |
+| `CategoryNav`                                       | Hopp til kategori på forsiden, med fokus på raden også når den er tom                                                                                                                          |
+| `PosterCard`                                        | Plakat med `srcset`. Tittellenken strekkes over hele kortet, så hvert kort er ett tabulatorstopp i stedet for to                                                                               |
+| `Layout`                                            | Header, skip-link, fokus til sidens `h1` ved rutebytte, og plassen for API-banneret                                                                                                            |
+| `ApiUnavailableBanner` (+ `apollo/apiStatus.ts`)    | Ett globalt banner når API-et ikke kan nås, styrt av en reactive var som Apollo-linken setter                                                                                                  |
+| `ReviewForm`, `ReviewList`, `DeleteReviewButton`    | Anmeldelser med validering som speiler backenden (tegn telles som kodepunkter) og sletting med bekreftelse på stedet                                                                           |
+| `ListToggleButton`                                  | Legg i / fjern fra Min liste, med kunngjøring av utfallet                                                                                                                                      |
+| `VideoPlayer`                                       | Egen spiller på `<video>` med norske etiketter og tastaturstyring                                                                                                                              |
+| `ThemeToggle`, `useTheme`                           | Brukervalgt tema som overstyrer systemet, synkronisert mellom faner                                                                                                                            |
+
+GraphQL-typene i frontend (`graphql/types.ts`) er håndskrevne og speiler [`api.md`](api.md). Med et
+lite skjema var det enklere enn å sette opp kodegenerering. En backend-test validerer alle
+frontendens spørringer mot skjemaet, slik at avvik oppdages.
+
+### Biblioteker
+
+Vi har valgt få, veletablerte avhengigheter, og bevisst valgt bort tunge UI-biblioteker.
+
+| Bibliotek                                | Hvorfor                                                                                                           |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| React 19, React Router, Vite             | Krav i oppgaven. Router gir lazy-lastede ruter og innebygd scroll-gjenoppretting                                  |
+| Apollo Client                            | Normalisert cache, paginering og reactive vars. Erstatter egen state-håndtering                                   |
+| GraphQL Yoga, `pg`                       | Lett GraphQL-server med gode utvidelsespunkter for validering og feil. `pg` gir parametriserte spørringer direkte |
+| Vitest, Testing Library, Playwright, axe | Komponenttester som tester oppførsel, E2E i ekte nettleser og automatisk WCAG-sjekk                               |
+| ESLint (med `jsx-a11y`), Prettier, Husky | Lik kodestil og tilgjengelighetslinting før hver commit                                                           |
+
+**Ikke brukt, med vilje:**
+
+- **Komponentbibliotek (MUI o.l.):** kunne gitt raskere oppstart, men ville gitt mer JavaScript og
+  mindre kontroll over fokus og kontrast.
+- **Spillerbibliotek:** videospilleren er bygd på `<video>` (ca. 4 kB gzip), fordi den innebygde
+  spilleren varierer i tastaturstøtte og ikke kan få norske etiketter.
+- **ORM:** søket er det viktigste i appen, og vi ville ha full kontroll over SQL-en og indeksbruken.
+  All input er parametrisert.
+- **Innlogging:** en anonym bruker-ID (UUID i `localStorage`, sendt i en header) holder prosjektet
+  innenfor rammen. Prisen er at anmeldelser og liste følger nettleseren.
+
+### Bærekraft
+
+- **Mindre data over nettet:** detaljside, Min liste og spiller lazy-lastes. Forsiderader under
+  folden henter data først når de nærmer seg skjermen (IntersectionObserver). Bilder har `srcset` og
+  `sizes` og lastes lazy, og lister henter bare feltene de viser.
+- **Mindre arbeid på serveren:** indekserte søk og cursor-paginering. `totalCount` regnes bare ut
+  når det vises, noe som fjernet 8 `count(*)` per forsidevisning. TMDB-svar bufres i databasen, søk
+  debounces, og uendrede søk sendes ikke.
+- **Cache:** byggede filer har innholdshash og `Cache-Control: immutable`, `index.html`
+  revalideres, Apache komprimerer med gzip, og Apollo gjenbruker data ved navigering.
+- **Video** strømmes direkte fra archive.org, og vi velger den minste spillbare filen. Vi lagrer
+  ingen video selv.
+- **Mørk modus** er standard i kinodesignet, noe som sparer strøm på OLED-skjermer. Lys modus kan
+  velges.
+- **Få avhengigheter:** ingen UI-, spiller- eller ORM-bibliotek.
+
+### Sikkerhet og robusthet
+
+- SQL er alltid parametrisert. Brukerens `%`, `_` og `\` escapes etter aksentfolding, slik at
+  fullbreddevarianter ikke blir jokertegn.
+- Kostnads- og dybdegrense mot dyre spørringer. De er memoisert, så nøstede fragmenter ikke kan
+  låse CPU-en. Se [`forklaring.md`](forklaring.md#5-vern-av-api-et).
+- Rate limiting av mutations per bruker og IP. Backenden lytter bare på `127.0.0.1` i produksjon, så
+  den ikke kan nås forbi Apache.
+- `/health` sjekker databasen. systemd starter backenden på nytt ved feil.
+- Content-Security-Policy og andre sikkerhetsheadere i Apache.
+- Ingen hemmeligheter i git: `.env` er ignorert, og `.env.example` dokumenterer alle variabler.
+
+## Oppsett med to kommandoer
+
+`npm run setup` og `npm run dev` er små tsx-skript (`backend/scripts/setup.ts`, `dev.ts`) i stedet for shell-kommandoer i `package.json`, fordi `VAR=verdi cmd` ikke virker i cmd.exe. Setup starter den falske Archive i samme prosess på en tilfeldig ledig port (databasen lagrer bare element-id og filnavn, ikke vertsnavn), så den ikke kolliderer med en kjørende dev- eller E2E-stack. `npm run dev` velger falske TMDB/Archive kun når `TMDB_API_KEY` er tom; en eksplisitt `ARCHIVE_URL` respekteres. Standard `FIXTURE_SIZE` i setup er 20 000 for rask første kjøring (`db:fixture` alene har fortsatt 120 000).

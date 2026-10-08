@@ -218,7 +218,9 @@ main {
   align-content: center;
   align-items: center;
   gap: 0.25rem 1rem;
-  height: var(--header-h);
+  /* min-height, ikke height: ved 320 px bredde eller 400 % zoom brytes headeren over flere rader, og en fast
+     høyde lot innholdet flyte ut over (og under) headeren. */
+  min-height: var(--header-h);
 }
 .brand {
   font-weight: 900;
@@ -387,7 +389,7 @@ fieldset {
   text-decoration: none;
   font-weight: 600;
 }
-.btn:hover:not(:disabled) {
+.btn:hover:not(:disabled):not([aria-disabled='true']) {
   border-color: var(--accent-text);
 }
 .btn[aria-disabled='true'],
@@ -401,7 +403,7 @@ fieldset {
   color: var(--on-accent);
   font-weight: 700;
 }
-.btn--primary:hover:not(:disabled) {
+.btn--primary:hover:not(:disabled):not([aria-disabled='true']) {
   filter: brightness(1.08);
   border-color: var(--accent);
 }
@@ -452,6 +454,12 @@ fieldset {
   background: #16171b;
   border-color: #7d8494;
   color: #f4f5f7;
+}
+/* Headeren er mørk i begge temaer. Nettleserens standard plassholderfarge (~#757575) følger det lyse temaet
+   og gir bare 3,9:1 mot den mørke bakgrunnen; #a9afbd gir over 7:1. */
+.site-header .searchbox input::placeholder {
+  color: #a9afbd;
+  opacity: 1;
 }
 .searchbox input::-webkit-search-cancel-button {
   display: none;
@@ -817,6 +825,10 @@ fieldset {
   line-height: 1;
   cursor: pointer;
 }
+.row__nav[aria-disabled='true'] {
+  opacity: 0.4;
+  cursor: default;
+}
 .row__nav--prev {
   left: 0;
   background: linear-gradient(to right, rgb(10 10 12 / 0.9), rgb(10 10 12 / 0));
@@ -848,7 +860,9 @@ fieldset {
 .hero {
   display: flex;
   align-items: flex-end;
-  min-height: 34rem;
+  /* Høyere enn skjelettets minimum krever: tittel (3 linjer) + sammendrag (4 linjer) + to rader knapper
+     passer da alltid, så heltebanneret ikke vokser (og dytter radene ned) når dataene kommer. */
+  min-height: 38rem;
 }
 @media (min-width: 48rem) {
   .hero {
@@ -878,7 +892,7 @@ fieldset {
   inset: 0;
   background:
     linear-gradient(to top, var(--bg) 0, rgb(10 10 12 / 0) 4rem),
-    linear-gradient(to top, rgb(10 10 12 / 0.92) 0, rgb(10 10 12 / 0.5) 50%, rgb(10 10 12 / 0.15)),
+    linear-gradient(to top, rgb(10 10 12 / 0.92) 0, rgb(10 10 12 / 0.7) 50%, rgb(10 10 12 / 0.3)),
     linear-gradient(to right, rgb(10 10 12 / 0.75), rgb(10 10 12 / 0) 65%);
 }
 .hero__content {
@@ -897,6 +911,12 @@ fieldset {
   color: #f5c518;
 }
 .hero__title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  /* overflow: hidden klipper nedstrekene på tette linjer uten litt luft. */
+  padding-bottom: 0.1em;
   margin: 0;
   font-size: clamp(2rem, 6vw, 3.75rem);
   font-weight: 900;
@@ -911,6 +931,10 @@ fieldset {
   font-weight: 600;
 }
 .hero__overview {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
   margin: 0 0 1.25rem;
   font-size: 1.05rem;
   text-shadow: 0 1px 8px rgb(0 0 0 / 0.6);
@@ -922,6 +946,13 @@ fieldset {
 }
 .hero--skeleton {
   align-items: flex-end;
+}
+/* Plassholder i index.html; skjult utenfor forsiden (se theme-init.js). */
+.shell-hero {
+  display: none;
+}
+:root[data-hero] .shell-hero {
+  display: flex;
 }
 .hero--skeleton .skeleton__line--title {
   height: 2.5rem;
@@ -1093,7 +1124,10 @@ fieldset {
 .star-input__option:has(input:checked) {
   background: var(--accent);
   color: var(--on-accent);
-  border-color: var(--accent);
+  /* Gul fyll alene har bare 1,6:1 mot hvit bakgrunn i lyst tema (WCAG 1.4.11). En 2 px kant i tekstfarge gjør
+     valgt tilstand synlig uten farge; indre skygge i stedet for bredere kant, så ingenting flytter seg. */
+  border-color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--text);
 }
 .star-input__option:has(input:focus-visible) {
   outline: 3px solid var(--focus);
@@ -1515,6 +1549,30 @@ fieldset {
 }
 .row-anchor:focus-visible {
   outline-offset: -3px;
+}
+
+/* Lav viewport (landskap på mobil, 400 % zoom): en klebrig header på flere rader ville tatt halve skjermen
+   og dekket fokuserte elementer (WCAG 2.4.11/1.4.10). Da følger den siden, og alt som kompenserte for en
+   overlappende header (heltebilde under headeren, scroll-margin) skrus av. Over heltebildet ville den ellers
+   vært gjennomsiktig uten bilde bak seg, så den får fast bakgrunn. */
+@media (max-height: 30rem) {
+  .site-header {
+    position: static;
+  }
+  :root[data-hero] .site-header:not(.is-scrolled) {
+    background: var(--media-bg);
+    box-shadow: 0 1px 0 #2c2f38;
+  }
+  .hero,
+  .title-hero {
+    margin-top: 0;
+  }
+  .title-hero {
+    padding-top: 1rem;
+  }
+  .row-anchor {
+    scroll-margin-top: 0.5rem;
+  }
 }
 
 /* Globalt banner når API-et ikke kan nås. Bruker temaets tokens (--danger har AA-kontrast mot --surface i begge moduser). */

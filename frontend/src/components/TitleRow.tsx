@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from 'react';
 import { Link } from 'react-router';
 import { useApiUnavailable } from '../apollo/apiStatus';
 import type { TitleSummary } from '../graphql/types';
@@ -21,12 +29,18 @@ const prefersReducedMotion = () =>
   window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /** Horisontal rad med plakater: scroll-snap, pil-knapper og piltaster mellom kortene. */
-export function TitleRow({ heading, seeAllTo, titles, loading, error, onRetry }: Props) {
+export function TitleRow({ heading, seeAllTo, titles: latest, loading, error, onRetry }: Props) {
+  // Kortene tegnes i en avbrytbar, tidsdelt rendering (ikke i den samme lange oppgaven som mottar dataene),
+  // så radene ikke blokkerer input like etter første maling. Skjelettet står til kortene er klare.
+  const titles = useDeferredValue(latest);
   const headingId = useId();
   const apiDown = useApiUnavailable();
   const list = useRef<HTMLUListElement>(null);
   const [canPrev, setCanPrev] = useState(false);
   const [canNext, setCanNext] = useState(false);
+  // Pilen som har fokus. Når raden er scrollet helt til enden ville pilen forsvunnet under fingrene (fokus
+  // faller til body), så den blir stående som utilgjengelig til fokus flytter seg selv.
+  const [focusedArrow, setFocusedArrow] = useState<'prev' | 'next' | null>(null);
 
   const measure = useCallback(() => {
     const el = list.current;
@@ -92,12 +106,15 @@ export function TitleRow({ heading, seeAllTo, titles, loading, error, onRetry }:
 
       {titles && (
         <div className="row__viewport">
-          {canPrev && (
+          {(canPrev || focusedArrow === 'prev') && (
             <button
               type="button"
               className="row__nav row__nav--prev"
               aria-label={`Forrige i ${heading}`}
-              onClick={() => scrollByPage(-1)}
+              aria-disabled={!canPrev || undefined}
+              onClick={() => canPrev && scrollByPage(-1)}
+              onFocus={() => setFocusedArrow('prev')}
+              onBlur={() => setFocusedArrow(null)}
             >
               <span aria-hidden="true">‹</span>
             </button>
@@ -109,12 +126,15 @@ export function TitleRow({ heading, seeAllTo, titles, loading, error, onRetry }:
               <PosterCard key={title.id} title={title} />
             ))}
           </ul>
-          {canNext && (
+          {(canNext || focusedArrow === 'next') && (
             <button
               type="button"
               className="row__nav row__nav--next"
               aria-label={`Neste i ${heading}`}
-              onClick={() => scrollByPage(1)}
+              aria-disabled={!canNext || undefined}
+              onClick={() => canNext && scrollByPage(1)}
+              onFocus={() => setFocusedArrow('next')}
+              onBlur={() => setFocusedArrow(null)}
             >
               <span aria-hidden="true">›</span>
             </button>

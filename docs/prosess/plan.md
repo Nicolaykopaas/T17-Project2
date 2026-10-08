@@ -11,7 +11,7 @@ Brukergenererte data: anmeldelser (1–5 stjerner + tekst) og "min liste".
 
 - [x] Monorepo med npm workspaces, TypeScript strict, ESLint, Prettier, Husky + lint-staged
 - [x] Scripts i rot: `dev`, `build`, `lint`, `typecheck`, `test`, `test:e2e`, `db:migrate`, `db:seed`
-- [x] `.env.example`, `.gitignore`, `docs/beslutninger.md`, `docs/ki-logg.md`, `BLOCKERS.md`
+- [x] `.env.example`, `.gitignore`, `docs/beslutninger.md`, `docs/ki/ki-logg.md`, `docs/prosess/blokkeringer.md`
 - [x] GitLab CI (`.gitlab-ci.yml`): lint, typecheck, unit-tester, build og E2E (build og E2E fra M7, #17)
 
 ## M1 – Database og import
@@ -81,4 +81,4 @@ kritiker-agent og ble rettet før merge.
 
 ## Ferdig
 
-- [x] Oppsummering i `docs/status.md`: hva er gjort, hva gjenstår, hva Nicolay må gjøre
+- [x] Oppsummering i `docs/prosess/status.md`: hva er gjort, hva gjenstår, hva Nicolay må gjøre

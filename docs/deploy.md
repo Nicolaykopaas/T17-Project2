@@ -72,9 +72,23 @@ sudo apachectl configtest && sudo systemctl reload apache2
 cd /opt/project2 && git pull && npm ci && npm run build
 sudo systemctl stop project2-backend          # se «Låsvindu» under
 npm run db:migrate
-sudo cp -r frontend/dist/* /var/www/html/project2/
-sudo systemctl start project2-backend
+sudo systemctl start project2-backend         # opp igjen med en gang; importene under kan kjøre mens den svarer
+npm run db:seed && npm run db:artwork -- 2000 && npm run db:archive
+sudo cp -r frontend/dist/* /var/www/html/project2/ && sudo systemctl reload apache2
 ```
+
+`deploy/setup-vm.sh` følger samme rekkefølge: stopp, migrer, start backend, så import, plakater og
+Archive-skanning, og til slutt publisering av frontend og reload av Apache. Importene bruker upsert
+og kan derfor kjøre mens backend svarer, så siden er bare nede mens migreringen går (sekunder, ikke
+minutter). Skriptet avslutter med feilmelding og avsluttingskode 1 hvis API-et ikke svarer like etter start.
+
+**Archive-skanningen har en grense.** `setup-vm.sh` kjører `db:archive` med `ARCHIVE_LIMIT=500`
+(maks 500 koblede titler; innsamlingen stopper da), så hver deploy ikke skanner hele Archive. Full
+skanning: `ARCHIVE_LIMIT=0 bash deploy/setup-vm.sh`, eller `ARCHIVE_LIMIT=0 npm run db:archive` alene.
+Skanningen lagrer side for side, så Ctrl+C taper ikke det som er funnet: første Ctrl+C stopper
+innsamlingen og lagrer kandidatene som allerede er koblet, andre Ctrl+C avbryter helt.
+
+**Måle ytelse på ekte data:** `bash deploy/mal-ytelse.sh > ytelse-vm.md` kjører `EXPLAIN ANALYZE` på søkespørringene og skriver en tabell til `docs/ytelse.md` (se «Måle på VM-en» der). Den bare leser fra databasen.
 
 ## Sikkerhetsheadere og Content-Security-Policy
 
@@ -96,12 +110,17 @@ sjekker at forside, detalj og spiller laster uten brudd, og feiler hvis `fronten
   Playwright starter mock-servere, backend og frontend selv. `playwright-report/` og `test-results/`
   lagres som artefakt ved feil.
 
+Repoet ligger på GitHub fram til innlevering, så GitLab-jobbene kjøres først når det er flyttet. En ustabil
+E2E-test gjør jobben rød. De samme kommandoene er kjørt lokalt før hver merge.
+
 **Låsvindu for migrering 004.** Migreringen legger til tre genererte (`STORED`) kolonner på `titles`
 (`primary_title_norm`, `original_title_norm`, `title_words`) i én `ALTER TABLE`, og bygger deretter
 tre GIN-indekser på dem. `ALTER TABLE ... ADD COLUMN ... STORED` skriver om hele tabellen mens den
 holder `ACCESS EXCLUSIVE`-lås, så alle spørringer mot `titles` står i kø til den er ferdig (ca. 4 s lokalt, regn med 10–20 s
 for 120 000 titler på VM-en; indeksbyggingen kommer i tillegg). Kjør derfor migreringen med backend
-stoppet, slik `deploy/setup-vm.sh` og kommandoene over gjør. Senere migreringer som ikke skriver om
+stoppet, slik `deploy/setup-vm.sh` og kommandoene over gjør. `scripts/migrate.ts` setter
+`statement_timeout = 0` (poolens 15 s-grense ville avbrutt og rullet tilbake omskrivingen) og
+`lock_timeout = 30s` på migreringsklienten, og nullstiller begge etterpå. Senere migreringer som ikke skriver om
 tabellen trenger ikke dette.
 
 **Nettverk.** Med `NODE_ENV=production` (satt i `deploy/project2-backend.service`) lytter backend bare

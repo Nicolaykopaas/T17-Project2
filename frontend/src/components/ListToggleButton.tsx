@@ -21,10 +21,19 @@ export function ListToggleButton({ titleId, inMyList, variant = 'primary' }: Pro
   const [error, setError] = useState('');
 
   const onClick = async () => {
+    if (loading) return;
     setError('');
     try {
       // Tittelen normaliseres på id, så knappen oppdateres av cachen uten ekstra kode.
-      const { data } = await toggleList({ variables: { titleId } });
+      const { data } = await toggleList({
+        variables: { titleId },
+        // «Min liste» er en egen liste i cachen som ikke vet om denne endringen. Uten å kaste den ville en
+        // tilbakenavigering vist gammelt innhold til nettverkssvaret kom (eller for alltid ved nedetid).
+        update(cache) {
+          cache.evict({ fieldName: 'myList' });
+          cache.gc();
+        },
+      });
       setMessage(data?.toggleList.inMyList ? 'Lagt til i min liste.' : 'Fjernet fra min liste.');
     } catch (e) {
       setMessage('');
@@ -37,7 +46,8 @@ export function ListToggleButton({ titleId, inMyList, variant = 'primary' }: Pro
       <button
         type="button"
         className={`btn ${variant === 'primary' ? 'btn--primary' : 'btn--ghost'}`}
-        disabled={loading}
+        // aria-disabled i stedet for disabled: en disabled knapp mister fokus i Chrome mens mutasjonen pågår.
+        aria-disabled={loading || undefined}
         onClick={() => void onClick()}
       >
         {inMyList ? 'Fjern fra min liste' : 'Legg i min liste'}

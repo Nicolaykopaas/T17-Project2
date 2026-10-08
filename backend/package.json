@@ -14,6 +14,7 @@
     "db:seed": "tsx scripts/import-imdb.ts",
     "db:fixture": "tsx scripts/generate-fixture.ts",
     "db:artwork": "tsx scripts/prefetch-artwork.ts",
+    "db:measure": "tsx scripts/measure-performance.ts",
     "db:archive": "tsx scripts/import-archive.ts",
     "tmdb:mock": "tsx scripts/tmdb-mock.ts",
     "archive:mock": "tsx scripts/archive-mock.ts"

@@ -242,6 +242,48 @@ describe('TitlePage: anmeldelser', () => {
     expect(screen.getByText('Anmelder 1')).toBeInTheDocument();
     expect(log.TitleDetails.at(-1)).toMatchObject({ after: 'rc-r10' });
     expect(screen.queryByRole('button', { name: 'Vis flere' })).not.toBeInTheDocument();
+    // Knappen hadde fokus og er borte; fokus skal ikke falle til body.
+    expect(screen.getByRole('heading', { level: 2, name: 'Anmeldelser' })).toHaveFocus();
+  });
+
+  it('«Vis flere» beholder fokus og sender ikke to forespørsler mens den laster', async () => {
+    // Side to svarer sent, slik at «Laster …»-tilstanden varer lenge nok til å kunne observeres.
+    const slowPage2 = {
+      request: { query: TITLE_QUERY, variables: (v: Vars) => !!v.after },
+      maxUsageCount: 1,
+      delay: 200,
+      result: {
+        data: {
+          title: makeDetails({
+            reviewCount: 12,
+            reviews: makeReviewConnection(many.slice(10), 12, false),
+          }),
+        },
+      },
+    };
+    const { user, log } = setup(
+      {
+        TitleDetails: () => ({
+          title: makeDetails({
+            reviewCount: 12,
+            reviews: makeReviewConnection(many.slice(0, 10), 12, true),
+          }),
+        }),
+      },
+      [slowPage2],
+    );
+    await screen.findByText('Anmelder 1');
+    const button = screen.getByRole('button', { name: 'Vis flere' });
+    await user.click(button);
+    // aria-disabled, ikke disabled: ellers mister knappen fokus i Chrome mens den laster.
+    expect(screen.getByRole('button', { name: 'Laster …' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    expect(button).toHaveFocus();
+    await user.click(button);
+    await screen.findByText('Anmelder 12');
+    expect(log.TitleDetails.filter((v) => v.after)).toHaveLength(0);
   });
 
   describe.each([

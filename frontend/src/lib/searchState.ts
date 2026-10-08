@@ -20,6 +20,9 @@ export interface SearchState {
   dir: SortDirection | null;
 }
 
+/** Samme grense som backend (validation.ts). Lengre søk avvises der, og brukeren ser da bare en feil. */
+export const MAX_QUERY_LENGTH = 200;
+
 export const EMPTY_STATE: SearchState = {
   q: '',
   genres: [],
@@ -61,6 +64,14 @@ const list = (value: string | null) =>
 
 const unique = <T>(items: T[]) => [...new Set(items)];
 
+/** Teller Unicode-tegn, ikke UTF-16-enheter, slik som backend, så en emoji ikke teller dobbelt. */
+function clampQuery(raw: string): string {
+  const q = raw.trim();
+  if (q.length <= MAX_QUERY_LENGTH) return q;
+  // En hånd-redigert URL kan inneholde hva som helst; avkorting er bedre enn en avvist forespørsel.
+  return Array.from(q).slice(0, MAX_QUERY_LENGTH).join('').trim();
+}
+
 export function parseSearchState(params: URLSearchParams): SearchState {
   const rating = Number(params.get('minRating'));
   const minRating =
@@ -69,7 +80,7 @@ export function parseSearchState(params: URLSearchParams): SearchState {
       : null;
   const dir = params.get('dir');
   return {
-    q: (params.get('q') ?? '').trim(),
+    q: clampQuery(params.get('q') ?? ''),
     genres: unique(list(params.get('genres'))),
     decades: unique(
       list(params.get('decades'))

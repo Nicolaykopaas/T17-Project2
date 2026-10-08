@@ -10,13 +10,15 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "concurrently -n backend,frontend -c blue,magenta \"npm run dev -w backend\" \"npm run dev -w frontend\"",
+    "setup": "tsx backend/scripts/setup.ts",
+    "dev": "tsx backend/scripts/dev.ts",
     "build": "npm run build -w backend && npm run build -w frontend",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
     "typecheck": "tsc -p tsconfig.json && npm run typecheck --workspaces",
     "test": "npm test --workspaces",
     "test:e2e": "playwright test",
+    "screenshots": "SCREENSHOTS=1 playwright test e2e/screenshots.spec.ts --project=desktop",
     "db:migrate": "npm run db:migrate -w backend",
     "db:seed": "npm run db:seed -w backend",
     "prepare": "husky",

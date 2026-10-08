@@ -227,6 +227,11 @@ describe('toggleList og myList', () => {
     expect(code(await env.gql(MY_LIST, { after: 'tull' }, USER_A))).toBe('BAD_USER_INPUT');
     const bad = Buffer.from('{"s":"myList","v":["ikke-dato","x"]}').toString('base64url');
     expect(code(await env.gql(MY_LIST, { after: bad }, USER_A))).toBe('BAD_USER_INPUT');
+    // Riktig format, men ikke en ekte dato: ga tidligere Postgres-feil 22008 og maskert 500.
+    const badDate = Buffer.from('{"s":"myList","v":["2026-13-45 00:00:00","tt0000001"]}').toString(
+      'base64url',
+    );
+    expect(code(await env.gql(MY_LIST, { after: badDate }, USER_A))).toBe('BAD_USER_INPUT');
   });
 
   it('krever x-user-id og eksisterende tittel', async () => {

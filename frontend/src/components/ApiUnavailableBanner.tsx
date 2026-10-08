@@ -16,6 +16,7 @@ export function ApiUnavailableBanner() {
   if (!unavailable) return null;
 
   const retry = async () => {
+    if (retrying) return;
     setRetrying(true);
     setFailed(false);
     try {
@@ -50,12 +51,22 @@ export function ApiUnavailableBanner() {
               : 'Den kan være midlertidig nede, så prøv igjen om litt. Kjører du appen selv, må backend være startet. Åpner du den utenfra, må du være på NTNU-nett eller bruke VPN.'}
           </p>
         </div>
-        <button type="button" className="btn" disabled={retrying} onClick={() => void retry()}>
+        {/* aria-disabled i stedet for disabled: en disabled knapp mister fokus i Chrome mens den prøver. */}
+        <button
+          type="button"
+          className="btn"
+          aria-disabled={retrying || undefined}
+          onClick={() => void retry()}
+        >
           {retrying ? 'Prøver …' : 'Prøv igjen'}
         </button>
         {/* Egen status-region utenfor alerten: tilbakemelding på mislykket forsøk uten å gjenta hele varselet. */}
         <p role="status" className={failed ? 'api-banner__status' : 'sr-only'}>
-          {failed ? 'Fortsatt ingen kontakt med serveren.' : ''}
+          {failed
+            ? kind === 'service'
+              ? 'Tjenesten er fortsatt utilgjengelig.'
+              : 'Fortsatt ingen kontakt med serveren.'
+            : ''}
         </p>
       </div>
     </div>

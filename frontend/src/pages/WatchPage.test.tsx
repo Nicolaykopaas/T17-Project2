@@ -1,10 +1,11 @@
-import { screen } from '@testing-library/react';
+import { act, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Route, Routes } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import { WATCH_QUERY } from '../graphql/operations';
 import {
   buildMocks,
+  currentUrl,
   emptyLog,
   makeStream,
   makeWatchTitle,
@@ -92,5 +93,36 @@ describe('WatchPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Kunne ikke hente filmen');
     await user.click(screen.getByRole('button', { name: 'Prøv igjen' }));
     expect(await screen.findByRole('heading', { level: 1, name: 'Nosferatu' })).toBeInTheDocument();
+  });
+});
+
+describe('WatchPage: tilbake', () => {
+  const handlers = { Watch: () => ({ title: makeWatchTitle() }) };
+
+  it('går tilbake i historikken når man kom fra tittelsiden (ingen ring tittel ↔ spiller)', async () => {
+    const log: CallLog = emptyLog();
+    const { router } = renderApp(
+      <Routes>
+        <Route path="/title/:id" element={<p>Tittelside</p>} />
+        <Route path="/watch/:id" element={<WatchPage />} />
+      </Routes>,
+      { route: '/title/tt0000001', mocks: buildMocks(handlers, log) },
+    );
+    await act(() => router.navigate('/watch/tt0000001'));
+    await screen.findByRole('heading', { level: 1, name: 'Nosferatu' });
+
+    // En knapp (navigate(-1)), ikke en lenke som ville lagt tittelsiden på historikken én gang til.
+    expect(screen.queryByRole('link', { name: /Tilbake/ })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /Tilbake/ }));
+    expect(await screen.findByText('Tittelside')).toBeInTheDocument();
+    expect(currentUrl().pathname).toBe('/title/tt0000001');
+    expect(router.state.historyAction).toBe('POP');
+  });
+
+  it('lenker til tittelsiden ved direkte åpning, der det ikke finnes noen forrige side', async () => {
+    setup(handlers);
+    const back = await screen.findByRole('link', { name: /Tilbake\s*til Nosferatu/ });
+    expect(back).toHaveAttribute('href', '/title/tt0000001');
+    expect(screen.queryByRole('button', { name: /Tilbake/ })).not.toBeInTheDocument();
   });
 });

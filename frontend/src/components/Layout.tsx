@@ -11,6 +11,14 @@ export function Layout() {
   const first = useRef(true);
   const scrolled = useScrolled();
 
+  // theme-init.js markerer forsiden med data-hero før React er lastet (for app-skallet i index.html).
+  // Viser siden likevel ikke noe heltebanner (f.eks. API nede), må markeringen bort, ellers står
+  // headeren gjennomsiktig uten bilde bak. Banneret og skjelettet setter den selv i layout-effekt,
+  // som har kjørt når denne kjører.
+  useEffect(() => {
+    if (!document.querySelector('.hero')) delete document.documentElement.dataset.hero;
+  }, []);
+
   // Etter navigasjon flyttes fokus til sidens h1, slik at skjermleseren leser opp hvor man er i stedet for
   // å starte på «hovedinnhold». h1 finnes ofte ikke med en gang (lazy-lastet side) eller byttes ut når data
   // er hentet («Laster …» → tittelen), så vi følger med på innholdet en liten stund og flytter fokus til

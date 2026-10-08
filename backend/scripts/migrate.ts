@@ -30,8 +30,8 @@ const LOCK_KEY = 281_001;
 export async function migrate(
   pool: Pool,
   log: (msg: string) => void = () => {},
+  dir: string = findMigrationsDir(),
 ): Promise<string[]> {
-  const dir = findMigrationsDir();
   const files = readdirSync(dir)
     .filter((f) => /^\d+_.+\.sql$/.test(f))
     .sort();
@@ -40,6 +40,12 @@ export async function migrate(
   const client = await pool.connect();
   const applied: string[] = [];
   try {
+    // Poolens statement_timeout (15 s) er et vern mot løpske spørringer fra API-et, ikke mot
+    // migreringer: ALTER TABLE ... ADD COLUMN ... STORED skriver om hele titles og tar 10-20 s
+    // eller mer på VM-en med 190 000 titler. En avbrutt migrering ruller tilbake og kan aldri
+    // fullføres. lock_timeout i stedet for å vente evig på en lås som en hengende økt holder.
+    await client.query('SET statement_timeout = 0');
+    await client.query("SET lock_timeout = '30s'");
     await client.query('SELECT pg_advisory_lock($1)', [LOCK_KEY]);
     await client.query(`CREATE TABLE IF NOT EXISTS schema_migrations (
       name       text PRIMARY KEY,
@@ -67,6 +73,9 @@ export async function migrate(
     }
   } finally {
     await client.query('SELECT pg_advisory_unlock($1)', [LOCK_KEY]).catch(() => {});
+    // Tilkoblingen går tilbake til poolen; uten RESET ville resten av prosessen (f.eks. importen)
+    // fortsatt kjørt uten statement_timeout.
+    await client.query('RESET statement_timeout; RESET lock_timeout').catch(() => {});
     client.release();
   }
   return applied;

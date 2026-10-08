@@ -3,7 +3,7 @@
 Denne fila beskriver hvordan gruppa har brukt kunstig intelligens (KI) i prosjekt 2, hva KI-en
 har laget, hva mennesker har bestemt og kontrollert, og hvilke feil og begrensninger vi har sett.
 Den utfyller [`ki-logg.md`](ki-logg.md) (én linje per oppgave) og
-[`beslutninger.md`](beslutninger.md) (alle tekniske valg med begrunnelse).
+[`beslutninger.md`](../beslutninger.md) (alle tekniske valg med begrunnelse).
 
 ## Kort oppsummert
 
@@ -13,7 +13,7 @@ Den utfyller [`ki-logg.md`](ki-logg.md) (én linje per oppgave) og
   prioriteringer, godkjent planen for oktober-fasen før arbeidet startet, satt opp og driftet VM-en, og vurdert
   tilbakemeldinger fra medstudenter.
 - **Arbeidet har gått i to faser:**
-  - **September (M0–M6):** agentene jobbet autonomt etter `CLAUDE.md` og `PLAN.md`. Leder-agenten
+  - **September (M0–M6):** agentene jobbet autonomt etter `CLAUDE.md` og `docs/prosess/plan.md`. Leder-agenten
     kjørte lint, typecheck og testene før hver merge og loggførte det i `ki-logg.md`. E2E-testene
     kom i M4, og det var ingen separat kodegjennomgang. PR-ene fra denne fasen gikk rett til `main`
     uten review.
@@ -40,11 +40,11 @@ og #23, ferdigstilling etter medstudentvurderingen). Arbeidet i september ble co
 
 Agentenes roller og instrukser ligger i repoet, så de kan inspiseres:
 
-- [`CLAUDE.md`](../CLAUDE.md): regler for alle agenter (tekniske rammer, krav til testing,
+- [`CLAUDE.md`](../../CLAUDE.md): regler for alle agenter (tekniske rammer, krav til testing,
   tilgjengelighet, bærekraft, git-flyt og hva som krever et menneske).
-- [`.claude/agents/`](../.claude/agents/): rollebeskrivelser for `backend-utvikler`,
+- [`.claude/agents/`](../../.claude/agents/): rollebeskrivelser for `backend-utvikler`,
   `frontend-utvikler`, `tester` og `reviewer`.
-- [`PLAN.md`](../PLAN.md): milepælene (M0–M7) som agentene jobbet mot, krysset av når verifisert.
+- [`plan.md`](../prosess/plan.md): milepælene (M0–M7) som agentene jobbet mot, krysset av når verifisert.
 
 ## Arbeidsflyt
 
@@ -144,7 +144,7 @@ deploy på VM-en._
   avkrysningsboksene (se tabellen under). Etter fiksen besto den 20 av 20 gjentatte kjøringer, og
   CI er nå satt til å feile på ustabile tester.
 - **Målinger i stedet for påstander.** Ytelsespåstander er dokumentert med `EXPLAIN ANALYZE` i
-  [`ytelse.md`](ytelse.md), med åpen merknad om at tallene er fra et syntetisk datasett.
+  [`ytelse.md`](../ytelse.md), med åpen merknad om at tallene er fra et syntetisk datasett.
 
 ## Feil KI-en gjorde, og hvordan de ble oppdaget
 

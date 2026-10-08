@@ -1,5 +1,6 @@
 import { useId, useState } from 'react';
 import { useQuery } from '@apollo/client/react';
+import { useApiUnavailable } from '../apollo/apiStatus';
 import { FACETS_QUERY, GENRES_QUERY } from '../graphql/operations';
 import type { FacetCount, TitleType } from '../graphql/types';
 import { decadeLabel, formatNumber, typeLabel } from '../lib/format';
@@ -23,12 +24,13 @@ function toggle<T>(list: T[], item: T): T[] {
 
 export function FilterPanel({ state, onChange }: Props) {
   const [open, setOpen] = useState(false);
+  const apiDown = useApiUnavailable();
   const panelId = useId();
   const ratingId = useId();
   const count = activeFilterCount(state);
 
   // Fasettene telles mot søketeksten og de ANDRE filtrene (serveren står for det).
-  const { data, previousData } = useQuery(FACETS_QUERY, {
+  const { data, previousData, error } = useQuery(FACETS_QUERY, {
     variables: { query: state.q || null, filters: toFilters(state) },
   });
   // Forrige fasetter står igjen mens nye hentes, ellers blinker og hopper filterlista.
@@ -66,6 +68,13 @@ export function FilterPanel({ state, onChange }: Props) {
       >
         Filtre{count > 0 ? ` (${count})` : ''}
       </button>
+
+      {/* Ved nedetid sier banneret fra; ellers ville tallene bare forsvunnet uten forklaring. */}
+      {error && !data && !apiDown && (
+        <p className="error-text" role="alert">
+          Kunne ikke hente antall treff per filter. Filtrene virker fortsatt.
+        </p>
+      )}
 
       <div id={panelId} className={`filters__body${open ? ' is-open' : ''}`}>
         <label className="check check--available">
@@ -113,7 +122,9 @@ export function FilterPanel({ state, onChange }: Props) {
                 />
                 <span>
                   {decadeLabel(d)}
-                  <span className="muted">{suffix(decadeCounts.get(String(d)) ?? 0)}</span>
+                  <span className="muted">
+                    {suffix(decadeCounts.get(String(d)) ?? (facetData ? 0 : undefined))}
+                  </span>
                 </span>
               </label>
             ))}

@@ -207,6 +207,122 @@ describe('importArchive mot falsk Archive', () => {
   });
 });
 
+describe('importArchive: lagring underveis og avbrudd', () => {
+  const scrapeCalls = () =>
+    mock.state.calls.filter((c) => c.startsWith('/services/search/v1/scrape')).length;
+  /** fetch som varsler etter hvert Scrape-svar (med løpenummer) og hvert metadata-svar. */
+  const spy =
+    (onScrape: (n: number) => void, onMetadata?: () => void): typeof fetch =>
+    async (input, init) => {
+      const res = await fetch(input, init);
+      const url = String(input);
+      if (url.includes('/services/search/v1/scrape')) onScrape(scrapeCalls());
+      else if (url.includes('/metadata/')) onMetadata?.();
+      return res;
+    };
+
+  it('lagrer hver side før neste hentes, så første sides filmer overlever et avbrudd', async () => {
+    const stopCollecting = { aborted: false };
+    const s = await run({
+      stopCollecting,
+      log: (m) => {
+        if (m.startsWith('Skannet 3 ')) stopCollecting.aborted = true;
+      },
+    });
+    expect(scrapeCalls()).toBe(1);
+    expect(s).toMatchObject({ scanned: 3, imported: 3 });
+    expect((await streams()).map((r) => r.title_id)).toEqual([
+      'tt0068646',
+      'tt0111161',
+      'tt0133093',
+    ]);
+  });
+
+  it('første avbrudd midt i skanningen stopper innsamlingen og logger at funn lagres', async () => {
+    const stopCollecting = { aborted: false };
+    const logs: string[] = [];
+    const s = await run({
+      stopCollecting,
+      log: (m) => logs.push(m),
+      // Flagget settes mens side 2 er på vei inn, slik Ctrl+C under et pågående kall gjør.
+      fetch: spy((n) => {
+        if (n === 2) stopCollecting.aborted = true;
+      }),
+    });
+    expect(scrapeCalls()).toBe(2);
+    expect(s).toMatchObject({ scanned: 3, imported: 3, failed: 0 });
+    expect(logs.some((m) => m.includes('Avbrutt: lagrer 0 filmer') && m.includes('igjen'))).toBe(
+      true,
+    );
+    expect(await streams()).toHaveLength(3);
+  });
+
+  it('første avbrudd før start henter ingenting og lagrer ingenting', async () => {
+    const s = await run({ stopCollecting: { aborted: true } });
+    expect(scrapeCalls()).toBe(0);
+    expect(s.imported).toBe(0);
+  });
+
+  it('andre avbrudd stopper lagringen også: bare pågående kandidat fullføres', async () => {
+    const signal = { aborted: false };
+    // Det andre Ctrl+C kommer mens første metadata-kall er i gang.
+    const s = await run({
+      signal,
+      concurrency: 1,
+      fetch: spy(
+        () => {},
+        () => {
+          signal.aborted = true;
+        },
+      ),
+    });
+    expect(s.imported).toBe(1);
+    expect(await streams()).toHaveLength(1);
+    expect(scrapeCalls()).toBe(1);
+  });
+
+  it('avbrutt før start via signal lagrer ingenting', async () => {
+    const s = await run({ signal: { aborted: true } });
+    expect(scrapeCalls()).toBe(0);
+    expect(s.imported).toBe(0);
+    expect(await streams()).toHaveLength(0);
+  });
+
+  it('IMDb-treff på en senere side erstatter tittelkoblingen som allerede er lagret', async () => {
+    await pool.query(
+      `INSERT INTO titles (id, title_type, primary_title, original_title, start_year)
+       VALUES ('tt9990003', 'movie', 'Solo Film', 'Solo Film', 1950) ON CONFLICT DO NOTHING`,
+    );
+    const item = (identifier: string, extra: Record<string, unknown>): MockItem => ({
+      scrape: { identifier, collection: 'feature_films', ...extra },
+      files: [{ name: `${identifier}.webm`, format: 'WebM', length: '10' }],
+    });
+    const custom = await startArchiveMock(0, {
+      videoPath: path.join(dir, 'v.webm'),
+      pageSize: 1,
+      items: [
+        item('first-by-title', { title: 'Solo Film', year: '1950' }),
+        item('second-by-title', { title: 'Solo Film', year: '1950' }),
+        item('third-by-imdb', {
+          title: 'Other',
+          year: '2000',
+          'external-identifier': 'urn:imdb:tt9990003',
+        }),
+      ],
+    });
+    try {
+      const s = await run({ archiveUrl: `http://127.0.0.1:${custom.port}` });
+      expect(s).toMatchObject({ duplicates: 2, imported: 1, failed: 0 });
+      const rows = await streams();
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({ title_id: 'tt9990003', archive_id: 'third-by-imdb' });
+    } finally {
+      await custom.close();
+      await pool.query(`DELETE FROM titles WHERE id LIKE 'tt999000%'`);
+    }
+  });
+});
+
 describe('falsk Archive: nedlasting', () => {
   const url = () => `http://127.0.0.1:${mock.port}/download/mock-shawshank/mock-shawshank.webm`;
 

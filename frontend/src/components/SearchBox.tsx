@@ -1,5 +1,6 @@
 import { useId, useRef, useState, type FormEvent } from 'react';
 import { useDebouncedCallback } from '../hooks/useDebouncedCallback';
+import { MAX_QUERY_LENGTH } from '../lib/searchState';
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -56,6 +57,8 @@ export function SearchBox({ value, onCommit }: Props) {
           value={text}
           autoComplete="off"
           spellCheck={false}
+          // Backend avviser lengre søk; bedre å stoppe det her enn å vise en feil etter at man har limt inn.
+          maxLength={MAX_QUERY_LENGTH}
           placeholder="F.eks. The Godfather"
           onChange={(e) => {
             setText(e.target.value);

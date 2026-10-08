@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router';
+import { Link, useParams } from 'react-router';
 import { useQuery } from '@apollo/client/react';
 import { CombinedGraphQLErrors } from '@apollo/client';
 import { useApiUnavailable } from '../apollo/apiStatus';
+import { BackLink } from '../components/BackLink';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { ListToggleButton } from '../components/ListToggleButton';
 import { ReviewForm } from '../components/ReviewForm';
@@ -10,6 +11,7 @@ import { ReviewList } from '../components/ReviewList';
 import { Stars } from '../components/Stars';
 import { StreamInfo } from '../components/StreamInfo';
 import { TITLE_QUERY } from '../graphql/operations';
+import { useMoreButtonFocus } from '../hooks/useMoreButtonFocus';
 import { useHeaderOverlay } from '../hooks/useHeaderOverlay';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { formatNumber, formatRating, formatYears, hueFromId, typeLabel } from '../lib/format';
@@ -23,26 +25,6 @@ function HeaderOverlay() {
   return null;
 }
 
-/** Fra søket brukes historikken, så resultater og scrollposisjon er intakt. Ved direkte åpning finnes ingen «forrige». */
-function BackLink() {
-  const navigate = useNavigate();
-  const { key } = useLocation();
-  if (key === 'default') {
-    return (
-      <p className="backlink">
-        <Link to="/">← Til søket</Link>
-      </p>
-    );
-  }
-  return (
-    <p className="backlink">
-      <button type="button" className="btn btn--link" onClick={() => void navigate(-1)}>
-        ← Tilbake
-      </button>
-    </p>
-  );
-}
-
 export default function TitlePage() {
   const { id = '' } = useParams();
   const { data, loading, error, refetch, fetchMore } = useQuery(TITLE_QUERY, {
@@ -53,6 +35,11 @@ export default function TitlePage() {
   const [deleted, setDeleted] = useState('');
   const reviewsHeading = useRef<HTMLHeadingElement>(null);
   const deletedTimer = useRef<number>(undefined);
+  // «Vis flere» forsvinner når alle anmeldelser er lastet; da flyttes fokus til overskriften.
+  const moreFocus = useMoreButtonFocus(
+    data?.title?.reviews.pageInfo.hasNextPage ?? false,
+    reviewsHeading,
+  );
   const apiDown = useApiUnavailable();
   // Ellers kan timeren sette state etter at siden er forlatt.
   useEffect(() => () => window.clearTimeout(deletedTimer.current), []);
@@ -93,6 +80,7 @@ export default function TitlePage() {
 
   const reviews = title.reviews;
   const loadMoreReviews = async () => {
+    if (loadingMore) return;
     setLoadingMore(true);
     setMoreFailed(false);
     try {
@@ -130,7 +118,7 @@ export default function TitlePage() {
           )}
         </div>
         <div className="title-hero__inner container">
-          <BackLink />
+          <BackLink fallbackTo="/" fallbackLabel="← Til søket" />
           <div className="title-hero__body">
             <div className="title-hero__poster" aria-hidden="true">
               {poster ? (
@@ -258,8 +246,10 @@ export default function TitlePage() {
             <button
               type="button"
               className="btn"
-              disabled={loadingMore}
+              // aria-disabled i stedet for disabled: en disabled knapp mister fokus i Chrome mens den laster.
+              aria-disabled={loadingMore || undefined}
               onClick={() => void loadMoreReviews()}
+              {...moreFocus}
             >
               {loadingMore ? 'Laster …' : 'Vis flere'}
             </button>

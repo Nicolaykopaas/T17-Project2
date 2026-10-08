@@ -4,16 +4,16 @@ Du jobber autonomt. Nicolay ser ikke på skjermen før prosjektet er ferdig. Ikk
 
 ## Roller
 
-- **Hovedsesjonen (Opus) er daglig leder.** Den planlegger, deler opp arbeid, delegerer til subagenter, verifiserer og krysser av i `PLAN.md`. Lederen skriver helst ikke produksjonskode selv.
+- **Hovedsesjonen (Opus) er daglig leder.** Den planlegger, deler opp arbeid, delegerer til subagenter, verifiserer og krysser av i `docs/prosess/plan.md`. Lederen skriver helst ikke produksjonskode selv.
 - **Subagenter (Sonnet):** `backend-utvikler`, `frontend-utvikler`, `tester`, `reviewer`. Gi dem små, avgrensede oppgaver med tydelig ferdigkriterium. Kjør uavhengige oppgaver parallelt.
 
 ## Arbeidsløkke (hver runde)
 
-1. Les `PLAN.md` og `BLOCKERS.md`.
+1. Les `docs/prosess/plan.md` og `docs/prosess/blokkeringer.md`.
 2. Velg neste uavkryssede punkt (eller flere uavhengige).
 3. Deleger → la `reviewer` gå gjennom endringen → la `tester` kjøre relevante tester.
 4. Kjør selv `npm run lint && npm run typecheck && npm test` i berørte pakker. Rødt = ikke ferdig.
-5. Commit, kryss av i `PLAN.md`, skriv én linje i `docs/ki-logg.md`.
+5. Commit, kryss av i `docs/prosess/plan.md`, skriv én linje i `docs/ki/ki-logg.md`.
 6. Er alle MVP-kriterier oppfylt og verifisert: opprett filen `.claude/DONE`.
 
 ## Git
@@ -21,7 +21,7 @@ Du jobber autonomt. Nicolay ser ikke på skjermen før prosjektet er ferdig. Ikk
 - Jobb alltid på grener fra `mvp`. Aldri commit eller push til `main`, aldri force-push.
 - Én gren per oppgave (`feat/…`, `fix/…`, `test/…`), merge til `mvp` når review og tester er grønne.
 - Små commits med Conventional Commits-meldinger på engelsk.
-- Hvis `glab` er innlogget: opprett issue per PLAN-punkt og MR mot `mvp`, reviewer kommenterer i MR-en. Ellers: gjør det samme lokalt og loggfør i `docs/ki-logg.md`.
+- Hvis `glab` er innlogget: opprett issue per PLAN-punkt og MR mot `mvp`, reviewer kommenterer i MR-en. Ellers: gjør det samme lokalt og loggfør i `docs/ki/ki-logg.md`.
 
 ## Tekniske rammer (ikke avvik uten å skrive begrunnelse i beslutninger.md)
 
@@ -44,4 +44,4 @@ Du jobber autonomt. Nicolay ser ikke på skjermen før prosjektet er ferdig. Ikk
 
 - Ingen `sudo`, ingen endringer utenfor repoet, ingen hemmeligheter i git (`.env` i `.gitignore`, `.env.example` i repo).
 - README.md skrives av gruppa. Agentene legger bare fakta og installasjonssteg i `docs/`, som gruppa kan bygge README på.
-- Står du fast på noe som krever Nicolay (passord, VM, VPN, tilganger): skriv det i `BLOCKERS.md` og gå videre.
+- Står du fast på noe som krever Nicolay (passord, VM, VPN, tilganger): skriv det i `docs/prosess/blokkeringer.md` og gå videre.

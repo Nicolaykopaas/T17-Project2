@@ -124,6 +124,21 @@ test('filtrer på filmer som kan strømmes gratis, åpne en film og spill den av
   await page.evaluate(() => localStorage.removeItem('filmsok:player'));
 });
 
+test('tilbake fra spilleren går tilbake i historikken, ikke en ny runde til tittelsiden', async ({
+  page,
+}) => {
+  await page.goto(`./title/${SHAWSHANK}`);
+  await page.getByRole('link', { name: /Se filmen/ }).click();
+  await expect(page).toHaveURL(new RegExp(`/watch/${SHAWSHANK}$`));
+  await page.getByRole('button', { name: /Tilbake/ }).click();
+  await expect(page).toHaveURL(new RegExp(`/title/${SHAWSHANK}$`));
+  // Hadde «tilbake» pushet en ny oppføring, ville spilleren ligget foran oss i historikken.
+  await page.getByRole('link', { name: /Se filmen/ }).click();
+  await expect(page).toHaveURL(new RegExp(`/watch/${SHAWSHANK}$`));
+  await page.goBack();
+  await expect(page).toHaveURL(new RegExp(`/title/${SHAWSHANK}$`));
+});
+
 test('undertekster: CC-knappen skrur sporet av og på', async ({ page }) => {
   await page.goto(`./watch/${AMELIE}`);
   await waitForMetadata(page);

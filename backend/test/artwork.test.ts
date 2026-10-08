@@ -14,8 +14,11 @@ const API = () => `http://127.0.0.1:${mock.port}/3`;
 const IMG = () => `http://127.0.0.1:${mock.port}/t/p`;
 const quiet = () => {};
 
-const service = (over: Partial<ArtworkOptions> = {}) =>
-  new ArtworkService({
+// Oppslag som en forespørsel har gitt opp på, fortsetter i bakgrunnen og lagrer etterpå. Uten å
+// vente på dem kunne en rad fra forrige test dukke opp etter tømmingen i beforeEach.
+const services: ArtworkService[] = [];
+const service = (over: Partial<ArtworkOptions> = {}) => {
+  const svc = new ArtworkService({
     pool,
     apiKey: 'test',
     apiUrl: API(),
@@ -23,6 +26,9 @@ const service = (over: Partial<ArtworkOptions> = {}) =>
     log: quiet,
     ...over,
   });
+  services.push(svc);
+  return svc;
+};
 
 async function gql(svc: ArtworkService, query: string) {
   const yoga = createApp({ pool, production: false, artwork: svc });
@@ -48,10 +54,12 @@ beforeAll(async () => {
   mock = await startTmdbMock(0);
 });
 afterAll(async () => {
+  await Promise.all(services.splice(0).map((s) => s.idle()));
   await mock.close();
   await pool.end();
 });
 beforeEach(async () => {
+  await Promise.all(services.splice(0).map((s) => s.idle()));
   await pool.query('DELETE FROM title_artwork');
   mock.state.calls.length = 0;
   mock.state.delayMs = 0;
@@ -306,15 +314,17 @@ describe('bilde-URL-er', () => {
 describe('tidsgrense', () => {
   it('svarer innen ca. 2,5 s med null, og lagrer resultatet i bakgrunnen', async () => {
     mock.state.delayMs = 3000;
+    const svc = service();
     const started = Date.now();
-    const res = await gql(service(), poster(FOUND));
+    const res = await gql(svc, poster(FOUND));
     const elapsed = Date.now() - started;
     expect(res.data.title.posterUrl).toBeNull();
     expect(elapsed).toBeGreaterThanOrEqual(2400);
     expect(elapsed).toBeLessThan(3000);
     expect(await rowFor(FOUND)).toBeUndefined();
 
-    await new Promise((r) => setTimeout(r, 900));
+    // Vent på selve oppslaget i stedet for en fast pause, som er for kort på en belastet maskin.
+    await svc.idle();
     expect((await rowFor(FOUND)).status).toBe('found');
     expect((await gql(service(), poster(FOUND))).data.title.posterUrl).not.toBeNull();
   }, 15_000);
@@ -364,6 +374,60 @@ describe('antall kall per side', () => {
     });
     await gql(svc, PAGE);
     expect(peak).toBe(3);
+  });
+});
+
+describe('begrenset oppslagskø', () => {
+  it('avviser oppslag utover køgrensen uten TMDB-kall og uten negativ cache', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    let calls = 0;
+    const svc = service({
+      concurrency: 1,
+      maxQueue: 2,
+      fetch: async (...args) => {
+        calls++;
+        await gate;
+        return fetch(...args);
+      },
+    });
+    // 1 pågår + 2 i kø = 3 aksepterte; de to neste avvises.
+    const ids = ['tt0000001', 'tt0000002', 'tt0000003', 'tt0000004', 'tt0000005'];
+    const lookups = ids.map((id) => svc.lookup(id, 'MOVIE'));
+    const rejected = await Promise.all([lookups[3]!, lookups[4]!]);
+    expect(rejected.map((o) => o.kind)).toEqual(['busy', 'busy']);
+    expect(calls).toBe(1);
+
+    release();
+    const accepted = await Promise.all(lookups.slice(0, 3));
+    expect(accepted.map((o) => o.kind)).toEqual(['found', 'found', 'found']);
+    expect(await rowFor('tt0000004')).toBeUndefined();
+
+    // Ingen negativ cache: når køen er tom, slås de avviste opp som vanlig.
+    expect((await svc.lookup('tt0000004', 'MOVIE')).kind).toBe('found');
+    expect((await rowFor('tt0000004')).status).toBe('found');
+  });
+
+  it('gir null for avviste titler i et GraphQL-svar, ikke feil', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const svc = service({
+      concurrency: 1,
+      maxQueue: 0,
+      batchDeadlineMs: 100,
+      fetch: async (...args) => {
+        await gate;
+        return fetch(...args);
+      },
+    });
+    const res = await gql(
+      svc,
+      '{ a: title(id: "tt0000001") { posterUrl } b: title(id: "tt0000002") { posterUrl } }',
+    );
+    release();
+    expect(res.errors).toBeUndefined();
+    expect(res.data.a.posterUrl).toBeNull();
+    expect(res.data.b.posterUrl).toBeNull();
   });
 });
 
