@@ -13,10 +13,10 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
   Hver oppgave lages på en egen gren (`feat/…`, `fix/…`, `docs/…`) og merges inn med PR eller
   `--no-ff`, slik at historikken viser grenene. Agentene pusher aldri til `main` og aldri med force.
 - **Issues og PR-er på GitHub, ikke GitLab.** I september var `glab` ikke tilgjengelig, så
-  issue- og review-flyten ble loggført i `docs/ki-logg.md`. Fra oktober ligger issues (#13–#17, #23)
+  issue- og review-flyten ble loggført i `docs/ki/ki-logg.md`. Fra oktober ligger issues (#13–#17, #23)
   og PR-er (#18–#24) på GitHub (`Nicolaykopaas/T17-Project2`), og hver PR har review fra en
   kritiker-agent. Repoet flyttes til NTNU GitLab ved innlevering.
-- **Syntetisk testdatasett.** IMDb-nedlasting er blokkert i miljøet (se `BLOCKERS.md`). Et skript
+- **Syntetisk testdatasett.** IMDb-nedlasting er blokkert i miljøet (se `docs/prosess/blokkeringer.md`). Et skript
   genererer filer i nøyaktig samme TSV-format, så importkoden er den samme for ekte og syntetiske
   data.
 - **Egen migreringsrunner.** `backend/scripts/migrate.ts` (tabell `schema_migrations`, én transaksjon per

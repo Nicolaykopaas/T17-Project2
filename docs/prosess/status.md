@@ -4,7 +4,7 @@ Oppdatert 2026-10-06.
 
 ## Hva er gjort
 
-Alle punktene i `PLAN.md` (M0–M7) er gjort og verifisert i utviklingsmiljøet. Appen kjører på
+Alle punktene i `plan.md` (M0–M7) er gjort og verifisert i utviklingsmiljøet. Appen kjører på
 <http://it2810-17.idi.ntnu.no/project2/> med det ekte IMDb-datasettet (190 607 titler med ≥ 100
 stemmer, deployet 2026-09-30).
 
@@ -21,7 +21,7 @@ stemmer, deployet 2026-09-30).
   kostnadsgrense, rate limit, aksentuavhengig søk og ordprefiks for korte søk (#15),
   frontend-gjennomgang med blant annet fokus til `h1` ved rutebytte, tema-bryter og
   sletting av egen anmeldelse (#16), CI med build og E2E samt CSP-sjekk (#17), og
-  kommentarer og dokumentasjon (#23). Se `PLAN.md` for PR-nummer. Alle PR-er har review av en
+  kommentarer og dokumentasjon (#23). Se `plan.md` for PR-nummer. Alle PR-er har review av en
   kritiker-agent og ble rettet før merge.
 - **Tester** (siste verifiserte kjøring, ren E2E-database, CI-modus):
   - backend: 441 tester (Vitest mot testdatabase)
@@ -41,11 +41,11 @@ stemmer, deployet 2026-09-30).
    indekser bygges (se `docs/deploy.md`).
 3. **Måle Lighthouse og `EXPLAIN ANALYZE` på nytt med ekte data** (VM-adressen). Tallene i
    `docs/ytelse.md` er fra syntetiske data, og Lighthouse er målt før M7.
-4. **Fylle ut «Gruppens egen gjennomgang»** i `docs/ki-deklarasjon.md`.
+4. **Fylle ut «Gruppens egen gjennomgang»** i `docs/ki/ki-deklarasjon.md`.
 5. **Bidragsfil i Canvas.**
 
 README.md er skrevet av leder-agenten på forespørsel fra Nicolay i oktober (se
-`docs/ki-deklarasjon.md`). Installasjonssteg ligger i `docs/oppsett.md` og `docs/deploy.md`.
+`docs/ki/ki-deklarasjon.md`). Installasjonssteg ligger i `docs/oppsett.md` og `docs/deploy.md`.
 
 ## Kjente begrensninger
 

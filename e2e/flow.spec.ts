@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-// Hele hovedflyten fra PLAN.md (M4) i én test, fordi hvert steg bygger på tilstanden fra det forrige:
+// Hele hovedflyten fra docs/prosess/plan.md (M4) i én test, fordi hvert steg bygger på tilstanden fra det forrige:
 // søk → filtrer → sorter → scroll → detalj → skriv anmeldelse → se den i lista.
 test('søk, filtrer, sorter, scroll, åpne detalj og skriv anmeldelse', async ({ page }) => {
   await page.goto('./');
