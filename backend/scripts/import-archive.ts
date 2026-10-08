@@ -278,8 +278,15 @@ export function chooseFiles(files: unknown): ChosenFile | null {
 
 // --- HTTP ---------------------------------------------------------------------------------
 
+/**
+ * Kuraterte samlinger tas med uansett. Lisensbaserte treff krever i tillegg en IMDb-referanse:
+ * av ca. 259 000 Creative Commons-elementer ble under 1 % koblet til en IMDb-film (resten er
+ * hjemmevideoer o.l.), og å skanne alle tok 10-30 minutter. `classic_tv` er utelatt fordi
+ * samlingen bare er lovlig med lisens-URL, og de treffene dekkes av lisensgrenen.
+ */
 export const CANDIDATE_QUERY =
-  'mediatype:movies AND (collection:feature_films OR collection:film_noir OR collection:silent_films OR collection:classic_tv OR licenseurl:*creativecommons* OR licenseurl:*publicdomain*)';
+  'mediatype:movies AND (collection:feature_films OR collection:film_noir OR collection:silent_films OR ' +
+  '((licenseurl:*creativecommons* OR licenseurl:*publicdomain*) AND external-identifier:*imdb*))';
 
 const SCRAPE_FIELDS = 'identifier,title,year,date,licenseurl,external-identifier,collection';
 
@@ -370,6 +377,12 @@ export interface ImportOptions {
   retryDelayMs?: number;
   pageSize?: number;
   fetch?: typeof fetch;
+  /**
+   * Første Ctrl+C: slutt å lete etter nye kandidater, men lagre dem som allerede er koblet.
+   * Leses mellom elementene, så et pågående Scrape-kall får fullføre.
+   */
+  stopCollecting?: { aborted: boolean };
+  /** Andre Ctrl+C: avbryt alt, også lagringen. Leses mellom kandidatene. */
   signal?: { aborted: boolean };
   log?: (msg: string) => void;
 }
@@ -408,10 +421,52 @@ export async function importArchive(opts: ImportOptions): Promise<ImportSummary>
   }>("SELECT id, primary_title, original_title, start_year FROM titles WHERE title_type = 'movie'");
   const titles = buildTitleIndex(movieRows);
 
-  // 1) Samle kandidater fra Scrape API (billig: 1000 per kall) og koble dem.
+  // Utfall per IMDb-tittel. Tellerne i summary utledes herfra til slutt, slik at en tittel som
+  // lagres to ganger (se «IMDb-ID slår tittelkobling» under) bare telles én gang.
+  const outcome = new Map<string, 'imported' | 'noFile' | 'failed'>();
+  let processed = 0;
+
+  // Henter filliste per koblet kandidat og lagrer. Kjøres per Scrape-side, så en lang skanning
+  // (10-30 min mot hele Archive) ikke mister alt ved avbrudd eller feil underveis.
+  const store = async (list: Candidate[]) => {
+    let next = 0;
+    const worker = async () => {
+      while (!opts.signal?.aborted) {
+        const cand = list[next++];
+        if (!cand) return;
+        const id = cand.item.identifier;
+        const titleId = cand.link.titleId;
+        try {
+          const meta = (await getJson(`${base}/metadata/${encodeURIComponent(id)}`)) as {
+            files?: unknown;
+          } | null;
+          const chosen = chooseFiles(meta?.files);
+          if (!chosen) {
+            outcome.set(titleId, 'noFile');
+            log(`Hopper over ${id}: ingen spillbar fil.`);
+          } else {
+            await upsert(pool, cand, chosen);
+            outcome.set(titleId, 'imported');
+          }
+        } catch (err) {
+          outcome.set(titleId, 'failed');
+          log(`Feilet for ${id}: ${(err as Error).message}`);
+        }
+        if (++processed % 25 === 0) log(`${processed} kandidater behandlet.`);
+      }
+    };
+    await Promise.all(Array.from({ length: opts.concurrency ?? 4 }, worker));
+  };
+
+  // Samle kandidater fra Scrape API (billig: 1000 per kall), koble dem og lagre side for side.
+  // Flere Archive-elementer for samme film: IMDb-ID slår tittelkobling, ellers vinner det første,
+  // så en ny kjøring gir samme utfall. Kommer IMDb-treffet først på en senere side, upsertes det
+  // over tittelkoblingen som allerede er lagret.
   const claimed = new Map<string, Candidate>();
   let cursor: string | undefined;
-  collect: do {
+  let stop = false;
+  do {
+    if (opts.signal?.aborted || opts.stopCollecting?.aborted) break;
     const url = new URL(`${base}/services/search/v1/scrape`);
     url.searchParams.set('q', CANDIDATE_QUERY);
     url.searchParams.set('fields', SCRAPE_FIELDS);
@@ -433,8 +488,21 @@ export async function importArchive(opts: ImportOptions): Promise<ImportSummary>
       for (const r of rows) existing.add(r.id);
     }
 
+    // Nye eller erstattede kandidater fra denne siden; lagres når siden er ferdig.
+    const fresh = new Map<string, Candidate>();
     for (const item of items) {
-      if (opts.signal?.aborted) break collect;
+      if (opts.signal?.aborted) {
+        stop = true;
+        break;
+      }
+      if (opts.stopCollecting?.aborted) {
+        stop = true;
+        log(
+          `Avbrutt: lagrer ${fresh.size} filmer som allerede er funnet. ` +
+            'Trykk Ctrl+C igjen for å avbryte helt.',
+        );
+        break;
+      }
       summary.scanned++;
       if (typeof item.identifier !== 'string' || !isSafeArchiveId(item.identifier)) continue;
       if (!isLawful(item)) {
@@ -446,49 +514,29 @@ export async function importArchive(opts: ImportOptions): Promise<ImportSummary>
         summary.unlinked++;
         continue;
       }
-      // Flere Archive-elementer for samme film: IMDb-ID slår tittelkobling, ellers vinner det
-      // første, så en ny kjøring gir samme utfall.
       const prev = claimed.get(link.titleId);
       if (!prev || (prev.link.via === 'title' && link.via === 'imdb')) {
-        claimed.set(link.titleId, { item, link });
+        const cand = { item, link };
+        claimed.set(link.titleId, cand);
+        fresh.set(link.titleId, cand);
       }
       if (prev) summary.duplicates++;
-      if (opts.limit !== undefined && claimed.size >= opts.limit) break collect;
+      if (opts.limit !== undefined && claimed.size >= opts.limit) {
+        stop = true;
+        break;
+      }
     }
+    await store([...fresh.values()]);
     cursor =
       typeof page.cursor === 'string' && page.cursor && items.length > 0 ? page.cursor : undefined;
     log(`Skannet ${summary.scanned} elementer, ${claimed.size} koblet til IMDb-titler.`);
-  } while (cursor);
+  } while (cursor && !stop);
 
-  // 2) Hent filliste per koblet kandidat og lagre.
-  const todo = [...claimed.values()];
-  let next = 0;
-  let done = 0;
-  const worker = async () => {
-    while (!opts.signal?.aborted) {
-      const cand = todo[next++];
-      if (!cand) return;
-      const id = cand.item.identifier;
-      try {
-        const meta = (await getJson(`${base}/metadata/${encodeURIComponent(id)}`)) as {
-          files?: unknown;
-        } | null;
-        const chosen = chooseFiles(meta?.files);
-        if (!chosen) {
-          summary.noFile++;
-          log(`Hopper over ${id}: ingen spillbar fil.`);
-        } else {
-          await upsert(pool, cand, chosen);
-          summary.imported++;
-        }
-      } catch (err) {
-        summary.failed++;
-        log(`Feilet for ${id}: ${(err as Error).message}`);
-      }
-      if (++done % 25 === 0) log(`${done}/${todo.length} behandlet.`);
-    }
-  };
-  await Promise.all(Array.from({ length: opts.concurrency ?? 4 }, worker));
+  for (const o of outcome.values()) {
+    if (o === 'imported') summary.imported++;
+    else if (o === 'noFile') summary.noFile++;
+    else summary.failed++;
+  }
   return summary;
 }
 
@@ -519,14 +567,27 @@ async function main() {
   const limitText = arg >= 0 ? process.argv[arg + 1] : process.env.ARCHIVE_LIMIT;
   const limit = Number.parseInt(limitText ?? '', 10) || undefined;
   const pool = createPool(config.databaseUrl);
+  // To trinn: første Ctrl+C stopper skanningen men lagrer det som er funnet, andre avbryter helt.
+  const stopCollecting = { aborted: false };
   const signal = { aborted: false };
   process.on('SIGINT', () => {
-    console.log('\nAvbryter etter pågående kall …');
-    signal.aborted = true;
+    if (!stopCollecting.aborted) {
+      console.log('\nStopper skanningen etter pågående kall …');
+      stopCollecting.aborted = true;
+    } else {
+      console.log('\nAvbryter etter pågående kall …');
+      signal.aborted = true;
+    }
   });
   console.log(`Henter fra ${config.archiveUrl}${limit ? ` (maks ${limit} titler)` : ''}`);
   try {
-    const s = await importArchive({ pool, ...(limit ? { limit } : {}), signal, log: console.log });
+    const s = await importArchive({
+      pool,
+      ...(limit ? { limit } : {}),
+      stopCollecting,
+      signal,
+      log: console.log,
+    });
     console.log(
       `Ferdig: ${s.imported} lagret, ${s.unlawful} uten fri lisens, ${s.unlinked} uten IMDb-kobling, ` +
         `${s.duplicates} duplikater, ${s.noFile} uten spillbar fil, ${s.failed} feilet (av ${s.scanned} skannet).`,

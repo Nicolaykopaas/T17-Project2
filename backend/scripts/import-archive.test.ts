@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildTitleIndex,
+  CANDIDATE_QUERY,
+  CURATED_COLLECTIONS,
   chooseFiles,
   extractImdbId,
   extractYear,
@@ -252,5 +254,17 @@ describe('chooseFiles', () => {
       'z.vtt',
     );
     expect(chooseFiles([f('film.mp4', 'h.264'), f('a.srt', 'SubRip')])?.subtitlesFile).toBeNull();
+  });
+});
+
+describe('CANDIDATE_QUERY', () => {
+  it('tar med alle kuraterte samlinger uansett lisens', () => {
+    for (const c of CURATED_COLLECTIONS) expect(CANDIDATE_QUERY).toContain(`collection:${c} OR`);
+  });
+
+  it('krever IMDb-referanse for lisensbaserte treff, så hjemmevideoer ikke skannes', () => {
+    expect(CANDIDATE_QUERY).toMatch(
+      /\(\(licenseurl:\*creativecommons\* OR licenseurl:\*publicdomain\*\) AND external-identifier:\*imdb\*\)/,
+    );
   });
 });
