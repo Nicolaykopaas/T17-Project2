@@ -17,6 +17,7 @@
     "typecheck": "tsc -p tsconfig.json && npm run typecheck --workspaces",
     "test": "npm test --workspaces",
     "test:e2e": "playwright test",
+    "screenshots": "SCREENSHOTS=1 playwright test e2e/screenshots.spec.ts --project=desktop",
     "db:migrate": "npm run db:migrate -w backend",
     "db:seed": "npm run db:seed -w backend",
     "prepare": "husky",
