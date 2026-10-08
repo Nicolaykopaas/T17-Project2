@@ -331,3 +331,90 @@ for noen få poeng i en syntetisk måling, og tiden gjorde mer nytte på søk, t
 lazy-lastet søkevisning, vendor-chunks som kan ligge i nettleserens cache, `preconnect` til TMDB, fast høyde
 på heltebanneret (ingen layoutskift) og gzip av JS, CSS og GraphQL-svar. Mål og tall står i
 [`ytelse.md`](ytelse.md#lighthouse).
+
+## Datasett, komponenter og biblioteker
+
+Denne delen er flyttet hit fra README.md, slik at README kan være kort.
+
+### Datasett
+
+[IMDb non-commercial datasets](https://developer.imdb.com/non-commercial-datasets/) er åpne, store
+og realistiske. Vi tar med filmer og serier med minst 100 stemmer, som gir 190 607 titler på VM-en.
+IMDb har ingen bilder, så plakater og handling hentes fra TMDB første gang en tittel vises, og
+lagres i databasen. Uten TMDB-nøkkel vises plassholdere.
+
+### Egne komponenter og hooks
+
+Komponentene er delt etter ansvar, slik at logikk som er vanskelig å få riktig (debounce, fokus,
+lazy-lasting, paginering) ligger ett sted og kan testes isolert.
+
+| Komponent / hook                                    | Ansvar og hvorfor den er skilt ut                                                                                                                                                              |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `useSearchState` (+ `lib/searchState.ts`)           | Leser og skriver søk, filtre og sortering i URL-en. Eneste kilde til søketilstand, så alle komponenter er enige                                                                                |
+| `SearchBox`, `HeaderSearch`, `useDebouncedCallback` | `SearchBox` debouncer (300 ms) og hopper over tomme og uendrede søk. `HeaderSearch` kobler den til URL-en: på forsiden endres bare `q`, fra andre sider sendes brukeren til forsiden med søket |
+| `FilterPanel`, `ActiveFilters`, `SortControls`      | Fasetter med antall treff, aktive filtre som chips og sortering. Endrer bare URL-en; serveren gjør resten                                                                                      |
+| `SearchResults`, `useInfiniteScroll`                | Resultatliste med uendelig scroll og «Last flere», `aria-live` for antall treff og alle tom-, feil- og lastetilstander                                                                         |
+| `TitleRow`, `LazyRow`, `useNearViewport`            | Forsiderader som henter data først når de nærmer seg skjermen. Piltaster flytter fokus mellom kortene i raden                                                                                  |
+| `CategoryNav`                                       | Hopp til kategori på forsiden, med fokus på raden også når den er tom                                                                                                                          |
+| `PosterCard`                                        | Plakat med `srcset`. Tittellenken strekkes over hele kortet, så hvert kort er ett tabulatorstopp i stedet for to                                                                               |
+| `Layout`                                            | Header, skip-link, fokus til sidens `h1` ved rutebytte, og plassen for API-banneret                                                                                                            |
+| `ApiUnavailableBanner` (+ `apollo/apiStatus.ts`)    | Ett globalt banner når API-et ikke kan nås, styrt av en reactive var som Apollo-linken setter                                                                                                  |
+| `ReviewForm`, `ReviewList`, `DeleteReviewButton`    | Anmeldelser med validering som speiler backenden (tegn telles som kodepunkter) og sletting med bekreftelse på stedet                                                                           |
+| `ListToggleButton`                                  | Legg i / fjern fra Min liste, med kunngjøring av utfallet                                                                                                                                      |
+| `VideoPlayer`                                       | Egen spiller på `<video>` med norske etiketter og tastaturstyring                                                                                                                              |
+| `ThemeToggle`, `useTheme`                           | Brukervalgt tema som overstyrer systemet, synkronisert mellom faner                                                                                                                            |
+
+GraphQL-typene i frontend (`graphql/types.ts`) er håndskrevne og speiler [`api.md`](api.md). Med et
+lite skjema var det enklere enn å sette opp kodegenerering. En backend-test validerer alle
+frontendens spørringer mot skjemaet, slik at avvik oppdages.
+
+### Biblioteker
+
+Vi har valgt få, veletablerte avhengigheter, og bevisst valgt bort tunge UI-biblioteker.
+
+| Bibliotek                                | Hvorfor                                                                                                           |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| React 19, React Router, Vite             | Krav i oppgaven. Router gir lazy-lastede ruter og innebygd scroll-gjenoppretting                                  |
+| Apollo Client                            | Normalisert cache, paginering og reactive vars. Erstatter egen state-håndtering                                   |
+| GraphQL Yoga, `pg`                       | Lett GraphQL-server med gode utvidelsespunkter for validering og feil. `pg` gir parametriserte spørringer direkte |
+| Vitest, Testing Library, Playwright, axe | Komponenttester som tester oppførsel, E2E i ekte nettleser og automatisk WCAG-sjekk                               |
+| ESLint (med `jsx-a11y`), Prettier, Husky | Lik kodestil og tilgjengelighetslinting før hver commit                                                           |
+
+**Ikke brukt, med vilje:**
+
+- **Komponentbibliotek (MUI o.l.):** kunne gitt raskere oppstart, men ville gitt mer JavaScript og
+  mindre kontroll over fokus og kontrast.
+- **Spillerbibliotek:** videospilleren er bygd på `<video>` (ca. 4 kB gzip), fordi den innebygde
+  spilleren varierer i tastaturstøtte og ikke kan få norske etiketter.
+- **ORM:** søket er det viktigste i appen, og vi ville ha full kontroll over SQL-en og indeksbruken.
+  All input er parametrisert.
+- **Innlogging:** en anonym bruker-ID (UUID i `localStorage`, sendt i en header) holder prosjektet
+  innenfor rammen. Prisen er at anmeldelser og liste følger nettleseren.
+
+### Bærekraft
+
+- **Mindre data over nettet:** detaljside, Min liste og spiller lazy-lastes. Forsiderader under
+  folden henter data først når de nærmer seg skjermen (IntersectionObserver). Bilder har `srcset` og
+  `sizes` og lastes lazy, og lister henter bare feltene de viser.
+- **Mindre arbeid på serveren:** indekserte søk og cursor-paginering. `totalCount` regnes bare ut
+  når det vises, noe som fjernet 8 `count(*)` per forsidevisning. TMDB-svar bufres i databasen, søk
+  debounces, og uendrede søk sendes ikke.
+- **Cache:** byggede filer har innholdshash og `Cache-Control: immutable`, `index.html`
+  revalideres, Apache komprimerer med gzip, og Apollo gjenbruker data ved navigering.
+- **Video** strømmes direkte fra archive.org, og vi velger den minste spillbare filen. Vi lagrer
+  ingen video selv.
+- **Mørk modus** er standard i kinodesignet, noe som sparer strøm på OLED-skjermer. Lys modus kan
+  velges.
+- **Få avhengigheter:** ingen UI-, spiller- eller ORM-bibliotek.
+
+### Sikkerhet og robusthet
+
+- SQL er alltid parametrisert. Brukerens `%`, `_` og `\` escapes etter aksentfolding, slik at
+  fullbreddevarianter ikke blir jokertegn.
+- Kostnads- og dybdegrense mot dyre spørringer. De er memoisert, så nøstede fragmenter ikke kan
+  låse CPU-en. Se [`forklaring.md`](forklaring.md#5-vern-av-api-et).
+- Rate limiting av mutations per bruker og IP. Backenden lytter bare på `127.0.0.1` i produksjon, så
+  den ikke kan nås forbi Apache.
+- `/health` sjekker databasen. systemd starter backenden på nytt ved feil.
+- Content-Security-Policy og andre sikkerhetsheadere i Apache.
+- Ingen hemmeligheter i git: `.env` er ignorert, og `.env.example` dokumenterer alle variabler.

@@ -104,6 +104,9 @@ sjekker at forside, detalj og spiller laster uten brudd, og feiler hvis `fronten
   Playwright starter mock-servere, backend og frontend selv. `playwright-report/` og `test-results/`
   lagres som artefakt ved feil.
 
+Repoet ligger på GitHub fram til innlevering, så GitLab-jobbene kjøres først når det er flyttet. En ustabil
+E2E-test gjør jobben rød. De samme kommandoene er kjørt lokalt før hver merge.
+
 **Låsvindu for migrering 004.** Migreringen legger til tre genererte (`STORED`) kolonner på `titles`
 (`primary_title_norm`, `original_title_norm`, `title_words`) i én `ALTER TABLE`, og bygger deretter
 tre GIN-indekser på dem. `ALTER TABLE ... ADD COLUMN ... STORED` skriver om hele tabellen mens den
