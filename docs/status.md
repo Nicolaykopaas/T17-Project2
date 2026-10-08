@@ -24,7 +24,7 @@ stemmer, deployet 2026-09-30).
   kommentarer og dokumentasjon (#23). Se `PLAN.md` for PR-nummer. Alle PR-er har review av en
   kritiker-agent og ble rettet før merge.
 - **Tester** (siste verifiserte kjøring, ren E2E-database, CI-modus):
-  - backend: 414–415 tester (Vitest mot testdatabase)
+  - backend: 441 tester (Vitest mot testdatabase)
   - frontend: 288 komponenttester (Vitest + Testing Library)
   - E2E: 101 bestått, 3 hoppet over, 0 ustabile (Playwright, desktop og mobil). De tre hoppede
     er statiske CSP-sjekker som bare kjøres på desktop, og én mobil-skip.
