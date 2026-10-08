@@ -176,6 +176,35 @@ søketeksten uten aksent bruker trigramindeksen på de normaliserte kolonnene.
 17 s, inkludert oppdatering av alle indekser. Fila strømmes (gunzip + readline) og skrives i
 batcher på 2 000 rader; bare rating-rader over stemmegrensen holdes i minnet.
 
+## Måle på VM-en
+
+Tallene over er målt på syntetiske data. For å måle på det ekte datasettet, kjør dette på VM-en
+(etter at siste kode er publisert med `bash deploy/oppdater.sh`, slik at `/opt/project2` har skriptet):
+
+```bash
+bash deploy/mal-ytelse.sh > ytelse-vm.md
+```
+
+Skriptet (`backend/scripts/measure-performance.ts`, `npm run db:measure -w backend`) bygger spørringene med
+den samme koden som API-et bruker (`backend/src/search.ts`), kjører `EXPLAIN (ANALYZE, BUFFERS)` på dem i en
+skrivebeskyttet økt og skriver en markdown-tabell: median av fem kjøringer etter én oppvarming, og planens
+hovednode (noden med mest egentid). Lim tabellen inn under og skriv dato og eventuelle avvik i merknaden.
+
+> Plassholder: fylles inn av gruppa etter kjøring på VM-en.
+
+| Scenario                                   | ms (median) | Planens hovednode |
+| ------------------------------------------ | ----------: | ----------------- |
+| Søk «dark», relevans                       |             |                   |
+| Søk «dark», rating                         |             |                   |
+| Søk «a» (1 tegn, ordprefiks), relevans     |             |                   |
+| Søk «ma» (2 tegn, ordprefiks), relevans    |             |                   |
+| Søk «the» (vanlig ord), relevans           |             |                   |
+| Søk «amelie» (aksent), relevans            |             |                   |
+| Ingen søk, rating, sjanger Drama           |             |                   |
+| Side 50 via cursor, rating                 |             |                   |
+| totalCount for «the»                       |             |                   |
+| Fasetter uten filter (sum av 4 spørringer) |             |                   |
+
 ## Lighthouse
 
 ### Måling 2026-10-06 (etter ytelsesrunden)
@@ -238,9 +267,10 @@ mobil TBT svinger fra ca. 40 til 200 ms på samme bygg.
 - **Best Practices 100 gjelder lokalt.** På VM-en serveres appen over http, og der får Best Practices trekk for
   `is-on-https` (og eventuelt andre https-avhengige revisjoner). Det kan ikke fikses uten https på VM-en.
 - **`robots.txt`:** Lighthouse leser `/robots.txt` på rotadressen, mens appen ligger under `/project2/`. Filen
-  (`frontend/public/robots.txt`, `Allow: /`) havner derfor på `/project2/robots.txt`. I målingen svarer serveren 404
-  på `/robots.txt`, som Lighthouse behandler som «ingen robots.txt» (OK). På VM-en avhenger resultatet av hva Apache
-  svarer på rotadressen; en egen `/robots.txt` på VM-roten ligger utenfor repoet.
+  (`frontend/public/robots.txt`, `Allow: /`) havner derfor på `/project2/robots.txt`. I den lokale målingen svarer
+  serveren 404 på `/robots.txt`, som Lighthouse behandler som «ingen robots.txt» (OK). På VM-en peker
+  `deploy/apache-project2.conf` rotadressen til samme fil med `Alias /robots.txt`, så `/robots.txt` svarer 200 etter
+  neste `setup-vm.sh`/`oppdater.sh`. Kan sjekkes med `curl -i http://it2810-17.idi.ntnu.no/robots.txt`.
 - Søk på desktop har CLS 0,02 (nye resultater erstatter skjelettet); under grensen på 0,1.
 - Detaljsiden: waterfall chunk til spørring ble ikke endret. Detaljsiden scorer 98 på mobil, så
   forhåndslasting gir for lite til å forsvare mer kode.

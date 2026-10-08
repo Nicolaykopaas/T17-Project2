@@ -82,6 +82,8 @@ Archive-skanning, og til slutt publisering av frontend og reload av Apache. Impo
 og kan derfor kjøre mens backend svarer, så siden er bare nede mens migreringen går (sekunder, ikke
 minutter). Skriptet avslutter med feilmelding og avsluttingskode 1 hvis API-et ikke svarer like etter start.
 
+**Måle ytelse på ekte data:** `bash deploy/mal-ytelse.sh > ytelse-vm.md` kjører `EXPLAIN ANALYZE` på søkespørringene og skriver en tabell til `docs/ytelse.md` (se «Måle på VM-en» der). Den bare leser fra databasen.
+
 ## Sikkerhetsheadere og Content-Security-Policy
 
 `deploy/apache-project2.conf` setter CSP, `Permissions-Policy`, `Referrer-Policy`,
