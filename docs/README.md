@@ -21,6 +21,7 @@ hvordan appen virker, eller [`oppsett.md`](oppsett.md) hvis du vil kjøre den.
 - [`prosess/status.md`](prosess/status.md): hva som er gjort, hva som gjenstår og hva gruppa må gjøre.
 - [`prosess/blokkeringer.md`](prosess/blokkeringer.md): ting agentene ikke kunne løse alene.
 - [`prosess/grener-og-pr.md`](prosess/grener-og-pr.md): grenmodell og tabell over issues og pull requests.
+- [`prosess/gitlab.md`](prosess/gitlab.md): flytting fra GitHub til NTNU GitLab, CI, VM-en, og hvilke GitHub-issues og PR-er som hører til hvilke merge-commits.
 - [`ki/ki-deklarasjon.md`](ki/ki-deklarasjon.md): hvordan KI er brukt, hva mennesker bestemte og kontrollerte, og hvilke feil KI-en gjorde.
 - [`ki/ki-logg.md`](ki/ki-logg.md): én linje per oppgave utført av agentene.
 
