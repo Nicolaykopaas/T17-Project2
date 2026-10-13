@@ -88,7 +88,7 @@ er delt i det en agent kan gjøre, og det som krever gruppa (tilganger, VM, egne
 
 ### Agent
 
-- [ ] A1 `docs/prosess/status.md` oppdatert: integrasjonsgrenen er merget (PR #31), riktige testtall, dato, og «hva gjenstår» peker hit
+- [x] A1 `docs/prosess/status.md` oppdatert: integrasjonsgrenen er merget (PR #31), riktige testtall, dato, og «hva gjenstår» peker hit
 - [ ] A2 Lighthouse med én kommando (`npm run lighthouse -- <url>`) fra egen maskin på VPN, som skriver en markdown-tabell klar for `docs/ytelse.md`. Ingen ny tung runtime-avhengighet i appen
 - [ ] A3 `deploy/mal-ytelse.sh` og plassholdertabellen i `docs/ytelse.md` gjennomgått, så gruppa bare må kjøre og lime inn
 - [ ] A4 Fasetter uten søk og filter (forsiden og «Se alle») teller ikke hele tabellen per request: bufret eller forhåndsberegnet, med test og måling før/etter
