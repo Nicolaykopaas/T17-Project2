@@ -14,6 +14,7 @@ hvordan appen virker, eller [`oppsett.md`](oppsett.md) hvis du vil kjøre den.
 - [`api.md`](api.md): GraphQL-kontrakten (typer, spørringer, mutations, feilkoder og grenser).
 - [`beslutninger.md`](beslutninger.md): tekniske valg med begrunnelse, komponentoversikt, biblioteker og hvorfor vi ikke bruker SSR.
 - [`ytelse.md`](ytelse.md): målinger av søk og indekser (`EXPLAIN ANALYZE`) og Lighthouse.
+- [`readme-fakta.md`](readme-fakta.md): faktagrunnlag for README (krav mot filer, tall, hovedvalg, installasjon). README skrives av gruppa.
 
 ## Prosess og KI
 
