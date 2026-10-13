@@ -79,6 +79,36 @@ kritiker-agent og ble rettet før merge.
 - [x] #17 CI med build og E2E (`failOnFlakyTests`), CSP fra Apache verifisert i E2E (PR #22)
 - [x] #23 Kommentarer og dokumentasjon (PR #24 m.fl.)
 
+## M8 – Klargjøring for sluttinnlevering (etter vurdering mot oppgaveteksten 2026-10-13)
+
+En gjennomgang mot prosjektbeskrivelsen fant at produktet oppfyller alle funksjonelle og tekniske
+krav (lint, typecheck, 490 backend-, 288 komponent- og 101 E2E-tester grønne fra ren klon), men at
+prosessen (egen kontroll, samarbeid, review) og målinger på ekte data er svakt dokumentert. Punktene
+er delt i det en agent kan gjøre, og det som krever gruppa (tilganger, VM, egne ord, egne vurderinger).
+
+### Agent
+
+- [ ] A1 `docs/prosess/status.md` oppdatert: integrasjonsgrenen er merget (PR #31), riktige testtall, dato, og «hva gjenstår» peker hit
+- [ ] A2 Lighthouse med én kommando (`npm run lighthouse -- <url>`) fra egen maskin på VPN, som skriver en markdown-tabell klar for `docs/ytelse.md`. Ingen ny tung runtime-avhengighet i appen
+- [ ] A3 `deploy/mal-ytelse.sh` og plassholdertabellen i `docs/ytelse.md` gjennomgått, så gruppa bare må kjøre og lime inn
+- [ ] A4 Fasetter uten søk og filter (forsiden og «Se alle») teller ikke hele tabellen per request: bufret eller forhåndsberegnet, med test og måling før/etter
+- [ ] A5 Flytting til NTNU GitLab: `docs/prosess/gitlab.md` med nøyaktige kommandoer (alle grener, issues og PR-historikk som tabell), MR- og issue-maler i `.gitlab/`
+- [ ] A6 Review-guide for gruppa: `docs/prosess/review-guide.md` med én kodedel per medlem (søk/paginering, frontend/tilgjengelighet, tester, deploy), hva de skal lese, sjekkliste og spørsmål sensor kan stille
+- [ ] A7 Mal for «Gruppens egen gjennomgang» i `docs/ki/ki-deklarasjon.md` med konkrete spørsmål per medlem (fylles ut av gruppa, agenten skriver ingen svar)
+- [ ] A8 README-støtte: `docs/readme-fakta.md` med fakta, tall og lenker gruppa kan skrive README fra med egne ord. README.md røres ikke
+- [ ] A9 Konsistenssjekk av alle tall og påstander i `docs/` mot faktisk kode og testkjøring
+
+### Gruppa (krever mennesker)
+
+- [ ] G1 Flytte repoet til git.ntnu.no etter `docs/prosess/gitlab.md`, og se at CI-pipelinen blir grønn
+- [ ] G2 På VM-en: `deploy/oppdater.sh`, deretter `deploy/mal-ytelse.sh`, og lime tabellen inn i `docs/ytelse.md`
+- [ ] G3 Fra egen maskin på VPN: Lighthouse mot VM-adressen (A2), lim inn resultatet
+- [ ] G4 Hvert medlem gjør review av sin del etter `review-guide.md` og legger inn minst én egen commit/MR (rettelse, test eller dokumentasjon) under eget navn
+- [ ] G5 Fylle ut «Gruppens egen gjennomgang» i `docs/ki/ki-deklarasjon.md`
+- [ ] G6 Skrive README.md med egne ord ut fra `docs/readme-fakta.md`
+- [ ] G7 Bidragsfil i Canvas
+- [ ] G8 Avgjøre commit-forfatter «Claude» (anbefaling: la stå, det er forklart i KI-deklarasjonen)
+
 ## Ferdig
 
 - [x] Oppsummering i `docs/prosess/status.md`: hva er gjort, hva gjenstår, hva Nicolay må gjøre
