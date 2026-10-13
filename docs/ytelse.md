@@ -178,34 +178,66 @@ batcher på 2 000 rader; bare rating-rader over stemmegrensen holdes i minnet.
 
 ## Måle på VM-en
 
-Tallene over er målt på syntetiske data. For å måle på det ekte datasettet, kjør dette på VM-en
-(etter at siste kode er publisert med `bash deploy/oppdater.sh`, slik at `/opt/project2` har skriptet):
+Tallene over er målt på syntetiske data. For å måle på det ekte datasettet trengs to kommandoer, én
+på VM-en og én fra egen maskin. Begge skriver bare en markdown-tabell til stdout, som limes inn her.
+
+**1. Databasen (kjøres på VM-en, via ssh, krever NTNU-VPN eller campusnett):**
 
 ```bash
+ssh <ntnu-brukernavn>@it2810-17.idi.ntnu.no
+cd T17-Project2 && bash deploy/oppdater.sh            # først: sørger for at /opt/project2 har siste kode og målerskriptet
 bash deploy/mal-ytelse.sh > ytelse-vm.md
+cat ytelse-vm.md                     # kopier tabellen herfra, eller scp fila til egen maskin
 ```
 
 Skriptet (`backend/scripts/measure-performance.ts`, `npm run db:measure -w backend`) bygger spørringene med
 den samme koden som API-et bruker (`backend/src/search.ts`), kjører `EXPLAIN (ANALYZE, BUFFERS)` på dem i en
 skrivebeskyttet økt og skriver en markdown-tabell: median av fem kjøringer etter én oppvarming, og planens
-hovednode (noden med mest egentid). Lim tabellen inn under og skriv dato og eventuelle avvik i merknaden.
+hovednode (noden med mest egentid). Utskriften starter med en linje med dato, antall titler og
+PostgreSQL-versjon. Lim hele utskriften (linja og tabellen) inn under, i stedet for plassholderen, og
+skriv eventuelle avvik i en merknad. Kjør helst når det er rolig på siden, siden målingen konkurrerer om CPU.
 
-> Plassholder: fylles inn av gruppa etter kjøring på VM-en.
+> Plassholder: fylles inn av gruppa etter kjøring på VM-en. Ikke fyll inn tall som ikke er målt.
 
-| Scenario                                   | ms (median) | Planens hovednode |
-| ------------------------------------------ | ----------: | ----------------- |
-| Søk «dark», relevans                       |             |                   |
-| Søk «dark», rating                         |             |                   |
-| Søk «a» (1 tegn, ordprefiks), relevans     |             |                   |
-| Søk «ma» (2 tegn, ordprefiks), relevans    |             |                   |
-| Søk «the» (vanlig ord), relevans           |             |                   |
-| Søk «amelie» (aksent), relevans            |             |                   |
-| Ingen søk, rating, sjanger Drama           |             |                   |
-| Side 50 via cursor, rating                 |             |                   |
-| totalCount for «the»                       |             |                   |
-| Fasetter uten filter (sum av 4 spørringer) |             |                   |
+| Scenario                                  | ms (median) | Planens hovednode |
+| ----------------------------------------- | ----------: | ----------------- |
+| Søk «dark», relevans                      |             |                   |
+| Søk «dark», rating                        |             |                   |
+| Søk «a» (1 tegn, ordprefiks), relevans    |             |                   |
+| Søk «ma» (2 tegn, ordprefiks), relevans   |             |                   |
+| Søk «the» (vanlig ord), relevans          |             |                   |
+| Søk «amelie» (aksent), relevans           |             |                   |
+| Ingen søk, rating, sjanger Drama          |             |                   |
+| Side 50 via cursor, rating                |             |                   |
+| totalCount for «the»                      |             |                   |
+| Fasetter uten filter, sum av 4 spørringer |             |                   |
+
+Radene over er de samme, i samme rekkefølge, som skriptet skriver ut (sjekket mot en lokal kjøring med
+`npm run db:measure -w backend`). Er antall spørringer i fasett-raden et annet tall i utskriften, er det
+utskriften som gjelder.
 
 ## Lighthouse
+
+### Måling på VM-en (gjøres av gruppa)
+
+Kjøres fra egen maskin med NTNU-VPN på (eller campusnett), ikke på VM-en. Trenger Chrome eller Chromium
+installert; ligger det et uvanlig sted, sett `CHROME_PATH`. Fra repoets rot, etter `npm install`:
+
+```bash
+npm run lighthouse -- http://it2810-17.idi.ntnu.no/project2/ > lighthouse-vm.md
+```
+
+Skriptet (`scripts/lighthouse.ts`) måler forside, søk (`?q=dark`), detaljside og «Min liste» for mobil og
+desktop, tre kjøringer hver (medianen rapporteres; tar noen minutter), og skriver tabellen til stdout.
+Fremdrift går til stderr. Flagg: `--title <imdb-id>` (detaljsiden, standard `tt0468569`, må finnes i
+databasen), `--query <ord>`, `--runs <n>`. Lim utskriften inn under i stedet for plassholderen. Husk
+merknaden under om at Best Practices trekkes for `is-on-https` så lenge VM-en serveres over http.
+
+> Plassholder: fylles inn av gruppa etter kjøring mot VM-en. Ikke fyll inn tall som ikke er målt.
+
+| Side | Enhet | Performance | Accessibility | Best Practices | SEO |
+| ---- | ----- | ----------: | ------------: | -------------: | --: |
+|      |       |             |               |                |     |
 
 ### Måling 2026-10-06 (etter ytelsesrunden)
 
