@@ -413,7 +413,8 @@ Vi har valgt få, veletablerte avhengigheter, og bevisst valgt bort tunge UI-bib
   folden henter data først når de nærmer seg skjermen (IntersectionObserver). Bilder har `srcset` og
   `sizes` og lastes lazy, og lister henter bare feltene de viser.
 - **Mindre arbeid på serveren:** indekserte søk og cursor-paginering. `totalCount` regnes bare ut
-  når det vises, noe som fjernet 8 `count(*)` per forsidevisning. TMDB-svar bufres i databasen, søk
+  når det vises, noe som fjernet 8 `count(*)` per forsidevisning. Fasetter uten søketekst holdes i
+  minnet i fem minutter (se «Cache for fasetter uten søk» under). TMDB-svar bufres i databasen, søk
   debounces, og uendrede søk sendes ikke.
 - **Cache:** byggede filer har innholdshash og `Cache-Control: immutable`, `index.html`
   revalideres, Apache komprimerer med gzip, og Apollo gjenbruker data ved navigering.
@@ -438,3 +439,30 @@ Vi har valgt få, veletablerte avhengigheter, og bevisst valgt bort tunge UI-bib
 ## Oppsett med to kommandoer
 
 `npm run setup` og `npm run dev` er små tsx-skript (`backend/scripts/setup.ts`, `dev.ts`) i stedet for shell-kommandoer i `package.json`, fordi `VAR=verdi cmd` ikke virker i cmd.exe. Setup starter den falske Archive i samme prosess på en tilfeldig ledig port (databasen lagrer bare element-id og filnavn, ikke vertsnavn), så den ikke kolliderer med en kjørende dev- eller E2E-stack. `npm run dev` velger falske TMDB/Archive kun når `TMDB_API_KEY` er tom; en eksplisitt `ARCHIVE_URL` respekteres. Standard `FIXTURE_SIZE` i setup er 20 000 for rask første kjøring (`db:fixture` alene har fortsatt 120 000).
+
+## Cache for fasetter uten søk (M8, A4)
+
+Filterpanelet ber om fasetter hver gang søkesiden vises, også uten søketekst (`/?sort=…`) og fra
+hver «Se alle»-lenke på forsiden (åtte faste filterkombinasjoner). Uten tekst er svaret det samme for
+alle, men det kostet fire aggregeringer over hele `titles`: ca. 85 ms databasetid (sum av fire
+`EXPLAIN ANALYZE`) og ca. 45 ms per request på 120 000 syntetiske titler, mer på ekte data.
+
+**Valg: TTL-cache i backendens minne** (`backend/src/facetCache.ts`), én per app, med filtrene som
+nøkkel. Fem minutters levetid, høyst 64 nøkler (minst nylig brukte kastes ut), samtidige kall deler
+én spørring, og feil huskes ikke. Med søketekst caches ingenting.
+
+- **Hvorfor ikke en forhåndsberegnet tabell eller materialisert visning:** tallene endres bare når
+  importskriptene kjører, men det er to av dem (`db:seed` og `db:archive`), og begge måtte huske å
+  oppdatere tabellen, i tillegg til testene som setter inn data direkte. En tabell dekker også bare «helt uten filter», mens «Se alle» bruker filtre. Minnecachen trenger
+  ingen migrering og dekker begge.
+- **Hvorfor tidsbasert og ikke invalidert ved import:** importen kjører i en annen prosess enn
+  API-et, og vi har bare én backendprosess, så det finnes ingen billig kanal for å si fra. Prisen er
+  at tallene i filterpanelet kan være opptil fem minutter gamle etter en import. Trefflista og
+  `totalCount` er alltid ferske. Anmeldelser og «Min liste» påvirker ikke fasettene.
+- **Hvorfor bare uten søketekst:** nøkkelrommet med tekst er ubegrenset og nesten hvert søk er unikt,
+  så en cache ville sjelden truffet. Trigramindeksene holder dem raske nok.
+- **Hvorfor grense på nøkler:** validerte filtre gir svært mange kombinasjoner. Uten grense kunne
+  noen fylle minnet ved å prøve dem alle.
+- **Resultat** (120 000 syntetiske titler, lokal maskin, median av 20 requests via `yoga.fetch`):
+  ca. 42–46 ms uten cache og ca. 0,9 ms med cache, for både «ingen filter» og «Se alle»-filtrene.
+  Se `docs/ytelse.md`.

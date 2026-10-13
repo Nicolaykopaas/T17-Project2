@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { TITLES, TITLE_COUNT } from './fixtures.js';
 import { setupApi } from './helpers.js';
 
@@ -112,5 +112,38 @@ describe('facets', () => {
     const res = await env.gql('{ genres }');
     const all = [...new Set(TITLES.flatMap((t) => t.genres))].sort();
     expect(res.data!.genres).toEqual(all);
+  });
+
+  // Fasettene uten søketekst er like for alle og koster fire aggregeringer over hele tabellen, så
+  // appen holder dem i minnet (facetCache.ts). Her sjekkes at det faktisk sparer databasen.
+  it('henter fasetter uten søketekst fra minnet etter første kall, også med filtre', async () => {
+    const spy = vi.spyOn(env.pool, 'query');
+    try {
+      const first = await facets({ filters: { genres: ['Western'] } });
+      const callsAfterFirst = spy.mock.calls.length;
+      expect(callsAfterFirst).toBeGreaterThan(0);
+
+      const second = await facets({ filters: { genres: ['Western'] } });
+      expect(second.raw).toEqual(first.raw);
+      expect(spy.mock.calls.length).toBe(callsAfterFirst);
+
+      // Andre filtre er en annen nøkkel og må telles på nytt.
+      await facets({ filters: { genres: ['Western'], types: ['MOVIE'] } });
+      expect(spy.mock.calls.length).toBeGreaterThan(callsAfterFirst);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('caches ikke fasetter med søketekst', async () => {
+    const spy = vi.spyOn(env.pool, 'query');
+    try {
+      await facets({ query: 'dark' });
+      const callsAfterFirst = spy.mock.calls.length;
+      await facets({ query: 'dark' });
+      expect(spy.mock.calls.length).toBe(callsAfterFirst * 2);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

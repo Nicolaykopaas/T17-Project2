@@ -7,8 +7,10 @@ import type { Pool } from './db.js';
 import { complexityLimit } from './complexityLimit.js';
 import { isDatabaseUnavailable, serviceUnavailableError } from './dbErrors.js';
 import { depthLimit } from './depthLimit.js';
+import { FacetCache } from './facetCache.js';
 import { DEFAULT_RATE_LIMITS, MutationLimiter, type RateLimitOptions } from './rateLimit.js';
 import { schema } from './schema.js';
+import type { FacetsResult } from './search.js';
 
 /** Serverkonteksten Yoga får fra node:http; fravær av `req` betyr kall via yoga.fetch (tester). */
 interface NodeServerContext {
@@ -85,6 +87,8 @@ interface AppOptions {
   archiveUrl?: string;
   /** Overstyrer grensene for mutations (se rateLimit.ts). Standard: DEFAULT_RATE_LIMITS. */
   rateLimits?: Partial<RateLimitOptions>;
+  /** Cache for fasetter uten søketekst. Standard: FacetCache med fem minutters levetid. */
+  facetCache?: FacetCache<FacetsResult>;
 }
 
 /**
@@ -98,6 +102,7 @@ export function createApp({
   artwork,
   archiveUrl,
   rateLimits,
+  facetCache = new FacetCache<FacetsResult>(),
 }: AppOptions) {
   // Én begrenser per app: tilstanden må overleve mellom requests, i motsetning til konteksten.
   const limiter = new MutationLimiter({ ...DEFAULT_RATE_LIMITS, ...rateLimits });
@@ -152,6 +157,7 @@ export function createApp({
         archiveUrl ?? config.archiveUrl,
         limiter,
         req?.socket?.remoteAddress,
+        facetCache,
       ),
     logging: process.env.NODE_ENV !== 'test',
     graphiql: !isProd,

@@ -273,6 +273,13 @@ så brukeren kan fjerne dem. Sjangre telles med `CROSS JOIN LATERAL unnest(t.gen
 `query` og `filters` som søket (`frontend/src/components/FilterPanel.tsx:33`) og beholder forrige
 fasetter mens nye hentes, så lista ikke blinker. Testet i `backend/test/facets.test.ts:59`.
 
+**Fasetter uten søketekst caches.** Uten tekst er fasettene like for alle besøkende, men de fire
+tellingene går over hele tabellen (ca. 45 ms per request på 120 000 syntetiske titler). Resolveren
+(`resolvers/index.ts`) slår derfor opp i en `FacetCache` (`backend/src/facetCache.ts`) som lages én
+gang per app i `createApp`, med filtrene (sortert) som nøkkel, fem minutters levetid og høyst 64
+nøkler. Samtidige kall deler én spørring, og feil huskes ikke. Med søketekst caches ingenting.
+Begrunnelse og målinger: `docs/beslutninger.md` og `docs/ytelse.md`.
+
 **totalCount er lazy.** `Connection.totalCount` er en _funksjon_, ikke et tall (`search.ts:35`), og
 er `memoize`d (`:253-256`). `TitleConnection.totalCount`-resolveren kaller den
 (`resolvers/index.ts:38`), og GraphQL kaller bare resolvere for felt som er med i spørringen. Uten

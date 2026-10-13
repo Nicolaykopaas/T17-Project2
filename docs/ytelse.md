@@ -43,7 +43,7 @@ for å avgjøre `hasNextPage`).
   (8,9 ms) enn sortering på lagret kolonne, men trigram-indeksen holder antall rader nede
   (1 774 av 120 000). Ved svært vanlige søkeord («the») er dette den tregeste spørringen.
 - **Grenser vi kjenner til:** søketekst på 1–2 tegn har ingen trigrammer for delstrengsøk. De løses
-  som prefiksmatch (se «Aksentfolding og korte søk» under). `totalCount` og fasetter regnes ut på hele treffmengden hver gang og er derfor den dyreste delen
+  som prefiksmatch (se «Aksentfolding og korte søk» under). `totalCount` og fasetter med søketekst regnes ut på hele treffmengden hver gang (fasetter uten tekst caches, se under) og er derfor den dyreste delen
   av et bredt søk; `totalCount` beregnes bare når klienten ber om feltet.
 
 ### Rådata (utdrag)
@@ -170,6 +170,32 @@ søketeksten uten aksent bruker trigramindeksen på de normaliserte kolonnene.
   «Amélie» og «Café», men betyr at «bla» også finner «Blå».
 - Absolutt-tidene gjelder datasettet over; ekte IMDb-data har flere titler og andre ordfordelinger.
 
+## Cache for fasetter uten søk (M8)
+
+Fasettene (antall per sjanger, tiår, type og «kan strømmes») uten søketekst er like for alle, men kostet
+fire aggregeringer over hele `titles` per request. De ble hentet hver gang søkesiden ble vist uten tekst
+og fra hver «Se alle»-lenke på forsiden. Nå holdes de i minnet i fem minutter per filterkombinasjon
+(`backend/src/facetCache.ts`; begrunnelse i `docs/beslutninger.md`).
+
+Målt 2026-10-13 på det syntetiske datasettet (120 000 titler, PostgreSQL 16.15, lokal maskin, `jit = on`,
+`VACUUM ANALYZE` først). Databasetiden er summen av de fire spørringene med `EXPLAIN (ANALYZE, BUFFERS)`
+(`npm run db:measure -w backend`, median av 5). Request-tiden er hele GraphQL-kallet via `yoga.fetch` i
+samme prosess (uten nettverk), median av 20 kall etter det første. «Før» er samme kode med levetid 0.
+
+| Fasetter for                                     | Databasetid før (ms) | Request før (ms) | Request etter (ms) |
+| ------------------------------------------------ | -------------------: | ---------------: | -----------------: |
+| Ingen søk og ingen filter (søkesiden uten tekst) |                 84,5 |             46,2 |               0,93 |
+| «Se alle» Action (sjangerfilter)                 |                    – |             41,7 |               0,90 |
+| «Se alle» filmer (typefilter)                    |                    – |             41,9 |               0,88 |
+
+- Request-tiden før er lavere enn databasetiden fordi de fire spørringene kjører parallelt på hver sin
+  tilkobling.
+- Etter: første kall per filterkombinasjon (og første kall etter fem minutter) koster det samme som før.
+  Planen for selve spørringene er uendret; hovednoden er `Nested Loop` (sjangeropptellingen med `unnest`).
+- Tallene i filterpanelet kan være opptil fem minutter gamle etter en import. Trefflista påvirkes ikke.
+- Raden «Fasetter uten filter» i VM-tabellen under måler fortsatt spørringene uten cache, altså prisen
+  for en bom.
+
 ## Importtid
 
 `npm run db:seed -w backend` importerer 120 000 syntetiske titler (162 000 linjer i `basics`) på ca.
@@ -192,18 +218,18 @@ hovednode (noden med mest egentid). Lim tabellen inn under og skriv dato og even
 
 > Plassholder: fylles inn av gruppa etter kjøring på VM-en.
 
-| Scenario                                   | ms (median) | Planens hovednode |
-| ------------------------------------------ | ----------: | ----------------- |
-| Søk «dark», relevans                       |             |                   |
-| Søk «dark», rating                         |             |                   |
-| Søk «a» (1 tegn, ordprefiks), relevans     |             |                   |
-| Søk «ma» (2 tegn, ordprefiks), relevans    |             |                   |
-| Søk «the» (vanlig ord), relevans           |             |                   |
-| Søk «amelie» (aksent), relevans            |             |                   |
-| Ingen søk, rating, sjanger Drama           |             |                   |
-| Side 50 via cursor, rating                 |             |                   |
-| totalCount for «the»                       |             |                   |
-| Fasetter uten filter (sum av 4 spørringer) |             |                   |
+| Scenario                                               | ms (median) | Planens hovednode |
+| ------------------------------------------------------ | ----------: | ----------------- |
+| Søk «dark», relevans                                   |             |                   |
+| Søk «dark», rating                                     |             |                   |
+| Søk «a» (1 tegn, ordprefiks), relevans                 |             |                   |
+| Søk «ma» (2 tegn, ordprefiks), relevans                |             |                   |
+| Søk «the» (vanlig ord), relevans                       |             |                   |
+| Søk «amelie» (aksent), relevans                        |             |                   |
+| Ingen søk, rating, sjanger Drama                       |             |                   |
+| Side 50 via cursor, rating                             |             |                   |
+| totalCount for «the»                                   |             |                   |
+| Fasetter uten filter (uten cache), sum av 4 spørringer |             |                   |
 
 ## Lighthouse
 
