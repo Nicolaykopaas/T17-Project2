@@ -18,7 +18,7 @@ hvordan appen virker, eller [`oppsett.md`](oppsett.md) hvis du vil kjøre den.
 
 ## Prosess og KI
 
-- [`prosess/plan.md`](prosess/plan.md): milepælene (M0–M7) agentene jobbet mot.
+- [`prosess/plan.md`](prosess/plan.md): milepælene (M0–M8) agentene jobbet mot.
 - [`prosess/status.md`](prosess/status.md): hva som er gjort, hva som gjenstår og hva gruppa må gjøre.
 - [`prosess/blokkeringer.md`](prosess/blokkeringer.md): ting agentene ikke kunne løse alene.
 - [`prosess/review-guide.md`](prosess/review-guide.md): hva Sturla, Brage og Daniel skal gå gjennom av koden, med øvelser, sjekklister og sensorspørsmål.

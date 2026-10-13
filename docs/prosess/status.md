@@ -30,9 +30,9 @@ stemmer, deployet 2026-09-30).
   per side, `npm run db:measure -w backend` måler søkespørringer med `EXPLAIN ANALYZE`, og
   `robots.txt` serveres fra domenerot. Prosess- og KI-dokumenter er flyttet til `docs/prosess/` og
   `docs/ki/`, README er gjort kort, og detaljer ligger i `docs/`.
-- **Tester** (verifisert 2026-10-13 fra ren `npm ci` på `main`, CI-modus):
+- **Tester** (verifisert 2026-10-13, CI-modus, etter fasett-cachen):
   - lint og typecheck: grønne
-  - backend: 490 tester i 23 filer (Vitest mot testdatabase)
+  - backend: 502 tester i 24 filer (Vitest mot testdatabase)
   - frontend: 288 komponenttester i 27 filer (Vitest + Testing Library)
   - E2E: 101 bestått, 15 hoppet over, 0 ustabile (Playwright). De hoppede er 12 skjermbildetester
     som må slås på eksplisitt, og 3 statiske CSP-sjekker som bare kjøres på desktop.

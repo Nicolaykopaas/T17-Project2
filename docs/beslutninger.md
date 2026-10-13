@@ -14,7 +14,7 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
   `--no-ff`, slik at historikken viser grenene. Agentene pusher aldri til `main` og aldri med force.
 - **Issues og PR-er på GitHub, ikke GitLab.** I september var `glab` ikke tilgjengelig, så
   issue- og review-flyten ble loggført i `docs/ki/ki-logg.md`. Fra oktober ligger issues (#13–#17, #23)
-  og PR-er (#18–#24) på GitHub (`Nicolaykopaas/T17-Project2`), og hver PR har review fra en
+  og PR-er (#18–#22 og #24–#31; nummer 23 er et issue) på GitHub (`Nicolaykopaas/T17-Project2`), og hver PR har review fra en
   kritiker-agent. Repoet flyttes til NTNU GitLab ved innlevering.
 - **Syntetisk testdatasett.** IMDb-nedlasting er blokkert i miljøet (se `docs/prosess/blokkeringer.md`). Et skript
   genererer filer i nøyaktig samme TSV-format, så importkoden er den samme for ekte og syntetiske
@@ -96,7 +96,7 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
   (5 min negativ cache i minnet), og 401/403 slår av oppslag i 10 min. Ugyldig `width` (≤ 0) gir
   `BAD_USER_INPUT`; gyldige verdier snappes til nærmeste tillatte størrelse. Stier fra TMDB
   valideres mot et strengt mønster før de brukes i en URL. Testes mot en lokal falsk TMDB
-  (`scripts/tmdb-mock.ts`), siden internett ikke er tilgjengelig i CI.
+  (`backend/scripts/tmdb-mock.ts`), siden internett ikke er tilgjengelig i CI.
 - **Frontend: kinoaktig redesign uten nye biblioteker.** Ren CSS med custom properties i `global.css`.
   Mørkt er standard, lyst følger `prefers-color-scheme: light` med samme layout. Header, heltebilder og
   plakat-overlegg er alltid mørke (egne `--on-media`-tokens), fordi de ligger over bilder; det gjør at
@@ -137,7 +137,7 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
   serveren kan byttes (mock/ekte) uten ny import. Element-id må matche `^[A-Za-z0-9._-]+$` (og ikke
   `..`), filnavn kan ikke ha `/`, `\`, `..` eller kontrolltegn; ellers blir `stream` `null`, og
   filnavnet URL-enkodes.
-- **Lisensregel for importen (`isLawful` i `scripts/import-archive.ts`).** Et Archive-element er
+- **Lisensregel for importen (`isLawful` i `backend/scripts/import-archive.ts`).** Et Archive-element er
   lovlig hvis (a) `licenseurl` har verten `creativecommons.org` (eller subdomene), eller URL-en
   inneholder `publicdomain` (CC0, Public Domain Mark, usa.gov-erklæringen), eller (b) elementet ligger
   i en kuratert public domain-samling: `feature_films`, `film_noir` eller `silent_films`. Alt annet
@@ -180,7 +180,7 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
   `ARCHIVE_LIMIT=500` som standard (`0` = full skanning). Det nye søket er ikke prøvd mot ekte
   Archive fra utviklingsmiljøet (ingen nettilgang); `external-identifier:*imdb*` følger samme
   jokertegn-syntaks som `licenseurl:*…*`, men må bekreftes på VM-en.
-- **Falsk Archive (`scripts/archive-mock.ts`) serverer WebM.** Testvideoen er `.webm`, så de spillbare
+- **Falsk Archive (`backend/scripts/archive-mock.ts`) serverer WebM.** Testvideoen er `.webm`, så de spillbare
   filene i mocken heter `.webm` (ellers ville `Content-Type: video/mp4` løyet om bytene). Filvalg
   mellom mp4/webm/ogv dekkes av enhetstester på `chooseFiles`.
 

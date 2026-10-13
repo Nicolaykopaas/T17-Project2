@@ -110,7 +110,7 @@ Det som må være på plass i GitLab:
 2. Pipelinen for `main` skal ha tre steg og fem jobber, alle grønne: `lint`, `typecheck` →
    `unit-tests`, `build` → `e2e`.
 3. Åpne fanen _Tests_ på pipelinen. Den viser JUnit-rapporten fra `e2e`. Forventet er rundt 101
-   beståtte og 3 hoppet over, 0 feilet (siste lokale kjøring, se `docs/prosess/status.md`).
+   beståtte og 15 hoppet over, 0 feilet (siste lokale kjøring, se `docs/prosess/status.md`).
 4. Feiler `e2e`, last ned artefakten `playwright-report/` fra jobben og åpne `index.html`, eller
    kjør `npx playwright show-trace test-results/<test>/trace.zip` lokalt.
 5. Lag en liten test-MR (for eksempel en skrivefeil i `docs/`) mot `main` og se at malen fylles inn,

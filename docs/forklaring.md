@@ -72,10 +72,10 @@ Brukeren skriver «dark» i søkefeltet på forsiden.
    `POST /project2/graphql` (adressen bygges av Vites `base`, `client.ts:10`).
 5. **Apache.** `ProxyPass /project2/graphql http://127.0.0.1:3001/graphql`
    (`deploy/apache-project2.conf:8`). `mod_proxy` legger klientens IP sist i `X-Forwarded-For`.
-   Svaret komprimeres (`:53`) og får `Cache-Control: no-store` (`:69-70`).
-6. **Yoga** (`backend/src/app.ts`), i denne rekkefølgen: kroppen avvises over 64 KiB (`:145`),
-   dokumentet parses med tak på 1 000 tokens (`:110`), valideringsreglene kjører (`:113-121`: dybde,
-   antall felt, kostnad), og konteksten bygges per request (`:147-155`, `backend/src/context.ts:31`).
+   Svaret komprimeres (`:60`) og får `Cache-Control: no-store` (`:76-78`).
+6. **Yoga** (`backend/src/app.ts`), i denne rekkefølgen: kroppen avvises over 64 KiB (`:150`),
+   dokumentet parses med tak på 1 000 tokens (`:115`), valideringsreglene kjører (`:117-126`: dybde,
+   antall felt, kostnad), og konteksten bygges per request (`:152-161`, `backend/src/context.ts:35-82`).
 7. **Resolver.** `Query.search` validerer `first` (1–50), `query` (trimmet, maks 200 tegn, ingen
    NUL) og filtre, og bruker `RELEVANCE` som standard (`backend/src/resolvers/index.ts:51-66`,
    `backend/src/validation.ts:28-45`).
@@ -282,7 +282,7 @@ Begrunnelse og målinger: `docs/beslutninger.md` og `docs/ytelse.md`.
 
 **totalCount er lazy.** `Connection.totalCount` er en _funksjon_, ikke et tall (`search.ts:35`), og
 er `memoize`d (`:253-256`). `TitleConnection.totalCount`-resolveren kaller den
-(`resolvers/index.ts:38`), og GraphQL kaller bare resolvere for felt som er med i spørringen. Uten
+(`resolvers/index.ts:39`), og GraphQL kaller bare resolvere for felt som er med i spørringen. Uten
 `totalCount` i spørringen kjører ingen `count(*)`. Forsidens `ROW_QUERY` utelater feltet
 (`frontend/src/graphql/operations.ts:71-76`) og sparer åtte helskanninger per visning;
 `SEARCH_QUERY` har det, fordi trefflista viser «N treff». Tellingen bruker samme `filterConditions`
@@ -293,7 +293,7 @@ uten cursor og `LIMIT`, så den teller hele treffmengden.
 `load(key)` legger nøkkelen i en kø, og første kall planlegger `queueMicrotask(flush)` (`:29`).
 GraphQL kaller feltresolverne for alle 20 kort synkront, så alle `load()`-kall rekker å havne i
 køen før mikrooppgaven kjører. Da gjøres **én** spørring med `WHERE title_id = ANY($1::text[])`
-(`backend/src/context.ts:50-72`). Resultatene caches per instans, og instansene lages per request,
+(`backend/src/context.ts:52-80`). Resultatene caches per instans, og instansene lages per request,
 så ingenting lekker mellom brukere. Samme mønster for plakater og strømmer. Testet i
 `backend/test/title.test.ts:173` (`describe('N+1')`).
 
@@ -304,18 +304,18 @@ billigst (avvis før noe arbeid) til dyrest (sikkerhetsnett):
 
 | Lag                    | Grense                                      | Hvor                              |
 | ---------------------- | ------------------------------------------- | --------------------------------- |
-| Kroppsstørrelse        | 64 KiB                                      | `app.ts:35,145`                   |
-| Tokens i dokumentet    | 1 000                                       | `app.ts:32,110`                   |
-| Dybde                  | 6 nivå                                      | `app.ts:18`, `depthLimit.ts:15`   |
-| Rotfelt / felt totalt  | 8 / 150                                     | `app.ts:21-22`                    |
-| Vektet kostnad         | 2 500                                       | `app.ts:26`, `complexityLimit.ts` |
+| Kroppsstørrelse        | 64 KiB                                      | `app.ts:37,150`                   |
+| Tokens i dokumentet    | 1 000                                       | `app.ts:34,115`                   |
+| Dybde                  | 6 nivå                                      | `app.ts:20`, `depthLimit.ts:15`   |
+| Rotfelt / felt totalt  | 8 / 150                                     | `app.ts:23-24`                    |
+| Vektet kostnad         | 2 500                                       | `app.ts:28`, `complexityLimit.ts` |
 | `first` / søketekst    | 1–50 / 200 tegn                             | `validation.ts:3-4`               |
 | Rate limit (mutations) | 10 anmeldelser/min, 60 andre/min per bruker | `rateLimit.ts:12`                 |
-| Databasen              | `statement_timeout` 15 s, pool på 10        | `db.ts:14-18`                     |
+| Databasen              | `statement_timeout` 15 s, pool på 10        | `db.ts:10,14`                     |
 
 **Tokengrensen.** Valideringsregelen `OverlappingFieldsCanBeMerged` i graphql-js er kvadratisk i
 antall felt. `{ genres genres … }` med 8 000 felt (55 kB) holdt event-loopen opptatt i ca. 5 s.
-Tokengrensen avviser dokumentet under parsing, før noen valideringsregel har kjørt (`app.ts:27-32`).
+Tokengrensen avviser dokumentet under parsing, før noen valideringsregel har kjørt (`app.ts:29-34`).
 Frontendens største operasjon har 128 tokens, så det er åtte ganger slingringsmonn.
 
 **Dybdegrensen** er en sikring mot at en fremtidig sirkulær relasjon (f.eks. `Review.title`)
@@ -345,19 +345,19 @@ ganger høyere, fordi en klasse kan dele nett). Minnet er begrenset til 50 000 n
 
 **Hvilken IP?** Bak Apache ligger klientens IP sist i `X-Forwarded-For`; tidligere ledd kan
 klienten ha forfalsket, så bare siste ledd brukes. Og headeren stoles på **bare** når selve
-TCP-forbindelsen kommer fra loopback, altså fra Apache (`clientIp`, `rateLimit.ts:125-134`). Kommer
+TCP-forbindelsen kommer fra loopback, altså fra Apache (`clientIp`, `rateLimit.ts:125-132`). Kommer
 den fra en annen adresse, brukes den adressen. Ellers kunne noen nå port 3001 direkte og sette en
 ny falsk IP i hver request. I produksjon lytter backend dessuten bare på `127.0.0.1`
 (`backend/src/config.ts:37`).
 
-**Feilmasking** (`maskError`, `app.ts:169-181`). Egne, forventede feil (`BAD_USER_INPUT`,
+**Feilmasking** (`maskError`, `app.ts:175-187`). Egne, forventede feil (`BAD_USER_INPUT`,
 `NOT_FOUND`, …) og protokollfeil under HTTP 500 slippes gjennom. Alt annet blir `Intern feil.`
 uten SQL, stack eller vertsnavn; detaljene logges bare på serveren. Unntak: er årsaken at
 databasen ikke kan nås (`isDatabaseUnavailable`, `dbErrors.ts:15-40`: `ECONNREFUSED`,
 Postgres-kode `57P01`/`57P03`/klasse `08`, pool-timeout), returneres `SERVICE_UNAVAILABLE` med en
 generell melding. Frontend bruker koden til å velge banner (avsnitt 6). `/health` gjør `SELECT 1`
-med 2 s tidsgrense og svarer 200 eller 503 (`app.ts:60-74,127-138`). Introspeksjon og GraphiQL er av
-i produksjon (`:41-52,121,157-158`).
+med 2 s tidsgrense og svarer 200 eller 503 (`app.ts:58-76,132-143`). Introspeksjon og GraphiQL er av
+i produksjon (`:39-54,126,163-164`).
 
 ## 6. Frontend-tilstand
 
@@ -476,8 +476,8 @@ forsvinner. Faller fokus til `<body>`, mister tastaturbrukeren plassen og skjerm
 - **Smale spørringer.** Listene henter bare feltene kortet trenger (`SUMMARY_FIELDS`,
   `operations.ts:24-25`), ikke `overview` eller bakgrunnsbilder.
 - **Caching og komprimering** (`deploy/apache-project2.conf`). `assets/` har innholdshash og caches
-  i ett år (`immutable`, `:59`), mens `index.html` alltid revalideres. `mod_deflate` komprimerer
-  `application/graphql-response+json` (`:53`), som er det Apollo Client 4 ber om og Yoga svarer
+  i ett år (`immutable`, `:66`), mens `index.html` alltid revalideres. `mod_deflate` komprimerer
+  `application/graphql-response+json` (`:60`), som er det Apollo Client 4 ber om og Yoga svarer
   med; uten den ble hvert GraphQL-svar sendt ukomprimert.
 
 ## 9. Testoppsett
@@ -510,8 +510,8 @@ forsvinner. Faller fokus til `<body>`, mister tastaturbrukeren plassen og skjerm
   `gql`-maler i fila (en ny operasjon i et format regexen ikke kjenner kan ikke gli forbi), og at
   hver holder seg under en fjerdedel av tokengrensen. Feiler den, er skjemaet endret uten at
   klienten fulgte med, eller grensene er for stramme for den faktiske klienten.
-- **Omfang** (siste verifiserte kjøring): 490 backendtester, 288
-  komponenttester og 101 bestått E2E. CI (`.gitlab-ci.yml`) kjører lint, typecheck, enhetstester
+- **Omfang** (siste verifiserte kjøring): 502 backendtester, 288
+  komponenttester og 101 bestått E2E (15 hoppet over: skjermbildetester og statiske CSP-sjekker). CI (`.gitlab-ci.yml`) kjører lint, typecheck, enhetstester
   mot Postgres 16, build og E2E.
 
 ## 10. Sannsynlige sensorspørsmål

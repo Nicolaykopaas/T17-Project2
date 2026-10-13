@@ -118,7 +118,7 @@ E2E-test gjør jobben rød. De samme kommandoene er kjørt lokalt før hver merg
 tre GIN-indekser på dem. `ALTER TABLE ... ADD COLUMN ... STORED` skriver om hele tabellen mens den
 holder `ACCESS EXCLUSIVE`-lås, så alle spørringer mot `titles` står i kø til den er ferdig (ca. 4 s lokalt, regn med 10–20 s
 for 120 000 titler på VM-en; indeksbyggingen kommer i tillegg). Kjør derfor migreringen med backend
-stoppet, slik `deploy/setup-vm.sh` og kommandoene over gjør. `scripts/migrate.ts` setter
+stoppet, slik `deploy/setup-vm.sh` og kommandoene over gjør. `backend/scripts/migrate.ts` setter
 `statement_timeout = 0` (poolens 15 s-grense ville avbrutt og rullet tilbake omskrivingen) og
 `lock_timeout = 30s` på migreringsklienten, og nullstiller begge etterpå. Senere migreringer som ikke skriver om
 tabellen trenger ikke dette.

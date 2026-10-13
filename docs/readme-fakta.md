@@ -25,23 +25,23 @@
 
 ## Tall
 
-| Tall                                            | Verdi                                                        | Kilde og status                                                                             |
-| ----------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| Titler i produksjon                             | 190 607 (filmer og serier med minst 100 stemmer)             | `docs/beslutninger.md#datasett`, `docs/prosess/status.md`. Talt av Nicolay på VM-en         |
-| Backendtester (Vitest mot PostgreSQL)           | 490                                                          | `README.md`, `docs/forklaring.md`. Ikke kjørt på nytt her (ingen databasetilgang i miljøet) |
-| Komponenttester (Vitest + Testing Library)      | 288 i 27 filer                                               | Kjørt på nytt 2026-10-13: alle grønne                                                       |
-| E2E-tester (Playwright, desktop og mobil)       | 101 bestått, 3 hoppet over, 0 ustabile                       | `docs/prosess/status.md`, `README.md`. Ikke kjørt på nytt her                               |
-| Søk «dark», sortert på rating                   | 76,7 ms uten indekser, 3,1 ms med                            | `docs/ytelse.md`, syntetiske data (120 000 titler)                                          |
-| Søk «dark», relevans                            | 82,4 ms uten indekser, 8,9 ms med                            | `docs/ytelse.md`, syntetiske data                                                           |
-| Ingen søketekst, sortert på rating              | 24,2 ms uten indekser, 0,03 ms med                           | `docs/ytelse.md`, syntetiske data                                                           |
-| Kort søk «a» (relevans)                         | 314,0 ms før ordprefiks, 0,18 ms etter                       | `docs/ytelse.md`, «Aksentfolding og korte søk»                                              |
-| Vanlig ord «the» (relevans)                     | ca. 140 ms (kjent begrensning)                               | `docs/ytelse.md`, «Ærlige merknader»                                                        |
-| Import av 120 000 syntetiske titler             | ca. 17 s                                                     | `docs/ytelse.md`, «Importtid»                                                               |
-| Lighthouse 2026-10-06 (Performance/A11y/BP/SEO) | Mobil 93–98 / 100 / 100 / 100, desktop 100 / 100 / 100 / 100 | `docs/ytelse.md#lighthouse`, lokalt produksjonsbygg, ikke VM-en                             |
-| Initial JavaScript                              | ca. 170 kB gzip                                              | `docs/beslutninger.md`, «Frontend: ingen nye biblioteker»                                   |
+| Tall                                            | Verdi                                                        | Kilde og status                                                                     |
+| ----------------------------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| Titler i produksjon                             | 190 607 (filmer og serier med minst 100 stemmer)             | `docs/beslutninger.md#datasett`, `docs/prosess/status.md`. Talt av Nicolay på VM-en |
+| Backendtester (Vitest mot PostgreSQL)           | 502 i 24 filer                                               | Kjørt på nytt 2026-10-13: alle grønne. `README.md` oppgir et eldre tall             |
+| Komponenttester (Vitest + Testing Library)      | 288 i 27 filer                                               | Kjørt på nytt 2026-10-13: alle grønne                                               |
+| E2E-tester (Playwright, desktop og mobil)       | 101 bestått, 15 hoppet over, 0 ustabile                      | Kjørt på nytt 2026-10-13 i CI-modus. `README.md` oppgir 101 uten de hoppede         |
+| Søk «dark», sortert på rating                   | 76,7 ms uten indekser, 3,1 ms med                            | `docs/ytelse.md`, syntetiske data (120 000 titler)                                  |
+| Søk «dark», relevans                            | 82,4 ms uten indekser, 8,9 ms med                            | `docs/ytelse.md`, syntetiske data                                                   |
+| Ingen søketekst, sortert på rating              | 24,2 ms uten indekser, 0,03 ms med                           | `docs/ytelse.md`, syntetiske data                                                   |
+| Kort søk «a» (relevans)                         | 314,0 ms før ordprefiks, 0,18 ms etter                       | `docs/ytelse.md`, «Aksentfolding og korte søk»                                      |
+| Vanlig ord «the» (relevans)                     | ca. 140 ms (kjent begrensning)                               | `docs/ytelse.md`, «Ærlige merknader»                                                |
+| Import av 120 000 syntetiske titler             | ca. 17 s                                                     | `docs/ytelse.md`, «Importtid»                                                       |
+| Lighthouse 2026-10-06 (Performance/A11y/BP/SEO) | Mobil 93–98 / 100 / 100 / 100, desktop 100 / 100 / 100 / 100 | `docs/ytelse.md#lighthouse`, lokalt produksjonsbygg, ikke VM-en                     |
+| Initial JavaScript                              | ca. 170 kB gzip                                              | `docs/beslutninger.md`, «Frontend: ingen nye biblioteker»                           |
 
 Alle ytelsestall er målt på syntetiske data. Tabellen for ekte data i `docs/ytelse.md` («Måle på
-VM-en») er ikke fylt ut ennå. `docs/prosess/status.md` oppgir 441 backendtester, som er et eldre tall.
+VM-en») er ikke fylt ut ennå. Testtallene over er kjørt på nytt 2026-10-13 etter at fasett-cachen kom inn.
 
 ## Hovedvalg
 
