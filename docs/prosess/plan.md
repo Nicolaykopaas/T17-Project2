@@ -91,7 +91,7 @@ er delt i det en agent kan gjøre, og det som krever gruppa (tilganger, VM, egne
 - [x] A1 `docs/prosess/status.md` oppdatert: integrasjonsgrenen er merget (PR #31), riktige testtall, dato, og «hva gjenstår» peker hit
 - [ ] A2 Lighthouse med én kommando (`npm run lighthouse -- <url>`) fra egen maskin på VPN, som skriver en markdown-tabell klar for `docs/ytelse.md`. Ingen ny tung runtime-avhengighet i appen
 - [ ] A3 `deploy/mal-ytelse.sh` og plassholdertabellen i `docs/ytelse.md` gjennomgått, så gruppa bare må kjøre og lime inn
-- [ ] A4 Fasetter uten søk og filter (forsiden og «Se alle») teller ikke hele tabellen per request: bufret eller forhåndsberegnet, med test og måling før/etter
+- [x] A4 Fasetter uten søk og filter (forsiden og «Se alle») teller ikke hele tabellen per request: bufret eller forhåndsberegnet, med test og måling før/etter
 - [ ] A5 Flytting til NTNU GitLab: `docs/prosess/gitlab.md` med nøyaktige kommandoer (alle grener, issues og PR-historikk som tabell), MR- og issue-maler i `.gitlab/`
 - [x] A6 Review-guide for gruppa: `docs/prosess/review-guide.md` med én kodedel per medlem (søk/paginering, frontend/tilgjengelighet, tester, deploy), hva de skal lese, sjekkliste og spørsmål sensor kan stille
 - [ ] A7 Mal for «Gruppens egen gjennomgang» i `docs/ki/ki-deklarasjon.md` med konkrete spørsmål per medlem (fylles ut av gruppa, agenten skriver ingen svar)
