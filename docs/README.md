@@ -20,6 +20,7 @@ hvordan appen virker, eller [`oppsett.md`](oppsett.md) hvis du vil kjøre den.
 - [`prosess/plan.md`](prosess/plan.md): milepælene (M0–M7) agentene jobbet mot.
 - [`prosess/status.md`](prosess/status.md): hva som er gjort, hva som gjenstår og hva gruppa må gjøre.
 - [`prosess/blokkeringer.md`](prosess/blokkeringer.md): ting agentene ikke kunne løse alene.
+- [`prosess/review-guide.md`](prosess/review-guide.md): hva Sturla, Brage og Daniel skal gå gjennom av koden, med øvelser, sjekklister og sensorspørsmål.
 - [`prosess/grener-og-pr.md`](prosess/grener-og-pr.md): grenmodell og tabell over issues og pull requests.
 - [`ki/ki-deklarasjon.md`](ki/ki-deklarasjon.md): hvordan KI er brukt, hva mennesker bestemte og kontrollerte, og hvilke feil KI-en gjorde.
 - [`ki/ki-logg.md`](ki/ki-logg.md): én linje per oppgave utført av agentene.

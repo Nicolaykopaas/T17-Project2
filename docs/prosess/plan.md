@@ -93,7 +93,7 @@ er delt i det en agent kan gjøre, og det som krever gruppa (tilganger, VM, egne
 - [ ] A3 `deploy/mal-ytelse.sh` og plassholdertabellen i `docs/ytelse.md` gjennomgått, så gruppa bare må kjøre og lime inn
 - [ ] A4 Fasetter uten søk og filter (forsiden og «Se alle») teller ikke hele tabellen per request: bufret eller forhåndsberegnet, med test og måling før/etter
 - [ ] A5 Flytting til NTNU GitLab: `docs/prosess/gitlab.md` med nøyaktige kommandoer (alle grener, issues og PR-historikk som tabell), MR- og issue-maler i `.gitlab/`
-- [ ] A6 Review-guide for gruppa: `docs/prosess/review-guide.md` med én kodedel per medlem (søk/paginering, frontend/tilgjengelighet, tester, deploy), hva de skal lese, sjekkliste og spørsmål sensor kan stille
+- [x] A6 Review-guide for gruppa: `docs/prosess/review-guide.md` med én kodedel per medlem (søk/paginering, frontend/tilgjengelighet, tester, deploy), hva de skal lese, sjekkliste og spørsmål sensor kan stille
 - [ ] A7 Mal for «Gruppens egen gjennomgang» i `docs/ki/ki-deklarasjon.md` med konkrete spørsmål per medlem (fylles ut av gruppa, agenten skriver ingen svar)
 - [ ] A8 README-støtte: `docs/readme-fakta.md` med fakta, tall og lenker gruppa kan skrive README fra med egne ord. README.md røres ikke
 - [ ] A9 Konsistenssjekk av alle tall og påstander i `docs/` mot faktisk kode og testkjøring
