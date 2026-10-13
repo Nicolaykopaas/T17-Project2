@@ -98,6 +98,22 @@ describe('facetCacheKey', () => {
     expect(a).toBe(b);
   });
 
+  it('slår sammen duplikater i filtrene', () => {
+    const dup = facetCacheKey(null, {
+      ...NONE,
+      genres: ['Drama', 'Drama'],
+      decades: [1990, 1990],
+      types: ['movie', 'movie'],
+    });
+    const single = facetCacheKey(null, {
+      ...NONE,
+      genres: ['Drama'],
+      decades: [1990],
+      types: ['movie'],
+    });
+    expect(dup).toBe(single);
+  });
+
   it('skiller på hvert filter', () => {
     const keys = [
       NONE,

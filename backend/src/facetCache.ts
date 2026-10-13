@@ -88,14 +88,14 @@ export class FacetCache<T = unknown> {
  * Nøkkel for fasetter som kan deles mellom brukere, eller null når de ikke skal caches. `query` er
  * allerede validert (tom eller bare mellomrom er null). Med søketekst caches ingenting:
  * nøkkelrommet er ubegrenset, nesten hvert søk er unikt, og trigramindeksene gjør dem raske nok
- * uansett. Filtrene sorteres så rekkefølgen i URL-en ikke gir flere nøkler for samme svar.
+ * uansett. Filtrene dedupliseres og sorteres så rekkefølge og duplikater i URL-en ikke gir flere nøkler for samme svar.
  */
 export function facetCacheKey(query: string | null, filters: Filters): string | null {
   if (query !== null) return null;
   return JSON.stringify([
-    [...filters.genres].sort(),
-    [...filters.decades].sort((a, b) => a - b),
-    [...filters.types].sort(),
+    [...new Set(filters.genres)].sort(),
+    [...new Set(filters.decades)].sort((a, b) => a - b),
+    [...new Set(filters.types)].sort(),
     filters.minRating,
     filters.availableOnly,
   ]);

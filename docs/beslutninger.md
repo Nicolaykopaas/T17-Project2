@@ -453,8 +453,9 @@ nøkkel. Fem minutters levetid, høyst 64 nøkler (minst nylig brukte kastes ut)
 
 - **Hvorfor ikke en forhåndsberegnet tabell eller materialisert visning:** tallene endres bare når
   importskriptene kjører, men det er to av dem (`db:seed` og `db:archive`), og begge måtte huske å
-  oppdatere tabellen, i tillegg til testene som setter inn data direkte. En tabell dekker også bare «helt uten filter», mens «Se alle» bruker filtre. Minnecachen trenger
-  ingen migrering og dekker begge.
+  oppdatere tabellen, i tillegg til testene som setter inn data direkte. En tabell dekker også bare
+  «helt uten filter», mens «Se alle» bruker filtre. Minnecachen trenger ingen migrering og dekker
+  begge.
 - **Hvorfor tidsbasert og ikke invalidert ved import:** importen kjører i en annen prosess enn
   API-et, og vi har bare én backendprosess, så det finnes ingen billig kanal for å si fra. Prisen er
   at tallene i filterpanelet kan være opptil fem minutter gamle etter en import. Trefflista og

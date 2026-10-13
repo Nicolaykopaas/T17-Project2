@@ -117,6 +117,8 @@ describe('facets', () => {
   // Fasettene uten søketekst er like for alle og koster fire aggregeringer over hele tabellen, så
   // appen holder dem i minnet (facetCache.ts). Her sjekkes at det faktisk sparer databasen.
   it('henter fasetter uten søketekst fra minnet etter første kall, også med filtre', async () => {
+    // Appen og cachen deles av hele filen; tøm den så tidligere tester ikke har fylt nøkkelen.
+    env.facetCache.clear();
     const spy = vi.spyOn(env.pool, 'query');
     try {
       const first = await facets({ filters: { genres: ['Western'] } });
@@ -127,9 +129,18 @@ describe('facets', () => {
       expect(second.raw).toEqual(first.raw);
       expect(spy.mock.calls.length).toBe(callsAfterFirst);
 
-      // Andre filtre er en annen nøkkel og må telles på nytt.
-      await facets({ filters: { genres: ['Western'], types: ['MOVIE'] } });
-      expect(spy.mock.calls.length).toBeGreaterThan(callsAfterFirst);
+      // Hvert filter er en del av nøkkelen: å endre ett av dem må telle på nytt.
+      let calls = callsAfterFirst;
+      const variants = [
+        { genres: ['Western'], types: ['MOVIE'] },
+        { genres: ['Western'], minRating: 7 },
+        { genres: ['Western'], availableOnly: true },
+      ];
+      for (const filters of variants) {
+        await facets({ filters });
+        expect(spy.mock.calls.length).toBeGreaterThan(calls);
+        calls = spy.mock.calls.length;
+      }
     } finally {
       spy.mockRestore();
     }
