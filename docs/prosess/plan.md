@@ -96,7 +96,7 @@ er delt i det en agent kan gjøre, og det som krever gruppa (tilganger, VM, egne
 - [x] A6 Review-guide for gruppa: `docs/prosess/review-guide.md` med én kodedel per medlem (søk/paginering, frontend/tilgjengelighet, tester, deploy), hva de skal lese, sjekkliste og spørsmål sensor kan stille
 - [x] A7 Mal for «Gruppens egen gjennomgang» i `docs/ki/ki-deklarasjon.md` med konkrete spørsmål per medlem (fylles ut av gruppa, agenten skriver ingen svar)
 - [x] A8 README-støtte: `docs/readme-fakta.md` med fakta, tall og lenker gruppa kan skrive README fra med egne ord. README.md røres ikke
-- [ ] A9 Konsistenssjekk av alle tall og påstander i `docs/` mot faktisk kode og testkjøring
+- [x] A9 Konsistenssjekk av alle tall og påstander i `docs/` mot faktisk kode og testkjøring
 
 ### Gruppa (krever mennesker)
 

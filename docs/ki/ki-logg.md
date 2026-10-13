@@ -26,3 +26,4 @@
 - 2026-10-13 – A6 review-guide for Sturla, Brage og Daniel (`docs/prosess/review-guide.md`) – leder – prettier grønn.
 - 2026-10-13 – A1 status.md oppdatert til 2026-10-13 – subagent – prettier grønn.
 - 2026-10-13 – A5/A7/A8 GitLab-guide med MR- og issue-maler, mal for «Gruppens egen gjennomgang» uten svar, `docs/readme-fakta.md` – subagent – lint og prettier grønne.
+- 2026-10-13 – A9 konsistenssjekk av docs/: linjehenvisninger, testtall (502/288/101), PR-lister til #31, stier og lenker – subagent – 502 backend-, 288 komponenttester og E2E 101 bestått/15 hoppet over, lint grønn.
