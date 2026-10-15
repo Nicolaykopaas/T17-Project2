@@ -21,3 +21,9 @@
 - 2026-10-06 – #16 Frontend-gjennomgang: Hero inMyList, listeknapp uten aria-pressed, «Last flere»-feil, kodepunkt-telling, Stars-opplesning, fokus til h1, ROW_QUERY uten totalCount, tema-bryter, slett egen anmeldelse, RATE_LIMITED, PR #21 – frontend-utvikler, review av kritiker-agent – 236 komponenttester grønne.
 - 2026-10-06 – #17 CI med build og E2E (failOnFlakyTests) og CSP fra Apache verifisert i E2E, PR #22 – tester, review av kritiker-agent – E2E 97 bestått, 3 hoppet over, 0 ustabile (ren database, CI-modus).
 - 2026-10-06 – #23 Kommentarer for eksterne lesere og konsistensgjennomgang av docs (status, oppsett, PLAN, beslutninger), PR #24 m.fl. – leder og subagent, review av kritiker-agent – lint og formatsjekk grønne; bundle målt på nytt.
+- 2026-10-13 – A4 Fasetter uten søketekst caches i minnet (TTL 5 min, maks 64 filterkombinasjoner, delt spørring, feil huskes ikke), måling før/etter i ytelse.md – backend-utvikler (agent) – 501 backend-, 288 komponenttester og E2E 101 bestått/15 hoppet over grønne.
+- 2026-10-13 – A2/A3 `npm run lighthouse` (scripts/lighthouse.ts, Lighthouse 12, median av 3, markdown-tabell) og VM-instruksjoner med plassholdere i ytelse.md, scenariorader sjekket mot `db:measure` – tester (agent) – lint, typecheck og enhetstester grønne, skriptet kjørt mot lokal preview.
+- 2026-10-13 – A6 review-guide for Sturla, Brage og Daniel (`docs/prosess/review-guide.md`) – leder – prettier grønn.
+- 2026-10-13 – A1 status.md oppdatert til 2026-10-13 – subagent – prettier grønn.
+- 2026-10-13 – A5/A7/A8 GitLab-guide med MR- og issue-maler, mal for «Gruppens egen gjennomgang» uten svar, `docs/readme-fakta.md` – subagent – lint og prettier grønne.
+- 2026-10-13 – A9 konsistenssjekk av docs/: linjehenvisninger, testtall (502/288/101), PR-lister til #31, stier og lenker – subagent – 502 backend-, 288 komponenttester og E2E 101 bestått/15 hoppet over, lint grønn.

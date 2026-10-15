@@ -14,7 +14,7 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
   `--no-ff`, slik at historikken viser grenene. Agentene pusher aldri til `main` og aldri med force.
 - **Issues og PR-er på GitHub, ikke GitLab.** I september var `glab` ikke tilgjengelig, så
   issue- og review-flyten ble loggført i `docs/ki/ki-logg.md`. Fra oktober ligger issues (#13–#17, #23)
-  og PR-er (#18–#24) på GitHub (`Nicolaykopaas/T17-Project2`), og hver PR har review fra en
+  og PR-er (#18–#22 og #24–#31; nummer 23 er et issue) på GitHub (`Nicolaykopaas/T17-Project2`), og hver PR har review fra en
   kritiker-agent. Repoet flyttes til NTNU GitLab ved innlevering.
 - **Syntetisk testdatasett.** IMDb-nedlasting er blokkert i miljøet (se `docs/prosess/blokkeringer.md`). Et skript
   genererer filer i nøyaktig samme TSV-format, så importkoden er den samme for ekte og syntetiske
@@ -96,7 +96,7 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
   (5 min negativ cache i minnet), og 401/403 slår av oppslag i 10 min. Ugyldig `width` (≤ 0) gir
   `BAD_USER_INPUT`; gyldige verdier snappes til nærmeste tillatte størrelse. Stier fra TMDB
   valideres mot et strengt mønster før de brukes i en URL. Testes mot en lokal falsk TMDB
-  (`scripts/tmdb-mock.ts`), siden internett ikke er tilgjengelig i CI.
+  (`backend/scripts/tmdb-mock.ts`), siden internett ikke er tilgjengelig i CI.
 - **Frontend: kinoaktig redesign uten nye biblioteker.** Ren CSS med custom properties i `global.css`.
   Mørkt er standard, lyst følger `prefers-color-scheme: light` med samme layout. Header, heltebilder og
   plakat-overlegg er alltid mørke (egne `--on-media`-tokens), fordi de ligger over bilder; det gjør at
@@ -137,7 +137,7 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
   serveren kan byttes (mock/ekte) uten ny import. Element-id må matche `^[A-Za-z0-9._-]+$` (og ikke
   `..`), filnavn kan ikke ha `/`, `\`, `..` eller kontrolltegn; ellers blir `stream` `null`, og
   filnavnet URL-enkodes.
-- **Lisensregel for importen (`isLawful` i `scripts/import-archive.ts`).** Et Archive-element er
+- **Lisensregel for importen (`isLawful` i `backend/scripts/import-archive.ts`).** Et Archive-element er
   lovlig hvis (a) `licenseurl` har verten `creativecommons.org` (eller subdomene), eller URL-en
   inneholder `publicdomain` (CC0, Public Domain Mark, usa.gov-erklæringen), eller (b) elementet ligger
   i en kuratert public domain-samling: `feature_films`, `film_noir` eller `silent_films`. Alt annet
@@ -180,7 +180,7 @@ Valg agentene har tatt uten å spørre, med begrunnelse. Nyeste nederst.
   `ARCHIVE_LIMIT=500` som standard (`0` = full skanning). Det nye søket er ikke prøvd mot ekte
   Archive fra utviklingsmiljøet (ingen nettilgang); `external-identifier:*imdb*` følger samme
   jokertegn-syntaks som `licenseurl:*…*`, men må bekreftes på VM-en.
-- **Falsk Archive (`scripts/archive-mock.ts`) serverer WebM.** Testvideoen er `.webm`, så de spillbare
+- **Falsk Archive (`backend/scripts/archive-mock.ts`) serverer WebM.** Testvideoen er `.webm`, så de spillbare
   filene i mocken heter `.webm` (ellers ville `Content-Type: video/mp4` løyet om bytene). Filvalg
   mellom mp4/webm/ogv dekkes av enhetstester på `chooseFiles`.
 
@@ -413,7 +413,8 @@ Vi har valgt få, veletablerte avhengigheter, og bevisst valgt bort tunge UI-bib
   folden henter data først når de nærmer seg skjermen (IntersectionObserver). Bilder har `srcset` og
   `sizes` og lastes lazy, og lister henter bare feltene de viser.
 - **Mindre arbeid på serveren:** indekserte søk og cursor-paginering. `totalCount` regnes bare ut
-  når det vises, noe som fjernet 8 `count(*)` per forsidevisning. TMDB-svar bufres i databasen, søk
+  når det vises, noe som fjernet 8 `count(*)` per forsidevisning. Fasetter uten søketekst holdes i
+  minnet i fem minutter (se «Cache for fasetter uten søk» under). TMDB-svar bufres i databasen, søk
   debounces, og uendrede søk sendes ikke.
 - **Cache:** byggede filer har innholdshash og `Cache-Control: immutable`, `index.html`
   revalideres, Apache komprimerer med gzip, og Apollo gjenbruker data ved navigering.
@@ -438,3 +439,31 @@ Vi har valgt få, veletablerte avhengigheter, og bevisst valgt bort tunge UI-bib
 ## Oppsett med to kommandoer
 
 `npm run setup` og `npm run dev` er små tsx-skript (`backend/scripts/setup.ts`, `dev.ts`) i stedet for shell-kommandoer i `package.json`, fordi `VAR=verdi cmd` ikke virker i cmd.exe. Setup starter den falske Archive i samme prosess på en tilfeldig ledig port (databasen lagrer bare element-id og filnavn, ikke vertsnavn), så den ikke kolliderer med en kjørende dev- eller E2E-stack. `npm run dev` velger falske TMDB/Archive kun når `TMDB_API_KEY` er tom; en eksplisitt `ARCHIVE_URL` respekteres. Standard `FIXTURE_SIZE` i setup er 20 000 for rask første kjøring (`db:fixture` alene har fortsatt 120 000).
+
+## Cache for fasetter uten søk (M8, A4)
+
+Filterpanelet ber om fasetter hver gang søkesiden vises, også uten søketekst (`/?sort=…`) og fra
+hver «Se alle»-lenke på forsiden (åtte faste filterkombinasjoner). Uten tekst er svaret det samme for
+alle, men det kostet fire aggregeringer over hele `titles`: ca. 85 ms databasetid (sum av fire
+`EXPLAIN ANALYZE`) og ca. 45 ms per request på 120 000 syntetiske titler, mer på ekte data.
+
+**Valg: TTL-cache i backendens minne** (`backend/src/facetCache.ts`), én per app, med filtrene som
+nøkkel. Fem minutters levetid, høyst 64 nøkler (minst nylig brukte kastes ut), samtidige kall deler
+én spørring, og feil huskes ikke. Med søketekst caches ingenting.
+
+- **Hvorfor ikke en forhåndsberegnet tabell eller materialisert visning:** tallene endres bare når
+  importskriptene kjører, men det er to av dem (`db:seed` og `db:archive`), og begge måtte huske å
+  oppdatere tabellen, i tillegg til testene som setter inn data direkte. En tabell dekker også bare
+  «helt uten filter», mens «Se alle» bruker filtre. Minnecachen trenger ingen migrering og dekker
+  begge.
+- **Hvorfor tidsbasert og ikke invalidert ved import:** importen kjører i en annen prosess enn
+  API-et, og vi har bare én backendprosess, så det finnes ingen billig kanal for å si fra. Prisen er
+  at tallene i filterpanelet kan være opptil fem minutter gamle etter en import. Trefflista og
+  `totalCount` er alltid ferske. Anmeldelser og «Min liste» påvirker ikke fasettene.
+- **Hvorfor bare uten søketekst:** nøkkelrommet med tekst er ubegrenset og nesten hvert søk er unikt,
+  så en cache ville sjelden truffet. Trigramindeksene holder dem raske nok.
+- **Hvorfor grense på nøkler:** validerte filtre gir svært mange kombinasjoner. Uten grense kunne
+  noen fylle minnet ved å prøve dem alle.
+- **Resultat** (120 000 syntetiske titler, lokal maskin, median av 20 requests via `yoga.fetch`):
+  ca. 42–46 ms uten cache og ca. 0,9 ms med cache, for både «ingen filter» og «Se alle»-filtrene.
+  Se `docs/ytelse.md`.

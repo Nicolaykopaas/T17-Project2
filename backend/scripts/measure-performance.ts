@@ -219,7 +219,9 @@ export const SCENARIOS: Scenario[] = [
     },
   },
   {
-    name: 'Fasetter uten filter',
+    // API-et holder disse i minnet i fem minutter (facetCache.ts). Her måles det en bom koster:
+    // det første kallet etter oppstart eller utløp, og det alle kall kostet før cachen.
+    name: 'Fasetter uten filter (uten cache)',
     capture: async () => {
       const { pool, captured } = capturePool();
       await getFacets(pool, null, NO_FILTERS);

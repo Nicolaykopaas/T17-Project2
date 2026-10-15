@@ -260,7 +260,7 @@ export interface FacetCount {
   count: number;
 }
 
-interface FacetsResult {
+export interface FacetsResult {
   genres: FacetCount[];
   decades: FacetCount[];
   types: FacetCount[];

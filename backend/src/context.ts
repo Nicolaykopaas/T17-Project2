@@ -1,8 +1,10 @@
 import { createArtworkLoader, type ArtworkLoader, type ArtworkService } from './artwork.js';
 import type { Pool } from './db.js';
 import { config } from './config.js';
+import { FacetCache } from './facetCache.js';
 import { batchLoader } from './loaders.js';
 import { clientIp, MutationLimiter } from './rateLimit.js';
+import type { FacetsResult } from './search.js';
 import { createStreamLoader, type StreamLoader } from './stream.js';
 import { parseUserId } from './validation.js';
 
@@ -18,6 +20,8 @@ export interface Context {
   /** Klientens IP bak proxy, ellers null. Brukes bare til begrensning av mutations. */
   ip: string | null;
   limiter: MutationLimiter;
+  /** Delt mellom requests (lages i createApp), i motsetning til loaderne under. */
+  facetCache: FacetCache<FacetsResult>;
   artwork: ArtworkService;
   loaders: {
     artwork: ArtworkLoader;
@@ -35,6 +39,7 @@ export function createContext(
   archiveUrl: string = config.archiveUrl,
   limiter: MutationLimiter = new MutationLimiter(),
   remoteAddress?: string,
+  facetCache: FacetCache<FacetsResult> = new FacetCache(),
 ): Context {
   const userId = parseUserId(request.headers.get('x-user-id'));
   return {
@@ -42,6 +47,7 @@ export function createContext(
     userId,
     ip: clientIp(request, remoteAddress),
     limiter,
+    facetCache,
     artwork,
     loaders: {
       artwork: createArtworkLoader(artwork),

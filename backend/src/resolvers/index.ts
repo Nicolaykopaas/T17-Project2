@@ -1,6 +1,7 @@
 import { BACKDROP_WIDTHS, POSTER_WIDTHS, buildImageUrl } from '../artwork.js';
 import { badInput, notFound, unauthenticated } from '../errors.js';
 import type { Context } from '../context.js';
+import { facetCacheKey } from '../facetCache.js';
 import {
   DEFAULT_DIRECTION,
   getFacets,
@@ -75,7 +76,13 @@ export const resolvers = {
       _: unknown,
       args: { query?: string | null; filters?: FiltersInput | null },
       ctx: Context,
-    ) => getFacets(ctx.pool, validateQuery(args.query), validateFilters(args.filters)),
+    ) => {
+      const query = validateQuery(args.query);
+      const filters = validateFilters(args.filters);
+      const key = facetCacheKey(query, filters);
+      const load = () => getFacets(ctx.pool, query, filters);
+      return key === null ? load() : ctx.facetCache.get(key, load);
+    },
 
     myList: async (
       _: unknown,

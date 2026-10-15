@@ -126,9 +126,79 @@ arbeidet faktisk ble styrt i oktober.
 
 ### Gruppens egen gjennomgang av koden
 
-_Fylles ut av gruppa: hvem som har satt seg inn i hvilke deler av koden, og hvordan. For eksempel
-søket og pagineringen (`backend/src/search.ts`, `keyset.ts`), tilgjengelighet, testene, eller
-deploy på VM-en._
+Hvert gruppemedlem skriver kort om delen av koden de har ansvar for. Svar med egne ord og vær
+konkret: filnavn, funksjoner, commit-hasher og lenker til merge requests. Det er bedre å skrive at
+noe ikke er forstått eller sjekket enn å la det stå tomt. Spørsmålene under er en mal. Stryk dem
+som ikke passer, og legg til det som mangler.
+
+#### Nicolay – deploy og arkitektur
+
+Forslag til filer: `deploy/setup-vm.sh`, `deploy/oppdater.sh`, `deploy/apache-project2.conf`,
+`deploy/project2-backend.service`, `.gitlab-ci.yml`, `backend/src/app.ts`, `frontend/src/apollo/client.ts`.
+
+1. Hvilke filer har du lest grundig, og hvilke bare skummet?
+   - _Fylles ut av Nicolay._
+2. Hva forstod du av hvordan delene henger sammen (Apache, Node-tjenesten, PostgreSQL, CI)? Hva
+   har du endret selv?
+   - _Fylles ut av Nicolay._
+3. Hvilke funn gjorde du da du gjennomgikk koden eller kjørte den på VM-en?
+   - _Fylles ut av Nicolay._
+4. Hva gjorde KI-en feil, eller hvor var du uenig i valget den tok? Hva ble gjort med det?
+   - _Fylles ut av Nicolay._
+5. Lenke til egen merge request eller commit:
+   - _Fylles ut av Nicolay._
+
+#### Sturla – backend: søk, paginering og database
+
+Forslag til filer: `backend/src/search.ts`, `backend/src/keyset.ts`, `backend/src/resolvers/index.ts`,
+`backend/migrations/001_init.sql`, `backend/migrations/004_unaccent_search.sql`, `backend/scripts/import-core.ts`.
+
+1. Hvilke filer har du lest grundig, og hvilke bare skummet?
+   - _Fylles ut av Sturla._
+2. Hva forstod du av søket (trigram, ordprefiks for korte søk, relevansformelen) og
+   keyset-pagineringen? Hva har du endret selv?
+   - _Fylles ut av Sturla._
+3. Hvilke funn gjorde du i review, for eksempel av SQL, indekser eller `EXPLAIN ANALYZE`?
+   - _Fylles ut av Sturla._
+4. Hva gjorde KI-en feil, eller hvor var du uenig i valget den tok? Hva ble gjort med det?
+   - _Fylles ut av Sturla._
+5. Lenke til egen merge request eller commit:
+   - _Fylles ut av Sturla._
+
+#### Brage – frontend og tilgjengelighet
+
+Forslag til filer: `frontend/src/hooks/useSearchState.ts`, `frontend/src/components/SearchBox.tsx`,
+`frontend/src/components/SearchResults.tsx`, `frontend/src/components/FilterPanel.tsx`,
+`frontend/src/components/Layout.tsx`, `frontend/src/apollo/cache.ts`, `frontend/src/styles/global.css`.
+
+1. Hvilke filer har du lest grundig, og hvilke bare skummet?
+   - _Fylles ut av Brage._
+2. Hva forstod du av tilstanden i URL-en, Apollo-cachen og fokusstyringen? Hva har du endret selv?
+   - _Fylles ut av Brage._
+3. Hvilke funn gjorde du i review, eller ved å teste med tastatur, skjermleser, mobil og mørk modus?
+   - _Fylles ut av Brage._
+4. Hva gjorde KI-en feil, eller hvor var du uenig i valget den tok? Hva ble gjort med det?
+   - _Fylles ut av Brage._
+5. Lenke til egen merge request eller commit:
+   - _Fylles ut av Brage._
+
+#### Daniel – testing
+
+Forslag til filer: `backend/test/search.test.ts`, `backend/test/pagination.test.ts`,
+`frontend/src/components/SearchBox.test.tsx`, `e2e/flow.spec.ts`, `e2e/a11y.spec.ts`,
+`e2e/global-setup.ts`, `playwright.config.ts`.
+
+1. Hvilke testfiler har du lest grundig, og hvilke bare skummet?
+   - _Fylles ut av Daniel._
+2. Hva forstod du av testoppsettet (testdatabase, falsk TMDB og Archive, axe)? Hva har du endret
+   eller lagt til selv?
+   - _Fylles ut av Daniel._
+3. Hvilke funn gjorde du i review: tester som mangler, tester som tester for lite, eller ustabile tester?
+   - _Fylles ut av Daniel._
+4. Hva gjorde KI-en feil, eller hvor var du uenig i valget den tok? Hva ble gjort med det?
+   - _Fylles ut av Daniel._
+5. Lenke til egen merge request eller commit:
+   - _Fylles ut av Daniel._
 
 ## Hvordan vi kontrollerte KI-ens arbeid
 

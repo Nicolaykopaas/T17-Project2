@@ -3,6 +3,8 @@ import { afterAll, beforeAll } from 'vitest';
 import { ArtworkService } from '../src/artwork.js';
 import { createApp } from '../src/app.js';
 import { config } from '../src/config.js';
+import { FacetCache } from '../src/facetCache.js';
+import type { FacetsResult } from '../src/search.js';
 import { createPool, type Pool } from '../src/db.js';
 import type { RateLimitOptions } from '../src/rateLimit.js';
 import { resetData } from './fixtures.js';
@@ -17,6 +19,8 @@ export interface GqlResult<T = Record<string, any>> {
 
 export interface TestEnv {
   pool: Pool;
+  /** Appens fasettcache; tøm den i tester som teller databasekall, så rekkefølgen ikke spiller inn. */
+  facetCache: FacetCache<FacetsResult>;
   gql: (
     query: string,
     variables?: Record<string, unknown>,
@@ -32,10 +36,12 @@ export function setupApi(rateLimits: Partial<RateLimitOptions> = {}): TestEnv {
   const env = {} as TestEnv;
   beforeAll(async () => {
     env.pool = createPool(config.testDatabaseUrl);
+    env.facetCache = new FacetCache<FacetsResult>();
     await resetData(env.pool);
     const yoga = createApp({
       pool: env.pool,
       production: false,
+      facetCache: env.facetCache,
       corsOrigin: 'http://localhost:5173',
       // Så høye grenser at funksjonelle tester aldri treffer dem; rate-limit.test.ts bruker egne.
       rateLimits: { reviewsPerMinute: 10_000, mutationsPerMinute: 10_000, ...rateLimits },
